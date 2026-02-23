@@ -3,32 +3,58 @@ const POOL_ABI = [
   "function getUserAccountData(address user) external view returns (uint256 totalCollateralBase,uint256 totalDebtBase,uint256 availableBorrowsBase,uint256 currentLiquidationThreshold,uint256 ltv,uint256 healthFactor)"
 ];
 
-// Aave V3 Pool contract on Arbitrum One (check Aave docs/addresses dashboard)
+// Aave V3 Pool contract on Arbitrum One
 const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"; // Arbitrum V3 Pool
 
-const connectButton = document.getElementById("connectButton");
-const statusDiv     = document.getElementById("status");
-const resultDiv     = document.getElementById("result");
-const addressSpan   = document.getElementById("address");
+// Button / menu elements
+const connectButton  = document.getElementById("connectButton");
+const connectLabel   = document.getElementById("connectLabel");
+const walletMenu     = document.getElementById("walletMenu");
+const disconnectBtn  = document.getElementById("disconnectButton");
+const menuAddress    = document.getElementById("menuAddress");
 
-// Old span kept for compatibility (not used now)
-const hfSpan        = document.getElementById("healthFactor");
+// Main UI elements
+const statusDiv   = document.getElementById("status");
+const resultDiv   = document.getElementById("result");
+const addressSpan = document.getElementById("address");
+const hfValueEl   = document.getElementById("hfValue");
 
-// New: dedicated Health Factor element for colored view
-const hfValueEl     = document.getElementById("hfValue");
+let currentAddress = null;
 
-// Helper: set HF text + color classes
+// Shorten address like Aave (0x1234...abcd)
+function shortenAddress(addr) {
+  if (!addr) return "";
+  return addr.slice(0, 6) + "..." + addr.slice(-4);
+}
+
+// Set connected UI: button shows address, result is visible
+function setConnectedUI(addr) {
+  currentAddress = addr;
+  addressSpan.textContent = addr;
+  connectLabel.textContent = shortenAddress(addr);
+  menuAddress.textContent = addr;
+  resultDiv.classList.remove("hidden");
+}
+
+// Reset UI when disconnected
+function setDisconnectedUI() {
+  currentAddress = null;
+  addressSpan.textContent = "";
+  hfValueEl.textContent = "–";
+  connectLabel.textContent = "Connect wallet";
+  resultDiv.classList.add("hidden");
+  walletMenu.classList.remove("visible");
+  statusDiv.textContent = "";
+  localStorage.removeItem("savedAddress");
+}
+
+// Color the Health Factor like Aave
 function setHealthFactorDisplay(hf) {
-  if (!hfValueEl) {
-    if (hfSpan) hfSpan.textContent = hf.toFixed(2);
-    return;
-  }
-
   hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
 
   let cls;
   if (hf < 1.0) {
-    cls = "hf-danger";      // liquidation zone
+    cls = "hf-danger";      // liquidation
   } else if (hf < 1.5) {
     cls = "hf-warning";     // close to liquidation
   } else {
@@ -46,13 +72,21 @@ async function connectAndLoad() {
       return;
     }
 
-    // Optional: show when it's Rabby
-    if (window.ethereum.isRabby) {
-      console.log("Rabby wallet detected");
+    // If already connected → toggle disconnect menu (like Aave)
+    if (currentAddress) {
+      walletMenu.classList.toggle("visible");
+      return;
     }
 
     statusDiv.textContent = "Connecting wallet...";
-    await window.ethereum.request({ method: "eth_requestAccounts" });
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    if (!accounts || accounts.length === 0) {
+      statusDiv.textContent = "No account returned from wallet.";
+      return;
+    }
+
+    const userAddress = accounts[0];
+    localStorage.setItem("savedAddress", userAddress);
 
     const provider = new ethers.BrowserProvider(window.ethereum);
     const network  = await provider.getNetwork();
@@ -63,22 +97,15 @@ async function connectAndLoad() {
       return;
     }
 
-    const signer      = await provider.getSigner();
-    const userAddress = await signer.getAddress();
-    addressSpan.textContent = userAddress;
-
     statusDiv.textContent = "Reading your Aave account data...";
 
     const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
     const data = await pool.getUserAccountData(userAddress);
-    const healthFactorRaw = data.healthFactor; // BigInt
-
-    // Convert from 18 decimals to a normal number
+    const healthFactorRaw = data.healthFactor;
     const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
 
     setHealthFactorDisplay(healthFactor);
-
-    resultDiv.classList.remove("hidden");
+    setConnectedUI(userAddress);
     statusDiv.textContent = "Done.";
   } catch (err) {
     console.error(err);
@@ -87,3 +114,44 @@ async function connectAndLoad() {
 }
 
 connectButton.addEventListener("click", connectAndLoad);
+
+disconnectBtn.addEventListener("click", () => {
+  setDisconnectedUI();
+});
+
+// Close wallet menu when clicking outside
+document.addEventListener("click", (e) => {
+  if (!walletMenu.classList.contains("visible")) return;
+  if (!e.target.closest(".wallet-container")) {
+    walletMenu.classList.remove("visible");
+  }
+});
+
+// Try to auto-restore connection on load
+window.addEventListener("load", async () => {
+  try {
+    if (!window.ethereum) return;
+    const saved = localStorage.getItem("savedAddress");
+    if (!saved) return;
+
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (!accounts.includes(saved)) return;
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const network  = await provider.getNetwork();
+    if (Number(network.chainId) !== 42161) return;
+
+    statusDiv.textContent = "Reading your Aave account data...";
+
+    const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
+    const data = await pool.getUserAccountData(saved);
+    const healthFactorRaw = data.healthFactor;
+    const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
+
+    setHealthFactorDisplay(healthFactor);
+    setConnectedUI(saved);
+    statusDiv.textContent = "Loaded from previous connection.";
+  } catch (err) {
+    console.error(err);
+  }
+});
