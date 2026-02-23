@@ -15,7 +15,6 @@
       display: flex;
       flex-direction: column;
     }
-
     .topbar {
       display: flex;
       justify-content: flex-end;
@@ -28,12 +27,7 @@
       top: 0;
       z-index: 10;
     }
-
-    .wallet-container {
-      position: relative;
-      display: inline-block;
-    }
-
+    .wallet-container { position: relative; display: inline-block; }
     #connectButton {
       border: none;
       border-radius: 999px;
@@ -53,19 +47,16 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
     #connectButton:hover {
       transform: translateY(-1px);
       box-shadow: 0 0 24px rgba(46, 186, 198, 0.55);
       opacity: 0.96;
     }
-
     #connectButton:active {
       transform: translateY(0);
       box-shadow: 0 0 10px rgba(182, 80, 158, 0.35);
       opacity: 0.9;
     }
-
     .wallet-dot {
       width: 8px;
       height: 8px;
@@ -73,7 +64,6 @@
       background: #00ffae;
       flex-shrink: 0;
     }
-
     .wallet-menu {
       position: absolute;
       right: 0;
@@ -88,19 +78,14 @@
       display: none;
       z-index: 20;
     }
-
-    .wallet-menu.visible {
-      display: block;
-    }
-
+    .wallet-menu.visible { display: block; }
     .wallet-menu .menu-address {
-      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 12px;
       margin-bottom: 8px;
       word-break: break-all;
       color: #e0e4ff;
     }
-
     .wallet-menu button {
       width: 100%;
       border-radius: 999px;
@@ -112,12 +97,10 @@
       color: #ff97aa;
       transition: background 0.1s ease, color 0.1s ease;
     }
-
     .wallet-menu button:hover {
       background: rgba(255, 70, 100, 0.25);
       color: #ffd0d9;
     }
-
     .page-content {
       flex: 1;
       display: flex;
@@ -125,7 +108,6 @@
       align-items: center;
       padding: 24px;
     }
-
     .card {
       background: radial-gradient(circle at top left, #22264b 0, #151a30 45%, #0c0f1f 100%);
       padding: 24px 28px;
@@ -135,27 +117,10 @@
       width: 100%;
       border: 1px solid rgba(255, 255, 255, 0.04);
     }
-
-    h1 {
-      font-size: 20px;
-      margin: 0 0 12px;
-    }
-
-    #status {
-      margin-top: 8px;
-      font-size: 13px;
-      color: #c8d0ff;
-      min-height: 18px;
-    }
-
-    #result {
-      margin-top: 18px;
-      font-size: 15px;
-    }
-
-    .hidden {
-      display: none;
-    }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    #status { margin-top: 8px; font-size: 13px; color: #c8d0ff; min-height: 18px; }
+    #result { margin-top: 18px; font-size: 15px; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -184,12 +149,156 @@
   </main>
 
   <script>
+    // --- Config ---
     const POOL_ABI = [
       "function getUserAccountData(address user) external view returns (uint256 totalCollateralBase,uint256 totalDebtBase,uint256 availableBorrowsBase,uint256 currentLiquidationThreshold,uint256 ltv,uint256 healthFactor)"
     ];
+    const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"; // Arbitrum V3 Pool
 
-    const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"; // Arbitrum V3 Pool [web:16]
-
+    // --- DOM elements ---
     const connectButton = document.getElementById("connectButton");
     const connectLabel  = document.getElementById("connectLabel");
-    const walletMenu
+    const walletMenu    = document.getElementById("walletMenu");
+    const disconnectBtn = document.getElementById("disconnectButton");
+    const menuAddress   = document.getElementById("menuAddress");
+    const statusDiv     = document.getElementById("status");
+    const resultDiv     = document.getElementById("result");
+    const addressSpan   = document.getElementById("address");
+    const hfSpan        = document.getElementById("healthFactor");
+
+    let currentAddress = null;
+
+    function log(...args) {
+      console.log("[DAPP]", ...args);
+    }
+
+    function shortenAddress(addr) {
+      if (!addr) return "";
+      return addr.slice(0, 6) + "..." + addr.slice(-4);
+    }
+
+    function setConnectedUI(addr) {
+      currentAddress = addr;
+      addressSpan.textContent = addr;
+      connectLabel.textContent = shortenAddress(addr);
+      menuAddress.textContent = addr;
+      resultDiv.classList.remove("hidden");
+    }
+
+    function setDisconnectedUI() {
+      currentAddress = null;
+      addressSpan.textContent = "";
+      hfSpan.textContent = "";
+      connectLabel.textContent = "Connect wallet";
+      resultDiv.classList.add("hidden");
+      walletMenu.classList.remove("visible");
+      statusDiv.textContent = "";
+      localStorage.removeItem("savedAddress");
+    }
+
+    async function readHealthFactor(provider, userAddress) {
+      const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
+      const data = await pool.getUserAccountData(userAddress);
+      const healthFactorRaw = data.healthFactor;
+      const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
+      return healthFactor;
+    }
+
+    async function connectAndLoad() {
+      try {
+        log("Connect button clicked");
+        log("window.ethereum is", window.ethereum);
+
+        if (!window.ethereum) {
+          statusDiv.textContent = "No browser wallet detected (MetaMask / Rabby).";
+          return;
+        }
+
+        if (currentAddress) {
+          // already connected: toggle menu
+          walletMenu.classList.toggle("visible");
+          return;
+        }
+
+        statusDiv.textContent = "Connecting wallet...";
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        log("eth_requestAccounts result:", accounts);
+
+        if (!accounts || accounts.length === 0) {
+          statusDiv.textContent = "No account returned from wallet.";
+          return;
+        }
+
+        const userAddress = accounts[0];
+        localStorage.setItem("savedAddress", userAddress);
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const network = await provider.getNetwork();
+        log("Network:", network);
+
+        if (Number(network.chainId) !== 42161) {
+          statusDiv.textContent = "Please switch wallet to the Arbitrum One network and try again.";
+          return;
+        }
+
+        statusDiv.textContent = "Reading your Aave account data...";
+
+        const hf = await readHealthFactor(provider, userAddress);
+        log("Health factor:", hf);
+
+        hfSpan.textContent = hf.toFixed(2);
+        setConnectedUI(userAddress);
+        statusDiv.textContent = "Done.";
+      } catch (err) {
+        console.error("[DAPP ERROR]", err);
+        statusDiv.textContent = "Error: " + (err.message || err);
+      }
+    }
+
+    connectButton.addEventListener("click", connectAndLoad);
+
+    disconnectBtn.addEventListener("click", () => {
+      log("Disconnect clicked");
+      setDisconnectedUI();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!walletMenu.classList.contains("visible")) return;
+      if (!e.target.closest(".wallet-container")) {
+        walletMenu.classList.remove("visible");
+      }
+    });
+
+    window.addEventListener("load", async () => {
+      try {
+        log("Page load");
+        log("window.ethereum on load is", window.ethereum);
+        if (!window.ethereum) return;
+
+        const saved = localStorage.getItem("savedAddress");
+        log("Saved address:", saved);
+        if (!saved) return;
+
+        const accounts = await window.ethereum.request({ method: "eth_accounts" });
+        log("eth_accounts:", accounts);
+        if (!accounts.includes(saved)) return;
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const network = await provider.getNetwork();
+        log("Network on auto-load:", network);
+        if (Number(network.chainId) !== 42161) return;
+
+        statusDiv.textContent = "Reading your Aave account data...";
+        const hf = await readHealthFactor(provider, saved);
+        log("Health factor (auto-load):", hf);
+
+        hfSpan.textContent = hf.toFixed(2);
+        setConnectedUI(saved);
+        statusDiv.textContent = "Loaded from previous connection.";
+      } catch (err) {
+        console.error("[DAPP AUTOLOAD ERROR]", err);
+      }
+    });
+  </script>
+</body>
+</html>
