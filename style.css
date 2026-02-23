@@ -1,12 +1,125 @@
 body {
-  font-family: Arial, sans-serif;
-  background: #0b1020;
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #1b2140 0, #050816 60%, #02040a 100%);
   color: #f5f5f5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top bar with wallet button */
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  background: linear-gradient(90deg, rgba(10,10,20,0.95), rgba(8,10,30,0.9));
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.wallet-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* Aave-like connect/address button */
+#connectButton {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #ffffff;
+  background-image: linear-gradient(90deg, #b6509e, #2ebac6);
+  box-shadow: 0 0 16px rgba(182, 80, 158, 0.45);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#connectButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(46, 186, 198, 0.55);
+  opacity: 0.96;
+}
+
+#connectButton:active {
+  transform: translateY(0);
+  box-shadow: 0 0 10px rgba(182, 80, 158, 0.35);
+  opacity: 0.9;
+}
+
+.wallet-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ffae;
+  flex-shrink: 0;
+}
+
+/* Dropdown menu for disconnect */
+.wallet-menu {
+  position: absolute;
+  right: 0;
+  margin-top: 6px;
+  background: #151a30;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 180px;
+  font-size: 13px;
+  display: none;
+  z-index: 20;
+}
+
+.wallet-menu.visible {
+  display: block;
+}
+
+.menu-address {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  margin-bottom: 8px;
+  word-break: break-all;
+  color: #e0e4ff;
+}
+
+#walletMenu button {
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  background: rgba(255, 70, 100, 0.15);
+  color: #ff97aa;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+#walletMenu button:hover {
+  background: rgba(255, 70, 100, 0.25);
+  color: #ffd0d9;
+}
+
+/* Center content */
+.page-content {
+  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  margin: 0;
+  padding: 24px;
 }
 
 .container {
@@ -23,20 +136,6 @@ h1 {
   margin-bottom: 16px;
 }
 
-button {
-  background: #4b8fea;
-  border: none;
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-button:hover {
-  background: #3775c4;
-}
-
 #status {
   margin-top: 12px;
   font-size: 13px;
@@ -51,7 +150,7 @@ button:hover {
   display: none;
 }
 
-/* New Health Factor block */
+/* Health Factor block + colors */
 
 .hf-block {
   margin-top: 12px;
@@ -77,15 +176,14 @@ button:hover {
   font-weight: 600;
 }
 
-/* Colors similar to Aave risk indication */
 .hf-safe {
-  color: #3dd68c;  /* green */
+  color: #3dd68c;
 }
 
 .hf-warning {
-  color: #ffb347;  /* orange */
+  color: #ffb347;
 }
 
 .hf-danger {
-  color: #ff5c5c;  /* red */
+  color: #ff5c5c;
 }
