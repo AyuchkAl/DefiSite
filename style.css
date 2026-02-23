@@ -50,3 +50,42 @@ button:hover {
 .hidden {
   display: none;
 }
+
+/* New Health Factor block */
+
+.hf-block {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(14, 20, 40, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.hf-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9aa4d8;
+}
+
+.hf-value {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* Colors similar to Aave risk indication */
+.hf-safe {
+  color: #3dd68c;  /* green */
+}
+
+.hf-warning {
+  color: #ffb347;  /* orange */
+}
+
+.hf-danger {
+  color: #ff5c5c;  /* red */
+}
