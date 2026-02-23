@@ -29,6 +29,11 @@
       z-index: 10;
     }
 
+    .wallet-container {
+      position: relative;
+      display: inline-block;
+    }
+
     #connectButton {
       border: none;
       border-radius: 999px;
@@ -43,6 +48,10 @@
       align-items: center;
       gap: 8px;
       transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+      max-width: 220px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     #connectButton:hover {
@@ -62,6 +71,51 @@
       height: 8px;
       border-radius: 50%;
       background: #00ffae;
+      flex-shrink: 0;
+    }
+
+    .wallet-menu {
+      position: absolute;
+      right: 0;
+      margin-top: 6px;
+      background: #151a30;
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      min-width: 180px;
+      font-size: 13px;
+      display: none;
+      z-index: 20;
+    }
+
+    .wallet-menu.visible {
+      display: block;
+    }
+
+    .wallet-menu .menu-address {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      margin-bottom: 8px;
+      word-break: break-all;
+      color: #e0e4ff;
+    }
+
+    .wallet-menu button {
+      width: 100%;
+      border-radius: 999px;
+      border: none;
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      background: rgba(255, 70, 100, 0.15);
+      color: #ff97aa;
+      transition: background 0.1s ease, color 0.1s ease;
+    }
+
+    .wallet-menu button:hover {
+      background: rgba(255, 70, 100, 0.25);
+      color: #ffd0d9;
     }
 
     .page-content {
@@ -106,10 +160,16 @@
 </head>
 <body>
   <header class="topbar">
-    <button id="connectButton">
-      <span class="wallet-dot"></span>
-      Connect wallet
-    </button>
+    <div class="wallet-container">
+      <button id="connectButton">
+        <span class="wallet-dot"></span>
+        <span id="connectLabel">Connect wallet</span>
+      </button>
+      <div id="walletMenu" class="wallet-menu">
+        <div class="menu-address" id="menuAddress"></div>
+        <button id="disconnectButton">Disconnect</button>
+      </div>
+    </div>
   </header>
 
   <main class="page-content">
@@ -124,67 +184,12 @@
   </main>
 
   <script>
-    // Aave V3 Pool ABI: we only need getUserAccountData()
     const POOL_ABI = [
       "function getUserAccountData(address user) external view returns (uint256 totalCollateralBase,uint256 totalDebtBase,uint256 availableBorrowsBase,uint256 currentLiquidationThreshold,uint256 ltv,uint256 healthFactor)"
     ];
 
-    // Aave V3 Pool contract on Arbitrum One
     const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"; // Arbitrum V3 Pool [web:16]
 
     const connectButton = document.getElementById("connectButton");
-    const statusDiv = document.getElementById("status");
-    const resultDiv = document.getElementById("result");
-    const addressSpan = document.getElementById("address");
-    const hfSpan = document.getElementById("healthFactor");
-
-    async function connectAndLoad() {
-      try {
-        console.log("window.ethereum:", window.ethereum);
-
-        if (!window.ethereum) {
-          statusDiv.textContent = "No browser wallet detected (MetaMask / Rabby).";
-          return;
-        }
-
-        if (window.ethereum.isRabby) {
-          console.log("Rabby wallet detected");
-        }
-
-        statusDiv.textContent = "Connecting wallet...";
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const network = await provider.getNetwork();
-
-        // Arbitrum One chainId is 42161
-        if (Number(network.chainId) !== 42161) {
-          statusDiv.textContent = "Please switch wallet to the Arbitrum One network and try again.";
-          return;
-        }
-
-        const signer = await provider.getSigner();
-        const userAddress = await signer.getAddress();
-        addressSpan.textContent = userAddress;
-
-        statusDiv.textContent = "Reading your Aave account data...";
-
-        const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
-        const data = await pool.getUserAccountData(userAddress);
-        const healthFactorRaw = data.healthFactor; // BigInt
-
-        const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
-        hfSpan.textContent = healthFactor.toFixed(2);
-
-        resultDiv.classList.remove("hidden");
-        statusDiv.textContent = "Done.";
-      } catch (err) {
-        console.error(err);
-        statusDiv.textContent = "Error: " + (err.message || err);
-      }
-    }
-
-    connectButton.addEventListener("click", connectAndLoad);
-  </script>
-</body>
-</html>
+    const connectLabel  = document.getElementById("connectLabel");
+    const walletMenu
