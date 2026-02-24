@@ -1,3 +1,6 @@
+const btcChangeEl = document.getElementById("btcChange");
+const ethChangeEl = document.getElementById("ethChange");
+
 // Aave V3 Pool ABI: we only need getUserAccountData()
 const POOL_ABI = [
   "function getUserAccountData(address user) external view returns (uint256 totalCollateralBase,uint256 totalDebtBase,uint256 availableBorrowsBase,uint256 currentLiquidationThreshold,uint256 ltv,uint256 healthFactor)"
@@ -78,31 +81,45 @@ async function loadCryptoPrices() {
     const btc = data.find((c) => c.id === "bitcoin");
     const eth = data.find((c) => c.id === "ethereum");
 
-    function setPrice(el, coin) {
-      if (!el || !coin) return;
+    function setCoin(elPrice, elChange, coin) {
+      if (!coin) return;
 
-      el.textContent = "$" + coin.current_price.toLocaleString(undefined, {
-        maximumFractionDigits: 0,
-      });
-
-      el.classList.remove("price-up", "price-down", "price-flat");
-
-      const change = coin.price_change_percentage_24h;
-      if (change > 0.1) {
-        el.classList.add("price-up");
-      } else if (change < -0.1) {
-        el.classList.add("price-down");
-      } else {
-        el.classList.add("price-flat");
+      // price with $ sign
+      if (elPrice) {
+        elPrice.textContent = "$" + coin.current_price.toLocaleString(undefined, {
+          maximumFractionDigits: 0,
+        });
       }
+
+      // 24h percentage, e.g. +2.35%
+      if (elChange) {
+        const pct = coin.price_change_percentage_24h;
+        const formatted =
+          (pct > 0 ? "+" : "") + pct.toFixed(2) + "%";
+        elChange.textContent = formatted;
+      }
+
+      // decide color class
+      const pct = coin.price_change_percentage_24h;
+      let cls;
+      if (pct > 0.1) cls = "price-up";
+      else if (pct < -0.1) cls = "price-down";
+      else cls = "price-flat";
+
+      [elPrice, elChange].forEach((el) => {
+        if (!el) return;
+        el.classList.remove("price-up", "price-down", "price-flat");
+        el.classList.add(cls);
+      });
     }
 
-    setPrice(btcPriceEl, btc);
-    setPrice(ethPriceEl, eth);
+    setCoin(btcPriceEl, btcChangeEl, btc);
+    setCoin(ethPriceEl, ethChangeEl, eth);
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
   }
 }
+
 
 async function connectAndLoad() {
   try {
@@ -200,4 +217,6 @@ window.addEventListener("load", async () => {
   // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
   ;
+
+
 

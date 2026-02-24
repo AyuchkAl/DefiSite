@@ -1,8 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>My Aave Health Factor (Arbitrum)</title>
+<title>DeFi Dashboard</title>
+  <link rel="icon" type="image/png" href="DeFi.jpg" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
@@ -18,13 +20,15 @@
           <div id="hfValue" class="hf-value">–</div>
         </div>
 
-      <div class="prices-row">
+    <div class="prices-row">
   <div class="price-pill">
     <div class="asset-icon btc-icon"></div>
     <div class="asset-text">
       <div class="asset-ticker">BTC</div>
     </div>
     <div id="btcPrice" class="price-value">–</div>
+    <span class="price-label">24h %</span>
+    <div id="btcChange" class="price-change">–</div>
   </div>
   <div class="price-pill">
     <div class="asset-icon eth-icon"></div>
@@ -32,8 +36,12 @@
       <div class="asset-ticker">ETH</div>
     </div>
     <div id="ethPrice" class="price-value">–</div>
+    <span class="price-label">24h %</span>
+    <div id="ethChange" class="price-change">–</div>
   </div>
 </div>
+
+
       </div>
 
       <!-- Right: Wallet button -->
@@ -60,4 +68,8 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+
+
+
 
