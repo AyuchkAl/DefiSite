@@ -11,10 +11,21 @@
   <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-inner">
-      <!-- Left: Health Factor -->
-      <div id="hfBlock" class="hf-block">
-        <div class="hf-label">Health factor</div>
-        <div id="hfValue" class="hf-value">–</div>
+      <!-- Left: Health factor + BTC/ETH prices -->
+      <div class="left-group">
+        <div id="hfBlock" class="hf-block">
+          <div class="hf-label">Health factor</div>
+          <div id="hfValue" class="hf-value">–</div>
+        </div>
+
+        <div class="prices-row">
+          <span class="price-pill">
+            BTC <span id="btcPrice">–</span>
+          </span>
+          <span class="price-pill">
+            ETH <span id="ethPrice">–</span>
+          </span>
+        </div>
       </div>
 
       <!-- Right: Wallet button -->
@@ -31,11 +42,10 @@
     </div>
   </header>
 
-  <!-- Center just exists to keep background; no extra text -->
+  <!-- Center area just for background -->
   <main class="page-content">
     <div id="status"></div>
     <div id="result" class="hidden">
-      <!-- keep for JS; not shown -->
       <span id="address" style="display:none;"></span>
     </div>
   </main>
