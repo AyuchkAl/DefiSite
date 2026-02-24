@@ -113,7 +113,7 @@ body {
   color: #ffd0d9;
 }
 
-/* Center content; card like in your screenshot */
+/* Card/container (center on page) */
 .page-content {
   flex: 1;
   display: flex;
@@ -146,13 +146,15 @@ h1 {
   font-size: 14px;
 }
 
-.hidden {
-  display: none;
+/* Row that holds the Health Factor block, left aligned */
+#hfRow {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-start;  /* left */
 }
 
-/* Health Factor block exactly under text, left aligned */
+/* Health Factor block like in your screenshot */
 .hf-block {
-  margin-top: 16px;
   padding: 14px 16px;
   border-radius: 12px;
   background: #11152a;
@@ -175,15 +177,15 @@ h1 {
   font-weight: 600;
 }
 
-/* Colors similar to Aave risk indication */
+/* Colors */
 .hf-safe {
   color: #3dd68c;
 }
-
 .hf-warning {
   color: #ffb347;
 }
-
 .hf-danger {
   color: #ff5c5c;
 }
+
+
