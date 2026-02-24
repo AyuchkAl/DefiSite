@@ -8,6 +8,10 @@ body {
   flex-direction: column;
 }
 
+#status {
+  display: none; /* hide Done., errors, etc. from the UI */
+}
+
 /* === TOP BAR ==================================================== */
 
 .topbar {
@@ -127,9 +131,28 @@ body {
   z-index: 20;
 }
 
-.wallet-menu.visible {
-  display: block;
+.menu-address {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  margin-bottom: 8px;
+  word-break: break-all;
+  color: #e0e4ff;
 }
 
-.menu-address {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Co
+#walletMenu button {
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  background: rgba(255, 70, 100, 0.15);
+  color: #ff97aa;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+#walletMenu button:hover {
+  background: rgba(255, 70, 100, 0.25);
+  color: #ffd0d9;
+}
+
