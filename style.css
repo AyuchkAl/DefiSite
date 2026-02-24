@@ -8,11 +8,9 @@ body {
   flex-direction: column;
 }
 
-/* Top bar with wallet button */
+/* === TOP BAR ==================================================== */
+
 .topbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
   padding: 12px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
@@ -21,6 +19,51 @@ body {
   top: 0;
   z-index: 10;
 }
+
+/* Left = Health Factor, right = wallet button */
+.topbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Health Factor pill in top-left */
+.hf-block {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #11152a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.hf-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9aa4d8;
+}
+
+.hf-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* HF colors */
+.hf-safe {
+  color: #3dd68c;
+}
+.hf-warning {
+  color: #ffb347;
+}
+.hf-danger {
+  color: #ff5c5c;
+}
+
+/* Wallet button on right */
 
 .wallet-container {
   position: relative;
@@ -89,103 +132,4 @@ body {
 }
 
 .menu-address {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
-  margin-bottom: 8px;
-  word-break: break-all;
-  color: #e0e4ff;
-}
-
-#walletMenu button {
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  padding: 6px 10px;
-  font-size: 13px;
-  cursor: pointer;
-  background: rgba(255, 70, 100, 0.15);
-  color: #ff97aa;
-  transition: background 0.1s ease, color 0.1s ease;
-}
-
-#walletMenu button:hover {
-  background: rgba(255, 70, 100, 0.25);
-  color: #ffd0d9;
-}
-
-/* Card/container (center on page) */
-.page-content {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px;
-}
-
-.container {
-  background: #151a30;
-  padding: 28px 32px 32px;
-  border-radius: 16px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
-  max-width: 520px;
-  width: 100%;
-}
-
-h1 {
-  font-size: 20px;
-  margin: 0 0 10px;
-}
-
-#status {
-  margin-top: 4px;
-  font-size: 13px;
-}
-
-#result {
-  margin-top: 14px;
-  font-size: 14px;
-}
-
-/* Row that holds the Health Factor block, left aligned */
-#hfRow {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-start;  /* left */
-}
-
-/* Health Factor block like in your screenshot */
-.hf-block {
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: #11152a;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  display: inline-flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 190px;
-}
-
-.hf-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #9aa4d8;
-}
-
-.hf-value {
-  font-size: 22px;
-  font-weight: 600;
-}
-
-/* Colors */
-.hf-safe {
-  color: #3dd68c;
-}
-.hf-warning {
-  color: #ffb347;
-}
-.hf-danger {
-  color: #ff5c5c;
-}
-
-
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Co
