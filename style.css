@@ -105,11 +105,11 @@ body {
 
 /* Use btc.jpg and eth.jpg from project root */
 .btc-icon {
-  background-image: url("btc.jpg");
+  background-image: url("btc.png");
 }
 
 .eth-icon {
-  background-image: url("eth.jpg");
+  background-image: url("eth.png");
 }
 
 /* Name + ticker stacked */
@@ -246,3 +246,4 @@ body {
 .hidden {
   display: none;
 }
+
