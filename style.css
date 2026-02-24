@@ -8,11 +8,14 @@ body {
   flex-direction: column;
 }
 
-/* Top bar with wallet button */
+/* Hide text status ("Done.", errors) from UI */
+#status {
+  display: none;
+}
+
+/* === TOP BAR ==================================================== */
+
 .topbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
   padding: 12px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
@@ -21,6 +24,131 @@ body {
   top: 0;
   z-index: 10;
 }
+
+/* HF + prices on left, wallet button on right */
+.topbar-inner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Left group: HF + BTC/ETH */
+.left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Health Factor pill in top-left */
+.hf-block {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #11152a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.hf-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9aa4d8;
+}
+
+.hf-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* HF colors */
+.hf-safe {
+  color: #3dd68c;
+}
+.hf-warning {
+  color: #ffb347;
+}
+.hf-danger {
+  color: #ff5c5c;
+}
+
+/* Vertical BTC / ETH column */
+.prices-row {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.price-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #11152a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  color: #cfd5ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Round icon with your images */
+.asset-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Use btc.jpg and eth.jpg from project root */
+.btc-icon {
+  background-image: url("btc.png");
+}
+
+.eth-icon {
+  background-image: url("eth.png");
+}
+
+/* Name + ticker stacked */
+.asset-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.asset-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.asset-ticker {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #9aa4d8;
+}
+
+/* Price value + colors */
+.price-value {
+  margin-left: 6px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.price-up {
+  color: #16c784;
+}
+.price-down {
+  color: #ea3943;
+}
+.price-flat {
+  color: #ffffff;
+}
+
+/* Wallet button on right */
 
 .wallet-container {
   position: relative;
@@ -78,7 +206,7 @@ body {
   padding: 10px 12px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  min-width: 180px;
+  min-width: 140px;
   font-size: 13px;
   display: none;
   z-index: 20;
@@ -86,14 +214,6 @@ body {
 
 .wallet-menu.visible {
   display: block;
-}
-
-.menu-address {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
-  margin-bottom: 8px;
-  word-break: break-all;
-  color: #e0e4ff;
 }
 
 #walletMenu button {
@@ -113,7 +233,8 @@ body {
   color: #ffd0d9;
 }
 
-/* Center content */
+/* === CENTER AREA (empty, just background) ======================= */
+
 .page-content {
   flex: 1;
   display: flex;
@@ -122,68 +243,7 @@ body {
   padding: 24px;
 }
 
-.container {
-  background: #151a30;
-  padding: 24px 32px;
-  border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
-  max-width: 480px;
-  width: 100%;
-}
-
-h1 {
-  font-size: 22px;
-  margin-bottom: 16px;
-}
-
-#status {
-  margin-top: 12px;
-  font-size: 13px;
-}
-
-#result {
-  margin-top: 18px;
-  font-size: 16px;
-}
-
 .hidden {
   display: none;
 }
 
-/* Health Factor block + colors */
-
-.hf-block {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(14, 20, 40, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  display: inline-flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 180px;
-}
-
-.hf-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #9aa4d8;
-}
-
-.hf-value {
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.hf-safe {
-  color: #3dd68c;
-}
-
-.hf-warning {
-  color: #ffb347;
-}
-
-.hf-danger {
-  color: #ff5c5c;
-}

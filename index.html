@@ -8,36 +8,56 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
+  <!-- TOP BAR -->
   <header class="topbar">
-    <div class="wallet-container">
-      <button id="connectButton">
-        <span class="wallet-dot"></span>
-        <span id="connectLabel">Connect wallet</span>
-      </button>
-      <div id="walletMenu" class="wallet-menu">
-        <div class="menu-address" id="menuAddress"></div>
-        <button id="disconnectButton">Disconnect</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="page-content">
-    <div class="container">
-      <h1>My Aave Health Factor (Arbitrum)</h1>
-
-      <div id="status"></div>
-
-      <div id="result" class="hidden">
-        <p>Your address: <span id="address"></span></p>
-
+    <div class="topbar-inner">
+      <!-- Left: Health factor + BTC / ETH prices -->
+      <div class="left-group">
         <div id="hfBlock" class="hf-block">
           <div class="hf-label">Health factor</div>
           <div id="hfValue" class="hf-value">–</div>
         </div>
+
+      <div class="prices-row">
+  <div class="price-pill">
+    <div class="asset-icon btc-icon"></div>
+    <div class="asset-text">
+      <div class="asset-ticker">BTC</div>
+    </div>
+    <div id="btcPrice" class="price-value">–</div>
+  </div>
+  <div class="price-pill">
+    <div class="asset-icon eth-icon"></div>
+    <div class="asset-text">
+      <div class="asset-ticker">ETH</div>
+    </div>
+    <div id="ethPrice" class="price-value">–</div>
+  </div>
+</div>
       </div>
+
+      <!-- Right: Wallet button -->
+      <div class="wallet-container">
+        <button id="connectButton">
+          <span class="wallet-dot"></span>
+          <span id="connectLabel">Connect wallet</span>
+        </button>
+        <div id="walletMenu" class="wallet-menu">
+          <button id="disconnectButton">Disconnect</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Center area just for background -->
+  <main class="page-content">
+    <div id="status"></div>
+    <div id="result" class="hidden">
+      <span id="address" style="display:none;"></span>
     </div>
   </main>
 
   <script src="app.js"></script>
 </body>
 </html>
+
