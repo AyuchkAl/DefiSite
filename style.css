@@ -25,14 +25,20 @@ body {
   z-index: 10;
 }
 
-/* Make Health Factor hug the left edge, wallet button hug the right edge */
+/* HF + prices on left, wallet button on right */
 .topbar-inner {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between; /* left & right */
+  justify-content: space-between;
 }
 
+/* Left group: HF + BTC/ETH */
+.left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
 /* Health Factor pill in top-left */
 .hf-block {
@@ -66,6 +72,27 @@ body {
 }
 .hf-danger {
   color: #ff5c5c;
+}
+
+/* BTC / ETH price row */
+.prices-row {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.price-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #11152a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  color: #cfd5ff;
+}
+
+.price-pill span {
+  margin-left: 4px;
+  font-weight: 600;
+  color: #ffffff;
 }
 
 /* Wallet button on right */
@@ -174,4 +201,3 @@ body {
 .hidden {
   display: none;
 }
-
