@@ -147,6 +147,14 @@ body {
   font-weight: 500;
   background: rgba(255, 255, 255, 0.04);
 }
+.price-label {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #ffffff;  /* white */
+  opacity: 0.8;
+}
+
 
 /* Reuse your existing color classes */
 .price-up {
@@ -258,6 +266,7 @@ body {
 .hidden {
   display: none;
 }
+
 
 
 
