@@ -18,7 +18,7 @@ const resultDiv   = document.getElementById("result");
 const addressSpan = document.getElementById("address");
 const hfValueEl   = document.getElementById("hfValue");
 
-// New: BTC/ETH price elements
+// BTC/ETH price elements
 const btcPriceEl  = document.getElementById("btcPrice");
 const ethPriceEl  = document.getElementById("ethPrice");
 
@@ -69,22 +69,40 @@ function setHealthFactorDisplay(hf) {
   hfValueEl.textContent = hf.toFixed(2);
 }
 
-// Load BTC & ETH prices from CoinGecko (public API) [web:176]
+// Load BTC & ETH prices from CoinGecko (with 24h change for color)
 async function loadCryptoPrices() {
   try {
     const res = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&order=market_cap_desc&per_page=2&page=1&sparkline=false&price_change_percentage=24h"
     );
     const data = await res.json();
-    const btc = data.bitcoin?.usd;
-    const eth = data.ethereum?.usd;
 
-    if (btcPriceEl && btc) {
-      btcPriceEl.textContent = "$" + btc.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const btc = data.find((c) => c.id === "bitcoin");
+    const eth = data.find((c) => c.id === "ethereum");
+
+    function setPrice(el, coin) {
+      if (!el || !coin) return;
+
+      // Show price with $ sign
+      el.textContent = "$" + coin.current_price.toLocaleString(undefined, {
+        maximumFractionDigits: 0,
+      });
+
+      // Reset previous color classes
+      el.classList.remove("price-up", "price-down", "price-flat");
+
+      const change = coin.price_change_percentage_24h;
+      if (change > 0.1) {
+        el.classList.add("price-up");
+      } else if (change < -0.1) {
+        el.classList.add("price-down");
+      } else {
+        el.classList.add("price-flat");
+      }
     }
-    if (ethPriceEl && eth) {
-      ethPriceEl.textContent = "$" + eth.toLocaleString(undefined, { maximumFractionDigits: 0 });
-    }
+
+    setPrice(btcPriceEl, btc);
+    setPrice(ethPriceEl, eth);
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
   }
