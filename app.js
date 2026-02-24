@@ -4,16 +4,15 @@ const POOL_ABI = [
 ];
 
 // Aave V3 Pool contract on Arbitrum One
-const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"; // Arbitrum V3 Pool
+const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
 
-// Button / menu elements
+// DOM elements
 const connectButton  = document.getElementById("connectButton");
 const connectLabel   = document.getElementById("connectLabel");
 const walletMenu     = document.getElementById("walletMenu");
 const disconnectBtn  = document.getElementById("disconnectButton");
 const menuAddress    = document.getElementById("menuAddress");
 
-// Main UI elements
 const statusDiv   = document.getElementById("status");
 const resultDiv   = document.getElementById("result");
 const addressSpan = document.getElementById("address");
@@ -21,13 +20,13 @@ const hfValueEl   = document.getElementById("hfValue");
 
 let currentAddress = null;
 
-// Shorten address like Aave (0x1234...abcd)
+// Shorten address like 0x1234...abcd
 function shortenAddress(addr) {
   if (!addr) return "";
   return addr.slice(0, 6) + "..." + addr.slice(-4);
 }
 
-// Set connected UI: button shows address, result is visible
+// Set connected UI: header button + store address
 function setConnectedUI(addr) {
   currentAddress = addr;
   addressSpan.textContent = addr;
@@ -41,6 +40,7 @@ function setDisconnectedUI() {
   currentAddress = null;
   addressSpan.textContent = "";
   hfValueEl.textContent = "–";
+  hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
@@ -54,11 +54,11 @@ function setHealthFactorDisplay(hf) {
 
   let cls;
   if (hf < 1.0) {
-    cls = "hf-danger";      // liquidation
+    cls = "hf-danger";
   } else if (hf < 1.5) {
-    cls = "hf-warning";     // close to liquidation
+    cls = "hf-warning";
   } else {
-    cls = "hf-safe";        // safe
+    cls = "hf-safe";
   }
 
   hfValueEl.classList.add(cls);
@@ -72,7 +72,7 @@ async function connectAndLoad() {
       return;
     }
 
-    // If already connected → toggle disconnect menu (like Aave)
+    // If already connected -> toggle dropdown menu
     if (currentAddress) {
       walletMenu.classList.toggle("visible");
       return;
@@ -113,13 +113,14 @@ async function connectAndLoad() {
   }
 }
 
+// Button events
 connectButton.addEventListener("click", connectAndLoad);
 
 disconnectBtn.addEventListener("click", () => {
   setDisconnectedUI();
 });
 
-// Close wallet menu when clicking outside
+// Close menu when clicking outside
 document.addEventListener("click", (e) => {
   if (!walletMenu.classList.contains("visible")) return;
   if (!e.target.closest(".wallet-container")) {
@@ -127,7 +128,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Try to auto-restore connection on load
+// Auto-restore connection if wallet still connected
 window.addEventListener("load", async () => {
   try {
     if (!window.ethereum) return;
