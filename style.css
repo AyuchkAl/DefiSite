@@ -74,10 +74,11 @@ body {
   color: #ff5c5c;
 }
 
-/* BTC / ETH price row */
+/* BTC / ETH price column under Health Factor */
 .prices-row {
   display: inline-flex;
-  gap: 8px;
+  flex-direction: column;  /* BTC on top, ETH below */
+  gap: 6px;
 }
 
 .price-pill {
@@ -87,12 +88,34 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   font-size: 12px;
   color: #cfd5ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.price-pill span {
-  margin-left: 4px;
+/* “BTC” / “ETH” label */
+.price-symbol {
   font-weight: 600;
-  color: #ffffff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9aa4d8;
+}
+
+/* Price value with $ sign */
+.price-value {
+  font-weight: 600;
+  color: #ffffff; /* default white */
+}
+
+/* Price colors like CoinMarketCap */
+.price-up {
+  color: #16c784; /* green */
+}
+.price-down {
+  color: #ea3943; /* red */
+}
+.price-flat {
+  color: #ffffff; /* white */
 }
 
 /* Wallet button on right */
