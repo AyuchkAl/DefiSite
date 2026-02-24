@@ -11,7 +11,6 @@ const connectButton = document.getElementById("connectButton");
 const connectLabel  = document.getElementById("connectLabel");
 const walletMenu    = document.getElementById("walletMenu");
 const disconnectBtn = document.getElementById("disconnectButton");
-const menuAddress   = document.getElementById("menuAddress");
 
 const statusDiv   = document.getElementById("status");
 const resultDiv   = document.getElementById("result");
@@ -35,7 +34,6 @@ function setConnectedUI(addr) {
   currentAddress = addr;
   addressSpan.textContent = addr;
   connectLabel.textContent = shortenAddress(addr);
-  menuAddress.textContent = addr;
   resultDiv.classList.remove("hidden");
 }
 
@@ -83,12 +81,10 @@ async function loadCryptoPrices() {
     function setPrice(el, coin) {
       if (!el || !coin) return;
 
-      // Show price with $ sign
       el.textContent = "$" + coin.current_price.toLocaleString(undefined, {
         maximumFractionDigits: 0,
       });
 
-      // Reset previous color classes
       el.classList.remove("price-up", "price-down", "price-flat");
 
       const change = coin.price_change_percentage_24h;
@@ -174,7 +170,6 @@ document.addEventListener("click", (e) => {
 // Auto-restore connection if wallet still connected & load prices
 window.addEventListener("load", async () => {
   try {
-    // Load BTC & ETH prices for header
     loadCryptoPrices();
 
     if (!window.ethereum) return;
