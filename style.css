@@ -8,8 +8,9 @@ body {
   flex-direction: column;
 }
 
+/* Hide text status ("Done.", errors) from UI */
 #status {
-  display: none; /* hide Done., errors, etc. from the UI */
+  display: none;
 }
 
 /* === TOP BAR ==================================================== */
@@ -131,6 +132,10 @@ body {
   z-index: 20;
 }
 
+.wallet-menu.visible {
+  display: block;
+}
+
 .menu-address {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
@@ -156,3 +161,16 @@ body {
   color: #ffd0d9;
 }
 
+/* === CENTER AREA (empty, just background) ======================= */
+
+.page-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.hidden {
+  display: none;
+}
