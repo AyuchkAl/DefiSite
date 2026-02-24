@@ -67,7 +67,7 @@ function setHealthFactorDisplay(hf) {
   hfValueEl.textContent = hf.toFixed(2);
 }
 
-// Load BTC & ETH prices from CoinGecko (with color)
+// Load BTC & ETH prices from CoinGecko (with 24h change for color)
 async function loadCryptoPrices() {
   try {
     const res = await fetch(
@@ -90,4 +90,115 @@ async function loadCryptoPrices() {
       const change = coin.price_change_percentage_24h;
       if (change > 0.1) {
         el.classList.add("price-up");
-      } else if (change
+      } else if (change < -0.1) {
+        el.classList.add("price-down");
+      } else {
+        el.classList.add("price-flat");
+      }
+    }
+
+    setPrice(btcPriceEl, btc);
+    setPrice(ethPriceEl, eth);
+  } catch (e) {
+    console.error("Failed to load BTC/ETH prices", e);
+  }
+}
+
+async function connectAndLoad() {
+  try {
+    if (!window.ethereum) {
+      statusDiv.textContent = "No browser wallet detected (MetaMask / Rabby).";
+      return;
+    }
+
+    // If already connected -> toggle dropdown menu
+    if (currentAddress) {
+      walletMenu.classList.toggle("visible");
+      return;
+    }
+
+    statusDiv.textContent = "Connecting wallet...";
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    if (!accounts || accounts.length === 0) {
+      statusDiv.textContent = "No account returned from wallet.";
+      return;
+    }
+
+    const userAddress = accounts[0];
+    localStorage.setItem("savedAddress", userAddress);
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const network  = await provider.getNetwork();
+
+    // Arbitrum One chainId is 42161
+    if (Number(network.chainId) !== 42161) {
+      statusDiv.textContent = "Please switch wallet to the Arbitrum One network and try again.";
+      return;
+    }
+
+    statusDiv.textContent = "Reading your Aave account data...";
+
+    const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
+    const data = await pool.getUserAccountData(userAddress);
+    const healthFactorRaw = data.healthFactor;
+    const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
+
+    setHealthFactorDisplay(healthFactor);
+    setConnectedUI(userAddress);
+    statusDiv.textContent = "Done.";
+  } catch (err) {
+    console.error(err);
+    statusDiv.textContent = "Error: " + (err.message || err);
+  }
+}
+
+// Button events
+connectButton.addEventListener("click", connectAndLoad);
+
+disconnectBtn.addEventListener("click", () => {
+  setDisconnectedUI();
+});
+
+// Close menu when clicking outside
+document.addEventListener("click", (e) => {
+  if (!walletMenu.classList.contains("visible")) return;
+  if (!e.target.closest(".wallet-container")) {
+    walletMenu.classList.remove("visible");
+  }
+});
+
+// Auto-restore connection if wallet still connected & load prices
+window.addEventListener("load", async () => {
+  try {
+    loadCryptoPrices();
+
+    if (!window.ethereum) return;
+    const saved = localStorage.getItem("savedAddress");
+    if (!saved) return;
+
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (!accounts.includes(saved)) return;
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const network  = await provider.getNetwork();
+    if (Number(network.chainId) !== 42161) return;
+
+    statusDiv.textContent = "Reading your Aave account data...";
+
+    const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
+    const data = await pool.getUserAccountData(saved);
+    const healthFactorRaw = data.healthFactor;
+    const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
+
+    setHealthFactorDisplay(healthFactor);
+    setConnectedUI(saved);
+    statusDiv.textContent = "Loaded from previous connection.";
+  } catch (err) {
+    console.error(err);
+  }
+})
+  // Refresh BTC / ETH prices every 5 minutes
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
+  ;
+
+
