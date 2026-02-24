@@ -33,28 +33,7 @@ body {
   justify-content: space-between;
 }
 
-/* Brand block */
-.site-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 16px;
-}
-
-.site-logo {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.site-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-/* Left group: brand + HF + BTC/ETH */
+/* Left group: HF + BTC/ETH */
 .left-group {
   display: flex;
   align-items: center;
@@ -124,7 +103,7 @@ body {
   background-position: center;
 }
 
-/* Use btc.png and eth.png from project root */
+/* Use btc.jpg and eth.jpg from project root */
 .btc-icon {
   background-image: url("btc.png");
 }
@@ -133,18 +112,23 @@ body {
   background-image: url("eth.png");
 }
 
-/* Ticker text */
+/* Name + ticker stacked */
 .asset-text {
   display: flex;
   flex-direction: column;
   line-height: 1.1;
 }
 
-.asset-ticker {
+.asset-name {
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
   color: #ffffff;
+}
+
+.asset-ticker {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #9aa4d8;
 }
 
 /* Price value + colors */
@@ -181,4 +165,86 @@ body {
   cursor: pointer;
   color: #ffffff;
   background-image: linear-gradient(90deg, #b6509e, #2ebac6);
-  box-shadow: 0 0 16px rgba(182, 80, 158, 0.
+  box-shadow: 0 0 16px rgba(182, 80, 158, 0.45);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#connectButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(46, 186, 198, 0.55);
+  opacity: 0.96;
+}
+
+#connectButton:active {
+  transform: translateY(0);
+  box-shadow: 0 0 10px rgba(182, 80, 158, 0.35);
+  opacity: 0.9;
+}
+
+.wallet-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ffae;
+  flex-shrink: 0;
+}
+
+/* Dropdown menu for disconnect */
+.wallet-menu {
+  position: absolute;
+  right: 0;
+  margin-top: 6px;
+  background: #151a30;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 140px;
+  font-size: 13px;
+  display: none;
+  z-index: 20;
+}
+
+.wallet-menu.visible {
+  display: block;
+}
+
+#walletMenu button {
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  background: rgba(255, 70, 100, 0.15);
+  color: #ff97aa;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+#walletMenu button:hover {
+  background: rgba(255, 70, 100, 0.25);
+  color: #ffd0d9;
+}
+
+/* === CENTER AREA (empty, just background) ======================= */
+
+.page-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.hidden {
+  display: none;
+}
+
+
