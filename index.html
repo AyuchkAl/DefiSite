@@ -8,7 +8,15 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
-  <header class="topbar">
+ <header class="topbar">
+  <div class="topbar-inner">
+    <!-- Left side: Health Factor block -->
+    <div id="hfBlock" class="hf-block">
+      <div class="hf-label">Health factor</div>
+      <div id="hfValue" class="hf-value">–</div>
+    </div>
+
+    <!-- Right side: wallet button -->
     <div class="wallet-container">
       <button id="connectButton">
         <span class="wallet-dot"></span>
@@ -19,7 +27,9 @@
         <button id="disconnectButton">Disconnect</button>
       </div>
     </div>
-  </header>
+  </div>
+</header>
+
 
   <main class="page-content">
     <div class="container">
@@ -27,20 +37,15 @@
 
       <div id="status"></div>
 
-     <div id="result" class="hidden">
+  <div id="result" class="hidden">
   <p>Your address: <span id="address"></span></p>
-
-  <div id="hfRow">
-    <div id="hfBlock" class="hf-block">
-      <div class="hf-label">Health factor</div>
-      <div id="hfValue" class="hf-value">–</div>
-    </div>
-  </div>
 </div>
+
 
   </main>
 
   <script src="app.js"></script>
 </body>
 </html>
+
 
