@@ -7,16 +7,20 @@ const POOL_ABI = [
 const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
 
 // DOM elements
-const connectButton  = document.getElementById("connectButton");
-const connectLabel   = document.getElementById("connectLabel");
-const walletMenu     = document.getElementById("walletMenu");
-const disconnectBtn  = document.getElementById("disconnectButton");
-const menuAddress    = document.getElementById("menuAddress");
+const connectButton = document.getElementById("connectButton");
+const connectLabel  = document.getElementById("connectLabel");
+const walletMenu    = document.getElementById("walletMenu");
+const disconnectBtn = document.getElementById("disconnectButton");
+const menuAddress   = document.getElementById("menuAddress");
 
 const statusDiv   = document.getElementById("status");
 const resultDiv   = document.getElementById("result");
 const addressSpan = document.getElementById("address");
 const hfValueEl   = document.getElementById("hfValue");
+
+// New: BTC/ETH price elements
+const btcPriceEl  = document.getElementById("btcPrice");
+const ethPriceEl  = document.getElementById("ethPrice");
 
 let currentAddress = null;
 
@@ -63,6 +67,27 @@ function setHealthFactorDisplay(hf) {
 
   hfValueEl.classList.add(cls);
   hfValueEl.textContent = hf.toFixed(2);
+}
+
+// Load BTC & ETH prices from CoinGecko (public API) [web:176]
+async function loadCryptoPrices() {
+  try {
+    const res = await fetch(
+      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
+    );
+    const data = await res.json();
+    const btc = data.bitcoin?.usd;
+    const eth = data.ethereum?.usd;
+
+    if (btcPriceEl && btc) {
+      btcPriceEl.textContent = "$" + btc.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    }
+    if (ethPriceEl && eth) {
+      ethPriceEl.textContent = "$" + eth.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    }
+  } catch (e) {
+    console.error("Failed to load BTC/ETH prices", e);
+  }
 }
 
 async function connectAndLoad() {
@@ -128,9 +153,12 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Auto-restore connection if wallet still connected
+// Auto-restore connection if wallet still connected & load prices
 window.addEventListener("load", async () => {
   try {
+    // Load BTC & ETH prices for header
+    loadCryptoPrices();
+
     if (!window.ethereum) return;
     const saved = localStorage.getItem("savedAddress");
     if (!saved) return;
