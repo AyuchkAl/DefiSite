@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
-  <!-- Top bar only -->
+  <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-inner">
       <!-- Left: Health Factor -->
@@ -17,7 +17,7 @@
         <div id="hfValue" class="hf-value">–</div>
       </div>
 
-      <!-- Right: wallet address button -->
+      <!-- Right: Wallet button -->
       <div class="wallet-container">
         <button id="connectButton">
           <span class="wallet-dot"></span>
@@ -31,11 +31,15 @@
     </div>
   </header>
 
-  <!-- Optional empty center area just for background -->
+  <!-- Center area just shows status text (optional) -->
   <main class="page-content">
-    <!-- nothing inside: removed card with title, Done, and Your address -->
+    <div id="status"></div>
+    <div id="result" class="hidden">
+      <p>Your address: <span id="address"></span></p>
+    </div>
   </main>
 
+  <!-- JS logic -->
   <script src="app.js"></script>
 </body>
 </html>
