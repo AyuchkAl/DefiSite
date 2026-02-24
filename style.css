@@ -93,21 +93,23 @@ body {
   gap: 8px;
 }
 
-/* Round icon like CoinMarketCap list */
+/* Round icon with your images */
 .asset-icon {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
 }
 
-/* Approximate BTC orange and ETH gray */
+/* Use btc.jpg and eth.jpg from project root */
 .btc-icon {
-  background: #f7931a;
+  background-image: url("btc.jpg");
 }
 
 .eth-icon {
-  background: radial-gradient(circle at 30% 30%, #ffffff 0, #c1c7d0 35%, #343a40 100%);
+  background-image: url("eth.jpg");
 }
 
 /* Name + ticker stacked */
@@ -129,16 +131,22 @@ body {
   color: #9aa4d8;
 }
 
-/* Price value + colors (unchanged) */
+/* Price value + colors */
 .price-value {
   margin-left: 6px;
   font-weight: 600;
   color: #ffffff;
 }
-.price-up { color: #16c784; }
-.price-down { color: #ea3943; }
-.price-flat { color: #ffffff; }
 
+.price-up {
+  color: #16c784;
+}
+.price-down {
+  color: #ea3943;
+}
+.price-flat {
+  color: #ffffff;
+}
 
 /* Wallet button on right */
 
@@ -198,7 +206,7 @@ body {
   padding: 10px 12px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  min-width: 180px;
+  min-width: 140px;
   font-size: 13px;
   display: none;
   z-index: 20;
@@ -206,14 +214,6 @@ body {
 
 .wallet-menu.visible {
   display: block;
-}
-
-.menu-address {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
-  margin-bottom: 8px;
-  word-break: break-all;
-  color: #e0e4ff;
 }
 
 #walletMenu button {
@@ -246,4 +246,3 @@ body {
 .hidden {
   display: none;
 }
-
