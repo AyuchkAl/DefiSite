@@ -196,4 +196,8 @@ window.addEventListener("load", async () => {
   } catch (err) {
     console.error(err);
   }
-});
+})
+  // Refresh BTC / ETH prices every 5 minutes
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
+  ;
+
