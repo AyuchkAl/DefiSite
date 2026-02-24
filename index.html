@@ -20,28 +20,35 @@
 
         <div class="prices-row">
           <div class="price-pill">
-            <div class="price-symbol">BTC</div>
+            <div class="asset-icon btc-icon"></div>
+            <div class="asset-text">
+              <div class="asset-name">Bitcoin</div>
+              <div class="asset-ticker">BTC</div>
+            </div>
             <div id="btcPrice" class="price-value">–</div>
           </div>
           <div class="price-pill">
-            <div class="price-symbol">ETH</div>
+            <div class="asset-icon eth-icon"></div>
+            <div class="asset-text">
+              <div class="asset-name">Ethereum</div>
+              <div class="asset-ticker">ETH</div>
+            </div>
             <div id="ethPrice" class="price-value">–</div>
           </div>
         </div>
       </div>
 
       <!-- Right: Wallet button -->
-    <div class="wallet-container">
-  <button id="connectButton">
-    <span class="wallet-dot"></span>
-    <span id="connectLabel">Connect wallet</span>
-  </button>
-  <div id="walletMenu" class="wallet-menu">
-    <!-- removed menuAddress line -->
-    <button id="disconnectButton">Disconnect</button>
-  </div>
-</div>
-
+      <div class="wallet-container">
+        <button id="connectButton">
+          <span class="wallet-dot"></span>
+          <span id="connectLabel">Connect wallet</span>
+        </button>
+        <div id="walletMenu" class="wallet-menu">
+          <button id="disconnectButton">Disconnect</button>
+        </div>
+      </div>
+    </div>
   </header>
 
   <!-- Center area just for background -->
@@ -55,4 +62,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
