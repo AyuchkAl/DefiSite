@@ -11,7 +11,7 @@
   <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-inner">
-      <!-- Left: Health factor + BTC/ETH prices -->
+      <!-- Left: Health factor + BTC / ETH prices -->
       <div class="left-group">
         <div id="hfBlock" class="hf-block">
           <div class="hf-label">Health factor</div>
@@ -19,12 +19,14 @@
         </div>
 
         <div class="prices-row">
-          <span class="price-pill">
-            BTC <span id="btcPrice">–</span>
-          </span>
-          <span class="price-pill">
-            ETH <span id="ethPrice">–</span>
-          </span>
+          <div class="price-pill">
+            <div class="price-symbol">BTC</div>
+            <div id="btcPrice" class="price-value">–</div>
+          </div>
+          <div class="price-pill">
+            <div class="price-symbol">ETH</div>
+            <div id="ethPrice" class="price-value">–</div>
+          </div>
         </div>
       </div>
 
