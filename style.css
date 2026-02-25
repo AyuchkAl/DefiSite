@@ -88,7 +88,7 @@ body {
   font-weight: 500;
 }
 .hf-label {
-  font-size: 11px;
+  font-size: 18px;            /* was 11px */
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #9aa4d8;
@@ -335,6 +335,7 @@ body {
   font-weight: 600;
   color: #ffffff;
 }
+
 
 
 
