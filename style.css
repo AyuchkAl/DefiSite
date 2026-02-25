@@ -178,6 +178,7 @@ body {
 
 .price-value {
   margin-left: 6px;
+  margin-right: 14px;
   font-weight: 600;
   color: #ffffff;
 }
@@ -333,6 +334,7 @@ price-label-inline {
   font-weight: 600;
   color: #ffffff;
 }
+
 
 
 
