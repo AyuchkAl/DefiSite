@@ -24,7 +24,7 @@ const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 
 // WETH underlying on Arbitrum
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
-const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aaB2e75Bef0aefC5B0f";  // 8 decimals
+const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";  // 8 decimals
 
 // ================== DOM REFERENCES =================================
 
@@ -314,6 +314,7 @@ window.addEventListener("load", () => {
 
 // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
+
 
 
 
