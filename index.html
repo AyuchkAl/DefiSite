@@ -10,59 +10,63 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-inner">
-      <div class="left-group">
-        <div class="site-brand">
-          <img src="DeFi.jpg" alt="DeFi Dashboard" class="site-logo" />
-          <span class="site-title">DeFi Dashboard</span>
+  <div class="topbar-inner">
+    <div class="left-group">
+      <!-- Removed site-brand block -->
+
+      <div id="hfBlock" class="hf-block">
+        <div class="hf-main-row">
+          <div class="hf-label">Health factor</div>
+          <div id="hfValue" class="hf-value">–</div>
         </div>
-
-        <div id="hfBlock" class="hf-block">
-          <div class="hf-main-row">
-            <div class="hf-label">Health factor</div>
-            <div id="hfValue" class="hf-value">–</div>
-          </div>
-        </div>
-
-        <div class="prices-row">
-          <div class="price-pill">
-            <div class="asset-icon btc-icon"></div>
-            <div class="asset-text">
-              <div class="asset-ticker">BTC</div>
-            </div>
-            <div id="btcPrice" class="price-value">–</div>
-            <div class="change-column">
-              <span class="price-label">24h %</span>
-              <div id="btcChange" class="price-change">–</div>
-            </div>
-          </div>
-
-          <div class="price-pill">
-            <div class="asset-icon eth-icon"></div>
-            <div class="asset-text">
-              <div class="asset-ticker">ETH</div>
-            </div>
-            <div id="ethPrice" class="price-value">–</div>
-            <div class="change-column">
-              <span class="price-label">24h %</span>
-              <div id="ethChange" class="price-change">–</div>
-            </div>
-          </div>
+        <div id="hfLiqLine" class="hf-liq-line">
+          HF = 1 at: <span id="liqEthBottom">ETH ~ –</span>
+          &nbsp;&nbsp;
+          <span id="liqBtcBottom">BTC ~ –</span>
         </div>
       </div>
 
-      <div class="wallet-container">
-        <button id="connectButton">
-          <span class="wallet-dot"></span>
-          <span id="connectLabel">Connect wallet</span>
-        </button>
-        <div id="walletMenu" class="wallet-menu">
-          <button id="disconnectButton">Disconnect</button>
+      <div class="prices-row">
+        <!-- your BTC/ETH price pills stay the same -->
+        <div class="price-pill">
+          <div class="asset-icon btc-icon"></div>
+          <div class="asset-text">
+            <div class="asset-ticker">BTC</div>
+          </div>
+          <div id="btcPrice" class="price-value">–</div>
+          <div class="change-column">
+            <span class="price-label">24h %</span>
+            <div id="btcChange" class="price-change">–</div>
+          </div>
+        </div>
+
+        <div class="price-pill">
+          <div class="asset-icon eth-icon"></div>
+          <div class="asset-text">
+            <div class="asset-ticker">ETH</div>
+          </div>
+          <div id="ethPrice" class="price-value">–</div>
+          <div class="change-column">
+            <span class="price-label">24h %</span>
+            <div id="ethChange" class="price-change">–</div>
+          </div>
         </div>
       </div>
     </div>
-  </header>
 
+    <div class="wallet-container">
+      <button id="connectButton">
+        <span class="wallet-dot"></span>
+        <span id="connectLabel">Connect wallet</span>
+      </button>
+      <div id="walletMenu" class="wallet-menu">
+        <button id="disconnectButton">Disconnect</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+  
   <main class="page-content">
     <div id="status"></div>
     <div id="result" class="hidden">
@@ -82,5 +86,6 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 
 
