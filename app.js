@@ -24,6 +24,7 @@ const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 
 // WETH underlying on Arbitrum
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
+const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aaB2e75Bef0aefC5B0f";  // 8 decimals
 
 // ================== DOM REFERENCES =================================
 
@@ -43,6 +44,7 @@ const btcChangeEl = document.getElementById("btcChange");
 const ethChangeEl = document.getElementById("ethChange");
 
 const liqEthBottomEl = document.getElementById("liqEthBottom");
+const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 
 let currentAddress = null;
 
@@ -171,41 +173,59 @@ async function loadAaveDataForUser(userAddress, provider) {
 
     if (totalDebtBase === 0) {
       liqEthBottomEl.textContent = "–";
+      liqBtcBottomEl.textContent = "–";
       return;
     }
 
-    // User WETH collateral + reserve config
-    const [userEth, cfgEth] = await Promise.all([
-      dataPr.getUserReserveData(WETH_ADDRESS, userAddress),
-      dataPr.getReserveConfigurationData(WETH_ADDRESS),
+    // Helper to compute liq price for one asset
+    async function assetLiqPrice(assetAddress, assetDecimals, outEl) {
+      try {
+        const [userRes, cfgRes] = await Promise.all([
+          dataPr.getUserReserveData(assetAddress, userAddress),
+          dataPr.getReserveConfigurationData(assetAddress),
+        ]);
+
+        const collateralAmt = Number(
+          ethers.formatUnits(userRes.currentATokenBalance, assetDecimals)
+        );
+        if (collateralAmt === 0) {
+          outEl.textContent = "–";
+          return;
+        }
+
+        const assetLtv = getLiquidationThresholdFromConfig(cfgRes);
+
+        const priceRaw = await oracle.getAssetPrice(assetAddress);
+        const priceNow = Number(ethers.formatUnits(priceRaw, 8)); // oracle uses 8 decimals
+
+        const liq = computeEthLiqPrice({
+          totalDebtUsd: totalDebtBase,
+          totalCollateralBaseUsd: totalCollateralBase,
+          hlThreshold,
+          ethCollateralAmount: collateralAmt,
+          ethLtv: assetLtv,
+          ethPriceNow: priceNow,
+        });
+
+        outEl.textContent = liq ? liq.toFixed(3) : "–";
+      } catch (e) {
+        console.error("Failed liq price for asset", assetAddress, e);
+        outEl.textContent = "–";
+      }
+    }
+
+    // ETH and BTC
+    await Promise.all([
+      assetLiqPrice(WETH_ADDRESS, 18, liqEthBottomEl),
+      assetLiqPrice(WBTC_ADDRESS, 8,  liqBtcBottomEl),
     ]);
-
-    const ethCollateral = Number(ethers.formatUnits(userEth.currentATokenBalance, 18));
-    if (ethCollateral === 0) {
-      liqEthBottomEl.textContent = "–";
-      return;
-    }
-
-    const ethLtv = getLiquidationThresholdFromConfig(cfgEth);
-
-    const ethPriceRay = await oracle.getAssetPrice(WETH_ADDRESS);
-    const ethPriceNow = Number(ethers.formatUnits(ethPriceRay, 8));
-
-    const ethLiq = computeEthLiqPrice({
-      totalDebtUsd: totalDebtBase,
-      totalCollateralBaseUsd: totalCollateralBase,
-      hlThreshold,
-      ethCollateralAmount: ethCollateral,
-      ethLtv,
-      ethPriceNow,
-    });
-
-    liqEthBottomEl.textContent = ethLiq ? ethLiq.toFixed(3) : "–";
   } catch (e) {
     console.error("Failed to load Aave / liq price", e);
     liqEthBottomEl.textContent = "–";
+    liqBtcBottomEl.textContent = "–";
   }
 }
+
 
 // ================== WALLET CONNECTION / INIT ======================
 
@@ -294,6 +314,7 @@ window.addEventListener("load", () => {
 
 // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
+
 
 
 
