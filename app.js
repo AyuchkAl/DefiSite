@@ -11,17 +11,15 @@ const DATA_PROVIDER_ABI = [
   "function getReserveConfigurationData(address asset) view returns (uint256 decimals,uint256 ltv,uint256 liquidationThreshold,uint256 liquidationBonus,uint256 reserveFactor,bool usageAsCollateralEnabled,bool borrowingEnabled,bool stableBorrowRateEnabled,bool isActive,bool isFrozen)"
 ];
 
-
 // Price Oracle
 const ORACLE_ABI = [
   "function getAssetPrice(address asset) view returns (uint256)"
 ];
 
-// Aave V3 contracts on Arbitrum One
+// Aave V3 contracts on Arbitrum One (from Aave docs)
 const POOL_ADDRESS          = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
-const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b";
-const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
-
+const DATA_PROVIDER_ADDRESS = "0xa170dba2cd1f68cdde8551c9e4b907bc6e0c9097"; // lowercased checksum-safe
+const ORACLE_ADDRESS        = "0x13C9c8ad3E14f0C4C9Ff5C4DB41dA0E0Cf3A32FA";
 
 // WETH underlying on Arbitrum
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
@@ -84,11 +82,10 @@ function setHealthFactorDisplay(hf) {
   hfValueEl.textContent = hf.toFixed(2);
 }
 
-// Decode liquidationThreshold (bps) from configuration bits 16‑31
-function decodeLiquidationThreshold(configData) {
-  const bn = ethers.toBigInt(configData);
-  const lt = (bn >> 16n) & 0xffffn;
-  return Number(lt) / 10000; // 0..1
+// Decode liquidationThreshold (bps) from configuration object
+function getLiquidationThresholdFromConfig(cfg) {
+  // using ABI that returns struct fields, not bitmask
+  return Number(cfg.liquidationThreshold) / 10000; // 0..1
 }
 
 // Approx ETH liquidation price (USD) assuming only ETH moves
@@ -102,10 +99,10 @@ function computeEthLiqPrice({
 }) {
   if (ethCollateralAmount <= 0 || ethLtv <= 0) return null;
 
-  const totalCollAtLT    = totalCollateralBaseUsd * hlThreshold;
-  const ethCollAtLTNow   = ethCollateralAmount * ethPriceNow * ethLtv;
-  const otherCollAtLT    = Math.max(totalCollAtLT - ethCollAtLTNow, 0);
-  const numerator        = totalDebtUsd - otherCollAtLT;
+  const totalCollAtLT  = totalCollateralBaseUsd * hlThreshold;
+  const ethCollAtLTNow = ethCollateralAmount * ethPriceNow * ethLtv;
+  const otherCollAtLT  = Math.max(totalCollAtLT - ethCollAtLTNow, 0);
+  const numerator      = totalDebtUsd - otherCollAtLT;
   if (numerator <= 0) return null;
 
   return numerator / (ethCollateralAmount * ethLtv);
@@ -172,7 +169,6 @@ async function loadAaveDataForUser(userAddress, provider) {
 
     setHealthFactorDisplay(healthFactor);
 
-    // If no debt, no liquidation price
     if (totalDebtBase === 0) {
       liqEthBottomEl.textContent = "–";
       return;
@@ -190,7 +186,7 @@ async function loadAaveDataForUser(userAddress, provider) {
       return;
     }
 
-    const ethLtv = decodeLiquidationThreshold(cfgEth.data);
+    const ethLtv = getLiquidationThresholdFromConfig(cfgEth);
 
     const ethPriceRay = await oracle.getAssetPrice(WETH_ADDRESS);
     const ethPriceNow = Number(ethers.formatUnits(ethPriceRay, 8));
@@ -266,36 +262,3 @@ document.addEventListener("click", (e) => {
   if (!walletMenu.classList.contains("visible")) return;
   if (!e.target.closest(".wallet-container")) {
     walletMenu.classList.remove("visible");
-  }
-});
-
-window.addEventListener("load", async () => {
-  try {
-    loadCryptoPrices();
-
-    if (!window.ethereum) return;
-    const saved = localStorage.getItem("savedAddress");
-    if (!saved) return;
-
-    const accounts = await window.ethereum.request({ method: "eth_accounts" });
-    if (!accounts.includes(saved)) return;
-
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const network  = await provider.getNetwork();
-    if (Number(network.chainId) !== 42161) return;
-
-    statusDiv.textContent = "Reading your Aave account data...";
-    await loadAaveDataForUser(saved, provider);
-    setConnectedUI(saved);
-    statusDiv.textContent = "Loaded from previous connection.";
-  } catch (err) {
-    console.error(err);
-  }
-});
-
-// Refresh BTC / ETH prices every 5 minutes
-setInterval(loadCryptoPrices, 5 * 60 * 1000);
-const cfgEth = await dataPr.getReserveConfigurationData(WETH_ADDRESS);
-const ethLtv = Number(cfgEth.liquidationThreshold) / 10000;
-
-
