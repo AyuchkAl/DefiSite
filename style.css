@@ -128,9 +128,9 @@ body {
 
 /* BTC/ETH prices */
 
-.price-row {
+.prices-row {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;  /* ETH under BTC */
   gap: 6px;
 }
 
@@ -333,6 +333,7 @@ price-label-inline {
   font-weight: 600;
   color: #ffffff;
 }
+
 
 
 
