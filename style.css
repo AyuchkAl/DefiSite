@@ -108,28 +108,21 @@ body {
 .hf-danger {
   color: #ff5c5c;
 }
-/* NEW: when value has status class, color the label inside same block */
-.hf-block .hf-safe ~ .hf-liq-line,
-.hf-block .hf-safe ~ .hf-liq-line span,
-.hf-block .hf-safe ~ .hf-label,
-.hf-block .hf-safe + .hf-liq-line,
-.hf-block .hf-safe + .hf-label {
+/* Make HEALTH FACTOR label match the number color */
+.hf-main-row .hf-value.hf-safe + .hf-label,
+.hf-main-row .hf-value.hf-warning + .hf-label,
+.hf-main-row .hf-value.hf-danger + .hf-label {
+  /* fallback, will be overridden below */
+}
+
+/* Number is before label in DOM? Then use previous-sibling selector instead: */
+.hf-main-row .hf-safe ~ .hf-label {
   color: #3dd68c;
 }
-
-.hf-block .hf-warning ~ .hf-liq-line,
-.hf-block .hf-warning ~ .hf-liq-line span,
-.hf-block .hf-warning ~ .hf-label,
-.hf-block .hf-warning + .hf-liq-line,
-.hf-block .hf-warning + .hf-label {
+.hf-main-row .hf-warning ~ .hf-label {
   color: #ffb347;
 }
-
-.hf-block .hf-danger ~ .hf-liq-line,
-.hf-block .hf-danger ~ .hf-liq-line span,
-.hf-block .hf-danger ~ .hf-label,
-.hf-block .hf-danger + .hf-liq-line,
-.hf-block .hf-danger + .hf-label {
+.hf-main-row .hf-danger ~ .hf-label {
   color: #ff5c5c;
 }
 
@@ -342,5 +335,6 @@ body {
   font-weight: 600;
   color: #ffffff;
 }
+
 
 
