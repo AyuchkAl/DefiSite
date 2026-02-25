@@ -66,15 +66,27 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   display: inline-flex;
   flex-direction: column;
-  min-width: 140px;
+  min-width: 220px; /* slightly wider to fit text */
 }
 
 .hf-main-row {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
+.hf-liq-line {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #9aa4d8;
+  white-space: nowrap;
+}
+
+.hf-liq-line span {
+  color: #ffffff;
+  font-weight: 500;
+}
 .hf-label {
   font-size: 11px;
   text-transform: uppercase;
@@ -306,3 +318,4 @@ body {
   font-weight: 600;
   color: #ffffff;
 }
+
