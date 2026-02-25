@@ -7,9 +7,10 @@ const POOL_ABI = [
 
 // Protocol Data Provider: per-reserve user data + config
 const DATA_PROVIDER_ABI = [
-  "function getUserReserveData(address asset, address user) view returns (uint256 currentATokenBalance,uint256 currentStableDebt,uint256 currentVariableDebt,uint256 principalStableDebt,uint256 scaledVariableDebt,uint256 collateralBalance,uint256 stableBorrowRate,uint256 liquidityRate,uint40 stableRateLastUpdated,bool usageAsCollateralEnabled)",
+  "function getUserReserveData(address asset, address user) view returns (uint256 currentATokenBalance,uint256 currentStableDebt,uint256 currentVariableDebt,uint256 principalStableDebt,uint256 scaledVariableDebt,uint256 stableBorrowRate,uint256 liquidityRate,uint40 stableRateLastUpdated,bool usageAsCollateralEnabled)",
   "function getReserveConfigurationData(address asset) view returns (uint256 decimals,uint256 ltv,uint256 liquidationThreshold,uint256 liquidationBonus,uint256 reserveFactor,bool usageAsCollateralEnabled,bool borrowingEnabled,bool stableBorrowRateEnabled,bool isActive,bool isFrozen)"
 ];
+
 
 // Price Oracle
 const ORACLE_ABI = [
@@ -179,7 +180,7 @@ async function loadAaveDataForUser(userAddress, provider) {
       dataPr.getReserveConfigurationData(WETH_ADDRESS),
     ]);
 
-    const ethCollateral = Number(ethers.formatUnits(userEth.collateralBalance, 18));
+    const ethCollateral = Number(ethers.formatUnits(userEth.currentATokenBalance, 18));
     if (ethCollateral === 0) {
       liqEthBottomEl.textContent = "–";
       return;
@@ -293,6 +294,7 @@ window.addEventListener("load", () => {
 
 // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
+
 
 
 
