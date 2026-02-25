@@ -16,9 +16,9 @@ const ORACLE_ABI = [
   "function getAssetPrice(address asset) view returns (uint256)"
 ];
 
-// Aave V3 contracts on Arbitrum One (from Aave docs)
+// Aave V3 contracts on Arbitrum One
 const POOL_ADDRESS          = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
-const DATA_PROVIDER_ADDRESS = "0xa170dba2cd1f68cdde8551c9e4b907bc6e0c9097"; // lowercased checksum-safe
+const DATA_PROVIDER_ADDRESS = "0xa170dba2cd1f68cdde8551c9e4b907bc6e0c9097"; // lower-case form
 const ORACLE_ADDRESS        = "0x13C9c8ad3E14f0C4C9Ff5C4DB41dA0E0Cf3A32FA";
 
 // WETH underlying on Arbitrum
@@ -82,9 +82,8 @@ function setHealthFactorDisplay(hf) {
   hfValueEl.textContent = hf.toFixed(2);
 }
 
-// Decode liquidationThreshold (bps) from configuration object
+// liquidationThreshold from config struct (not bitmask)
 function getLiquidationThresholdFromConfig(cfg) {
-  // using ABI that returns struct fields, not bitmask
   return Number(cfg.liquidationThreshold) / 10000; // 0..1
 }
 
@@ -262,3 +261,35 @@ document.addEventListener("click", (e) => {
   if (!walletMenu.classList.contains("visible")) return;
   if (!e.target.closest(".wallet-container")) {
     walletMenu.classList.remove("visible");
+  }
+});
+
+// Auto‑restore + initial prices
+window.addEventListener("load", () => {
+  loadCryptoPrices();
+
+  if (!window.ethereum) return;
+  const saved = localStorage.getItem("savedAddress");
+  if (!saved) return;
+
+  (async () => {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (!accounts.includes(saved)) return;
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network  = await provider.getNetwork();
+      if (Number(network.chainId) !== 42161) return;
+
+      statusDiv.textContent = "Reading your Aave account data...";
+      await loadAaveDataForUser(saved, provider);
+      setConnectedUI(saved);
+      statusDiv.textContent = "Loaded from previous connection.";
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+});
+
+// Refresh BTC / ETH prices every 5 minutes
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
