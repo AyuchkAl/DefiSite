@@ -45,6 +45,7 @@ const ethChangeEl = document.getElementById("ethChange");
 
 const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
+const hfMainRowEl = document.querySelector(".hf-main-row");
 
 let currentAddress = null;
 
@@ -76,13 +77,17 @@ function setDisconnectedUI() {
 }
 
 function setHealthFactorDisplay(hf) {
-  hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
-  let cls;
-  if (hf < 1.0)      cls = "hf-danger";
-  else if (hf < 1.5) cls = "hf-warning";
-  else               cls = "hf-safe";
-  hfValueEl.classList.add(cls);
   hfValueEl.textContent = hf.toFixed(2);
+
+  hfMainRowEl.classList.remove("safe", "warning", "danger");
+
+  if (hf < 1.0) {
+    hfMainRowEl.classList.add("danger");
+  } else if (hf < 1.5) {
+    hfMainRowEl.classList.add("warning");
+  } else {
+    hfMainRowEl.classList.add("safe");
+  }
 }
 
 // liquidationThreshold from config struct (not bitmask)
@@ -307,6 +312,7 @@ window.addEventListener("load", () => {
 
 // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
+
 
 
 
