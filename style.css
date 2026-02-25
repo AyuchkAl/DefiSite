@@ -8,12 +8,9 @@ body {
   flex-direction: column;
 }
 
-/* Hide text status ("Done.", errors) from UI */
 #status {
   display: none;
 }
-
-/* === TOP BAR ==================================================== */
 
 .topbar {
   padding: 12px 24px;
@@ -25,7 +22,6 @@ body {
   z-index: 10;
 }
 
-/* HF + prices on left, wallet button on right */
 .topbar-inner {
   width: 100%;
   display: flex;
@@ -33,20 +29,48 @@ body {
   justify-content: space-between;
 }
 
-/* Left group: HF + BTC/ETH */
 .left-group {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-/* Health Factor pill in top-left */
+/* Brand */
+
+.site-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+}
+
+.site-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.site-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Health factor */
+
 .hf-block {
   padding: 10px 14px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: #11152a;
   border: 1px solid rgba(255, 255, 255, 0.04);
   display: inline-flex;
+  flex-direction: column;
+  min-width: 140px;
+}
+
+.hf-main-row {
+  display: flex;
   align-items: baseline;
   gap: 8px;
 }
@@ -63,7 +87,6 @@ body {
   font-weight: 600;
 }
 
-/* HF colors */
 .hf-safe {
   color: #3dd68c;
 }
@@ -74,7 +97,8 @@ body {
   color: #ff5c5c;
 }
 
-/* Vertical BTC / ETH column */
+/* BTC/ETH prices */
+
 .prices-row {
   display: inline-flex;
   flex-direction: column;
@@ -93,7 +117,6 @@ body {
   gap: 8px;
 }
 
-/* Round icon with your images */
 .asset-icon {
   width: 18px;
   height: 18px;
@@ -103,60 +126,33 @@ body {
   background-position: center;
 }
 
-/* Use btc.jpg and eth.jpg from project root */
 .btc-icon {
-  background-image: url("btc.png");
+  background-image: url("btc.jpg");
 }
 
 .eth-icon {
-  background-image: url("eth.png");
+  background-image: url("eth.jpg");
 }
 
-/* Name + ticker stacked */
 .asset-text {
   display: flex;
   flex-direction: column;
   line-height: 1.1;
 }
 
-.asset-name {
+.asset-ticker {
   font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
   color: #ffffff;
 }
 
-.asset-ticker {
-  font-size: 10px;
-  text-transform: uppercase;
-  color: #9aa4d8;
-}
-
-/* Price value + colors */
 .price-value {
   margin-left: 6px;
   font-weight: 600;
   color: #ffffff;
 }
 
-/* 24h change chip next to price */
-.price-change {
-  margin-left: 6px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.04);
-}
-.price-label {
-  margin-left: 6px;
-  font-size: 10px;
-  font-weight: 500;
-  color: #ffffff;  /* white */
-  opacity: 0.8;
-}
-
-
-/* Reuse your existing color classes */
 .price-up {
   color: #16c784;
 }
@@ -167,15 +163,73 @@ body {
   color: #ffffff;
 }
 
+.change-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 6px;
+}
 
-/* Wallet button on right */
+.price-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #ffffff;
+  opacity: 0.8;
+  line-height: 1.1;
+}
+
+.price-change {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.04);
+  margin-top: 2px;
+}
+
+/* Wallet */
 
 .wallet-container {
   position: relative;
   display: inline-block;
 }
 
-/* Aave-like connect/address button */
+#walletMenu {
+  position: absolute;
+  right: 0;
+  margin-top: 6px;
+  background: #151a30;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 140px;
+  font-size: 13px;
+  display: none;
+  z-index: 20;
+}
+
+.wallet-menu.visible {
+  display: block;
+}
+
+#walletMenu button {
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  background: rgba(255, 70, 100, 0.15);
+  color: #ff97aa;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+#walletMenu button:hover {
+  background: rgba(255, 70, 100, 0.25);
+  color: #ffd0d9;
+}
+
 #connectButton {
   border: none;
   border-radius: 999px;
@@ -216,44 +270,7 @@ body {
   flex-shrink: 0;
 }
 
-/* Dropdown menu for disconnect */
-.wallet-menu {
-  position: absolute;
-  right: 0;
-  margin-top: 6px;
-  background: #151a30;
-  border-radius: 10px;
-  padding: 10px 12px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  min-width: 140px;
-  font-size: 13px;
-  display: none;
-  z-index: 20;
-}
-
-.wallet-menu.visible {
-  display: block;
-}
-
-#walletMenu button {
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  padding: 6px 10px;
-  font-size: 13px;
-  cursor: pointer;
-  background: rgba(255, 70, 100, 0.15);
-  color: #ff97aa;
-  transition: background 0.1s ease, color 0.1s ease;
-}
-
-#walletMenu button:hover {
-  background: rgba(255, 70, 100, 0.25);
-  color: #ffd0d9;
-}
-
-/* === CENTER AREA (empty, just background) ======================= */
+/* Center */
 
 .page-content {
   flex: 1;
@@ -267,5 +284,25 @@ body {
   display: none;
 }
 
+/* Footer with ETH liq price */
 
+.liq-footer {
+  width: 100%;
+  padding: 12px 24px 20px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #f5f5f5;
+}
 
+.liq-label {
+  color: #9aa4d8;
+  font-weight: 500;
+}
+
+.liq-value {
+  font-weight: 600;
+  color: #ffffff;
+}
