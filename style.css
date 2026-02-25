@@ -108,23 +108,23 @@ body {
 .hf-danger {
   color: #ff5c5c;
 }
-/* Make HEALTH FACTOR label match the number color */
-.hf-main-row .hf-value.hf-safe + .hf-label,
-.hf-main-row .hf-value.hf-warning + .hf-label,
-.hf-main-row .hf-value.hf-danger + .hf-label {
-  /* fallback, will be overridden below */
-}
+/* Color both label and value together based on status */
 
-/* Number is before label in DOM? Then use previous-sibling selector instead: */
-.hf-main-row .hf-safe ~ .hf-label {
+.hf-main-row.safe .hf-label,
+.hf-main-row.safe .hf-value {
   color: #3dd68c;
 }
-.hf-main-row .hf-warning ~ .hf-label {
+
+.hf-main-row.warning .hf-label,
+.hf-main-row.warning .hf-value {
   color: #ffb347;
 }
-.hf-main-row .hf-danger ~ .hf-label {
+
+.hf-main-row.danger .hf-label,
+.hf-main-row.danger .hf-value {
   color: #ff5c5c;
 }
+
 
 /* BTC/ETH prices */
 
@@ -335,6 +335,7 @@ body {
   font-weight: 600;
   color: #ffffff;
 }
+
 
 
 
