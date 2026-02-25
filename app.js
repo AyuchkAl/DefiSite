@@ -159,72 +159,65 @@ async function loadCryptoPrices() {
 async function loadAaveDataForUser(userAddress, provider) {
   try {
     const pool   = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
-    const dataPr = new ethers.Contract(DATA_PROVIDER_ADDRESS, DATA_PROVIDER_ABI, provider);
     const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, provider);
 
     // Global account data (base ≈ USD, 8 decimals)
     const ud = await pool.getUserAccountData(userAddress);
-    const totalCollateralBase = Number(ethers.formatUnits(ud.totalCollateralBase, 8));
-    const totalDebtBase       = Number(ethers.formatUnits(ud.totalDebtBase, 8));
-    const hlThreshold         = Number(ud.currentLiquidationThreshold) / 10000;
+    const totalCollateralBase = Number(ethers.formatUnits(ud.totalCollateralBase, 8)); // USD
+    const totalDebtBase       = Number(ethers.formatUnits(ud.totalDebtBase, 8));       // USD
+    const hlThreshold         = Number(ud.currentLiquidationThreshold) / 10000;        // 0..1
     const healthFactor        = Number(ethers.formatUnits(ud.healthFactor, 18));
 
     setHealthFactorDisplay(healthFactor);
 
-    if (totalDebtBase === 0) {
-      liqEthBottomEl.textContent = "–";
-      liqBtcBottomEl.textContent = "–";
+    // If no debt, no liquidation price
+    if (totalDebtBase === 0 || totalCollateralBase === 0) {
+      liqEthBottomEl.textContent = "ETH ~ –";
+      liqBtcBottomEl.textContent = "BTC ~ –";
       return;
     }
 
-    // Helper to compute liq price for one asset
-    async function assetLiqPrice(assetAddress, assetDecimals, outEl) {
-      try {
-        const [userRes, cfgRes] = await Promise.all([
-          dataPr.getUserReserveData(assetAddress, userAddress),
-          dataPr.getReserveConfigurationData(assetAddress),
-        ]);
+    // --- Global HF=1 liquidation condition --------------------------------
+    // Aave HF ≈ (collateral_value * hlThreshold) / debt_value
+    // HF=1  => collateral_value_at_HF1 = debt / hlThreshold
+    // Assume collateral value scales linearly with the market (all prices move together).
+    // So HF=1 occurs when the market drops by factor:
+    //   dropFactor = (debt / hlThreshold) / current_collateral
+    //             = totalDebt / (hlThreshold * totalCollateral)
+    //
+    // If dropFactor >= 1, you're already at or past HF=1 (edge case).
 
-        const collateralAmt = Number(
-          ethers.formatUnits(userRes.currentATokenBalance, assetDecimals)
-        );
-        if (collateralAmt === 0) {
-          outEl.textContent = "–";
-          return;
-        }
+    const dropFactor = totalDebtBase / (hlThreshold * totalCollateralBase);
 
-        const assetLtv = getLiquidationThresholdFromConfig(cfgRes);
-
-        const priceRaw = await oracle.getAssetPrice(assetAddress);
-        const priceNow = Number(ethers.formatUnits(priceRaw, 8)); // oracle uses 8 decimals
-
-        const liq = computeEthLiqPrice({
-          totalDebtUsd: totalDebtBase,
-          totalCollateralBaseUsd: totalCollateralBase,
-          hlThreshold,
-          ethCollateralAmount: collateralAmt,
-          ethLtv: assetLtv,
-          ethPriceNow: priceNow,
-        });
-
-        outEl.textContent = liq ? liq.toFixed(3) : "–";
-      } catch (e) {
-        console.error("Failed liq price for asset", assetAddress, e);
-        outEl.textContent = "–";
-      }
+    if (dropFactor >= 1) {
+      // Already at or beyond HF=1
+      liqEthBottomEl.textContent = "ETH ~ current";
+      liqBtcBottomEl.textContent = "BTC ~ current";
+      return;
     }
 
-    // ETH and BTC
-    await Promise.all([
-      assetLiqPrice(WETH_ADDRESS, 18, liqEthBottomEl),
-      assetLiqPrice(WBTC_ADDRESS, 8,  liqBtcBottomEl),
+    // Get current ETH/BTC prices from the Aave oracle (8 decimals)
+    const [ethPriceRaw, btcPriceRaw] = await Promise.all([
+      oracle.getAssetPrice(WETH_ADDRESS),
+      oracle.getAssetPrice(WBTC_ADDRESS),
     ]);
+
+    const ethNow = Number(ethers.formatUnits(ethPriceRaw, 8)); // USD
+    const btcNow = Number(ethers.formatUnits(btcPriceRaw, 8)); // USD
+
+    // At HF=1 the whole market is scaled by dropFactor
+    const ethAtHF1 = ethNow * dropFactor;
+    const btcAtHF1 = btcNow * dropFactor;
+
+    liqEthBottomEl.textContent = "ETH ~ " + ethAtHF1.toFixed(0).toLocaleString("en-US");
+    liqBtcBottomEl.textContent = "BTC ~ " + btcAtHF1.toFixed(0).toLocaleString("en-US");
   } catch (e) {
     console.error("Failed to load Aave / liq price", e);
-    liqEthBottomEl.textContent = "–";
-    liqBtcBottomEl.textContent = "–";
+    liqEthBottomEl.textContent = "ETH ~ –";
+    liqBtcBottomEl.textContent = "BTC ~ –";
   }
 }
+
 
 
 // ================== WALLET CONNECTION / INIT ======================
@@ -314,6 +307,7 @@ window.addEventListener("load", () => {
 
 // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
+
 
 
 
