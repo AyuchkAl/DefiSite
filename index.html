@@ -1,63 +1,70 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-<title>DeFi Dashboard</title>
-  <link rel="icon" type="image/png" href="DeFi.jpg" />
+  <title>DeFi Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="DeFi.jpg" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
-  <!-- TOP BAR -->
   <header class="topbar">
-    <div class="topbar-inner">
-      <!-- Left: Health factor + BTC / ETH prices -->
-      <div class="left-group">
-        <div id="hfBlock" class="hf-block">
+  <div class="topbar-inner">
+    <div class="left-group">
+      <!-- Removed site-brand block -->
+
+      <div id="hfBlock" class="hf-block">
+        <div class="hf-main-row">
           <div class="hf-label">Health factor</div>
           <div id="hfValue" class="hf-value">–</div>
         </div>
+        <div id="hfLiqLine" class="hf-liq-line">
+          HF = 1 at: <span id="liqEthBottom">ETH ~ –</span>
+          &nbsp;&nbsp;
+          <span id="liqBtcBottom">BTC ~ –</span>
+        </div>
+      </div>
 
-    <div class="prices-row">
-  <div class="price-pill">
-    <div class="asset-icon btc-icon"></div>
-    <div class="asset-text">
-      <div class="asset-ticker">BTC</div>
-    </div>
-    <div id="btcPrice" class="price-value">–</div>
-    <span class="price-label">24h %</span>
-    <div id="btcChange" class="price-change">–</div>
+      <div class="prices-row">
+        <!-- your BTC/ETH price pills stay the same -->
+       <div class="price-pill">
+  <div class="asset-icon btc-icon"></div>
+
+  <div class="price-row">
+    <span class="asset-ticker">BTC</span>
+    <span id="btcPrice" class="price-value">–</span>
+    <span class="price-label-inline">24h %</span>
+    <span id="btcChange" class="price-change-inline">–</span>
   </div>
-  <div class="price-pill">
-    <div class="asset-icon eth-icon"></div>
-    <div class="asset-text">
-      <div class="asset-ticker">ETH</div>
-    </div>
-    <div id="ethPrice" class="price-value">–</div>
-    <span class="price-label">24h %</span>
-    <div id="ethChange" class="price-change">–</div>
+</div>
+<div class="price-pill">
+  <div class="asset-icon eth-icon"></div>
+
+  <div class="price-row">
+    <span class="asset-ticker">ETH</span>
+    <span id="ethPrice" class="price-value">–</span>
+    <span class="price-label-inline">24h %</span>
+    <span id="ethChange" class="price-change-inline">–</span>
   </div>
 </div>
 
-
-      </div>
-
-      <!-- Right: Wallet button -->
-      <div class="wallet-container">
-        <button id="connectButton">
-          <span class="wallet-dot"></span>
-          <span id="connectLabel">Connect wallet</span>
-        </button>
-        <div id="walletMenu" class="wallet-menu">
-          <button id="disconnectButton">Disconnect</button>
-        </div>
       </div>
     </div>
-  </header>
 
-  <!-- Center area just for background -->
+    <div class="wallet-container">
+      <button id="connectButton">
+        <span class="wallet-dot"></span>
+        <span id="connectLabel">Connect wallet</span>
+      </button>
+      <div id="walletMenu" class="wallet-menu">
+        <button id="disconnectButton">Disconnect</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+  
   <main class="page-content">
     <div id="status"></div>
     <div id="result" class="hidden">

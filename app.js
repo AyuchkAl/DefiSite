@@ -1,15 +1,33 @@
-const btcChangeEl = document.getElementById("btcChange");
-const ethChangeEl = document.getElementById("ethChange");
+// ================== AAVE CONFIG (ARBITRUM V3) =====================
 
-// Aave V3 Pool ABI: we only need getUserAccountData()
+// Pool: for getUserAccountData
 const POOL_ABI = [
-  "function getUserAccountData(address user) external view returns (uint256 totalCollateralBase,uint256 totalDebtBase,uint256 availableBorrowsBase,uint256 currentLiquidationThreshold,uint256 ltv,uint256 healthFactor)"
+  "function getUserAccountData(address user) view returns (uint256 totalCollateralBase,uint256 totalDebtBase,uint256 availableBorrowsBase,uint256 currentLiquidationThreshold,uint256 ltv,uint256 healthFactor)"
 ];
 
-// Aave V3 Pool contract on Arbitrum One
-const POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
+// Protocol Data Provider: per-reserve user data + config
+const DATA_PROVIDER_ABI = [
+  "function getUserReserveData(address asset, address user) view returns (uint256 currentATokenBalance,uint256 currentStableDebt,uint256 currentVariableDebt,uint256 principalStableDebt,uint256 scaledVariableDebt,uint256 stableBorrowRate,uint256 liquidityRate,uint40 stableRateLastUpdated,bool usageAsCollateralEnabled)",
+  "function getReserveConfigurationData(address asset) view returns (uint256 decimals,uint256 ltv,uint256 liquidationThreshold,uint256 liquidationBonus,uint256 reserveFactor,bool usageAsCollateralEnabled,bool borrowingEnabled,bool stableBorrowRateEnabled,bool isActive,bool isFrozen)"
+];
 
-// DOM elements
+
+// Price Oracle
+const ORACLE_ABI = [
+  "function getAssetPrice(address asset) view returns (uint256)"
+];
+
+// Aave V3 contracts on Arbitrum One
+const POOL_ADDRESS          = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
+const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b"; // lower-case form
+const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
+
+// WETH underlying on Arbitrum
+const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
+const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";  // 8 decimals
+
+// ================== DOM REFERENCES =================================
+
 const connectButton = document.getElementById("connectButton");
 const connectLabel  = document.getElementById("connectLabel");
 const walletMenu    = document.getElementById("walletMenu");
@@ -20,19 +38,24 @@ const resultDiv   = document.getElementById("result");
 const addressSpan = document.getElementById("address");
 const hfValueEl   = document.getElementById("hfValue");
 
-// BTC/ETH price elements
 const btcPriceEl  = document.getElementById("btcPrice");
 const ethPriceEl  = document.getElementById("ethPrice");
+const btcChangeEl = document.getElementById("btcChange");
+const ethChangeEl = document.getElementById("ethChange");
+
+const liqEthBottomEl = document.getElementById("liqEthBottom");
+const liqBtcBottomEl = document.getElementById("liqBtcBottom");
+const hfMainRowEl = document.querySelector(".hf-main-row");
 
 let currentAddress = null;
 
-// Shorten address like 0x1234...abcd
+// ================== HELPERS ========================================
+
 function shortenAddress(addr) {
   if (!addr) return "";
   return addr.slice(0, 6) + "..." + addr.slice(-4);
 }
 
-// Set connected UI: header button + store address
 function setConnectedUI(addr) {
   currentAddress = addr;
   addressSpan.textContent = addr;
@@ -40,11 +63,11 @@ function setConnectedUI(addr) {
   resultDiv.classList.remove("hidden");
 }
 
-// Reset UI when disconnected
 function setDisconnectedUI() {
   currentAddress = null;
   addressSpan.textContent = "";
   hfValueEl.textContent = "–";
+  liqEthBottomEl.textContent = "–";
   hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
@@ -53,64 +76,80 @@ function setDisconnectedUI() {
   localStorage.removeItem("savedAddress");
 }
 
-// Color the Health Factor like Aave
 function setHealthFactorDisplay(hf) {
-  hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
-
-  let cls;
-  if (hf < 1.0) {
-    cls = "hf-danger";
-  } else if (hf < 1.5) {
-    cls = "hf-warning";
-  } else {
-    cls = "hf-safe";
-  }
-
-  hfValueEl.classList.add(cls);
   hfValueEl.textContent = hf.toFixed(2);
+
+  hfMainRowEl.classList.remove("safe", "warning", "danger");
+
+  if (hf < 1.0) {
+    hfMainRowEl.classList.add("danger");
+  } else if (hf < 1.5) {
+    hfMainRowEl.classList.add("warning");
+  } else {
+    hfMainRowEl.classList.add("safe");
+  }
 }
 
-// Load BTC & ETH prices from CoinGecko (with 24h change for color)
+// liquidationThreshold from config struct (not bitmask)
+function getLiquidationThresholdFromConfig(cfg) {
+  return Number(cfg.liquidationThreshold) / 10000; // 0..1
+}
+
+// Approx ETH liquidation price (USD) assuming only ETH moves
+function computeEthLiqPrice({
+  totalDebtUsd,
+  totalCollateralBaseUsd,
+  hlThreshold,
+  ethCollateralAmount,
+  ethLtv,
+  ethPriceNow,
+}) {
+  if (ethCollateralAmount <= 0 || ethLtv <= 0) return null;
+
+  const totalCollAtLT  = totalCollateralBaseUsd * hlThreshold;
+  const ethCollAtLTNow = ethCollateralAmount * ethPriceNow * ethLtv;
+  const otherCollAtLT  = Math.max(totalCollAtLT - ethCollAtLTNow, 0);
+  const numerator      = totalDebtUsd - otherCollAtLT;
+  if (numerator <= 0) return null;
+
+  return numerator / (ethCollateralAmount * ethLtv);
+}
+
+// ================== MARKET PRICES (COINGECKO) ======================
+
 async function loadCryptoPrices() {
   try {
     const res = await fetch(
       "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&order=market_cap_desc&per_page=2&page=1&sparkline=false&price_change_percentage=24h"
     );
     const data = await res.json();
-
     const btc = data.find((c) => c.id === "bitcoin");
     const eth = data.find((c) => c.id === "ethereum");
 
     function setCoin(elPrice, elChange, coin) {
       if (!coin) return;
 
-      // price with $ sign
       if (elPrice) {
-        elPrice.textContent = "$" + coin.current_price.toLocaleString(undefined, {
-          maximumFractionDigits: 0,
-        });
+        elPrice.textContent =
+          "$" + coin.current_price.toLocaleString(undefined, { maximumFractionDigits: 0 });
       }
 
-      // 24h percentage, e.g. +2.35%
       if (elChange) {
         const pct = coin.price_change_percentage_24h;
-        const formatted =
-          (pct > 0 ? "+" : "") + pct.toFixed(2) + "%";
+        const formatted = (pct > 0 ? "+" : "") + pct.toFixed(2) + "%";
         elChange.textContent = formatted;
+
+        let cls;
+        if (pct > 0.1) cls = "price-up";
+        else if (pct < -0.1) cls = "price-down";
+        else cls = "price-flat";
+
+        [elPrice, elChange].forEach((el) => {
+          if (!el) return;
+          el.classList.remove("price-up", "price-down", "price-flat");
+          el.classList.add(cls);
+        });
       }
-
-      // decide color class
-      const pct = coin.price_change_percentage_24h;
-      let cls;
-      if (pct > 0.1) cls = "price-up";
-      else if (pct < -0.1) cls = "price-down";
-      else cls = "price-flat";
-
-      [elPrice, elChange].forEach((el) => {
-        if (!el) return;
-        el.classList.remove("price-up", "price-down", "price-flat");
-        el.classList.add(cls);
-      });
     }
 
     setCoin(btcPriceEl, btcChangeEl, btc);
@@ -120,15 +159,83 @@ async function loadCryptoPrices() {
   }
 }
 
+// ================== AAVE LOGIC (HF + LIQ PRICE ETH) ===============
+
+async function loadAaveDataForUser(userAddress, provider) {
+  try {
+    const pool   = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
+    const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, provider);
+
+    // Global account data (base ≈ USD, 8 decimals)
+    const ud = await pool.getUserAccountData(userAddress);
+    const totalCollateralBase = Number(ethers.formatUnits(ud.totalCollateralBase, 8)); // USD
+    const totalDebtBase       = Number(ethers.formatUnits(ud.totalDebtBase, 8));       // USD
+    const hlThreshold         = Number(ud.currentLiquidationThreshold) / 10000;        // 0..1
+    const healthFactor        = Number(ethers.formatUnits(ud.healthFactor, 18));
+
+    setHealthFactorDisplay(healthFactor);
+
+    // If no debt, no liquidation price
+    if (totalDebtBase === 0 || totalCollateralBase === 0) {
+      liqEthBottomEl.textContent = "ETH ~ –";
+      liqBtcBottomEl.textContent = "BTC ~ –";
+      return;
+    }
+
+    // --- Global HF=1 liquidation condition --------------------------------
+    // Aave HF ≈ (collateral_value * hlThreshold) / debt_value
+    // HF=1  => collateral_value_at_HF1 = debt / hlThreshold
+    // Assume collateral value scales linearly with the market (all prices move together).
+    // So HF=1 occurs when the market drops by factor:
+    //   dropFactor = (debt / hlThreshold) / current_collateral
+    //             = totalDebt / (hlThreshold * totalCollateral)
+    //
+    // If dropFactor >= 1, you're already at or past HF=1 (edge case).
+
+    const dropFactor = totalDebtBase / (hlThreshold * totalCollateralBase);
+
+    if (dropFactor >= 1) {
+      // Already at or beyond HF=1
+      liqEthBottomEl.textContent = "ETH ~ current";
+      liqBtcBottomEl.textContent = "BTC ~ current";
+      return;
+    }
+
+    // Get current ETH/BTC prices from the Aave oracle (8 decimals)
+    const [ethPriceRaw, btcPriceRaw] = await Promise.all([
+      oracle.getAssetPrice(WETH_ADDRESS),
+      oracle.getAssetPrice(WBTC_ADDRESS),
+    ]);
+
+    const ethNow = Number(ethers.formatUnits(ethPriceRaw, 8)); // USD
+    const btcNow = Number(ethers.formatUnits(btcPriceRaw, 8)); // USD
+
+    // At HF=1 the whole market is scaled by dropFactor
+    const ethAtHF1 = ethNow * dropFactor;
+    const btcAtHF1 = btcNow * dropFactor;
+
+    liqEthBottomEl.textContent = "ETH ~ " + ethAtHF1.toFixed(0).toLocaleString("en-US");
+    liqBtcBottomEl.textContent = "BTC ~ " + btcAtHF1.toFixed(0).toLocaleString("en-US");
+  } catch (e) {
+    console.error("Failed to load Aave / liq price", e);
+    liqEthBottomEl.textContent = "ETH ~ –";
+    liqBtcBottomEl.textContent = "BTC ~ –";
+  }
+}
+
+
+
+// ================== WALLET CONNECTION / INIT ======================
 
 async function connectAndLoad() {
   try {
+    console.log("CONNECT CLICK");
     if (!window.ethereum) {
       statusDiv.textContent = "No browser wallet detected (MetaMask / Rabby).";
       return;
     }
 
-    // If already connected -> toggle dropdown menu
+    // If already connected, just toggle menu
     if (currentAddress) {
       walletMenu.classList.toggle("visible");
       return;
@@ -136,6 +243,7 @@ async function connectAndLoad() {
 
     statusDiv.textContent = "Connecting wallet...";
     const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    console.log("ACCOUNTS", accounts);
     if (!accounts || accounts.length === 0) {
       statusDiv.textContent = "No account returned from wallet.";
       return;
@@ -146,21 +254,14 @@ async function connectAndLoad() {
 
     const provider = new ethers.BrowserProvider(window.ethereum);
     const network  = await provider.getNetwork();
-
-    // Arbitrum One chainId is 42161
+    console.log("NETWORK", network);
     if (Number(network.chainId) !== 42161) {
       statusDiv.textContent = "Please switch wallet to the Arbitrum One network and try again.";
       return;
     }
 
     statusDiv.textContent = "Reading your Aave account data...";
-
-    const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
-    const data = await pool.getUserAccountData(userAddress);
-    const healthFactorRaw = data.healthFactor;
-    const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
-
-    setHealthFactorDisplay(healthFactor);
+    await loadAaveDataForUser(userAddress, provider);
     setConnectedUI(userAddress);
     statusDiv.textContent = "Done.";
   } catch (err) {
@@ -169,14 +270,12 @@ async function connectAndLoad() {
   }
 }
 
-// Button events
 connectButton.addEventListener("click", connectAndLoad);
 
 disconnectBtn.addEventListener("click", () => {
   setDisconnectedUI();
 });
 
-// Close menu when clicking outside
 document.addEventListener("click", (e) => {
   if (!walletMenu.classList.contains("visible")) return;
   if (!e.target.closest(".wallet-container")) {
@@ -184,39 +283,40 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Auto-restore connection if wallet still connected & load prices
-window.addEventListener("load", async () => {
-  try {
-    loadCryptoPrices();
+// Auto‑restore + initial prices
+window.addEventListener("load", () => {
+  loadCryptoPrices();
 
-    if (!window.ethereum) return;
-    const saved = localStorage.getItem("savedAddress");
-    if (!saved) return;
+  if (!window.ethereum) return;
+  const saved = localStorage.getItem("savedAddress");
+  if (!saved) return;
 
-    const accounts = await window.ethereum.request({ method: "eth_accounts" });
-    if (!accounts.includes(saved)) return;
+  (async () => {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (!accounts.includes(saved)) return;
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const network  = await provider.getNetwork();
-    if (Number(network.chainId) !== 42161) return;
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network  = await provider.getNetwork();
+      if (Number(network.chainId) !== 42161) return;
 
-    statusDiv.textContent = "Reading your Aave account data...";
+      statusDiv.textContent = "Reading your Aave account data...";
+      await loadAaveDataForUser(saved, provider);
+      setConnectedUI(saved);
+      statusDiv.textContent = "Loaded from previous connection.";
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+});
 
-    const pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
-    const data = await pool.getUserAccountData(saved);
-    const healthFactorRaw = data.healthFactor;
-    const healthFactor = Number(ethers.formatUnits(healthFactorRaw, 18));
-
-    setHealthFactorDisplay(healthFactor);
-    setConnectedUI(saved);
-    statusDiv.textContent = "Loaded from previous connection.";
-  } catch (err) {
-    console.error(err);
-  }
-})
-  // Refresh BTC / ETH prices every 5 minutes
+// Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
-  ;
+
+
+
+
+
 
 
 
