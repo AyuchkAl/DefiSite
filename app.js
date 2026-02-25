@@ -18,8 +18,8 @@ const ORACLE_ABI = [
 
 // Aave V3 contracts on Arbitrum One
 const POOL_ADDRESS          = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
-const DATA_PROVIDER_ADDRESS = "0xa170dba2cd1f68cdde8551c9e4b907bc6e0c9097"; // lower-case form
-const ORACLE_ADDRESS        = "0x13C9c8ad3E14f0C4C9Ff5C4DB41dA0E0Cf3A32FA";
+const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b"; // lower-case form
+const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 
 // WETH underlying on Arbitrum
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
@@ -293,5 +293,6 @@ window.addEventListener("load", () => {
 
 // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
+
 
 
