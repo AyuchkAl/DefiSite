@@ -35,6 +35,28 @@ body {
   gap: 12px;
 }
 
+/* Brand */
+
+.site-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+}
+
+.site-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.site-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
 /* Health factor */
 
 .hf-block {
@@ -65,9 +87,8 @@ body {
   color: #ffffff;
   font-weight: 500;
 }
-
 .hf-label {
-  font-size: 18px;
+  font-size: 18px;            /* was 11px */
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #9aa4d8;
@@ -78,7 +99,17 @@ body {
   font-weight: 600;
 }
 
+.hf-safe {
+  color: #3dd68c;
+}
+.hf-warning {
+  color: #ffb347;
+}
+.hf-danger {
+  color: #ff5c5c;
+}
 /* Color both label and value together based on status */
+
 .hf-main-row.safe .hf-label,
 .hf-main-row.safe .hf-value {
   color: #3dd68c;
@@ -131,6 +162,12 @@ body {
   background-image: url("eth.jpg");
 }
 
+.asset-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
 .asset-ticker {
   font-size: 11px;
   font-weight: 600;
@@ -148,17 +185,21 @@ body {
 .price-up {
   color: #16c784;
 }
-
 .price-down {
   color: #ea3943;
 }
-
 .price-flat {
   color: #ffffff;
 }
 
-/* NOTE: your original CSS was missing a dot here; keeping correct selector */
-.price-label-inline {
+.change-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 6px;
+}
+
+price-label-inline {
   font-size: 10px;
   font-weight: 500;
   color: #ffffff;
@@ -270,7 +311,30 @@ body {
   display: none;
 }
 
-/* ================== Fear & Greed (previous version) ================== */
+/* Footer with ETH liq price */
+
+.liq-footer {
+  width: 100%;
+  padding: 12px 24px 20px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #f5f5f5;
+}
+
+.liq-label {
+  color: #9aa4d8;
+  font-weight: 500;
+}
+
+.liq-value {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* ================== Fear & Greed (new) ================== */
 
 .fg-block {
   padding: 10px 14px;
