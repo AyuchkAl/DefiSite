@@ -117,7 +117,7 @@ async function loadFearGreed() {
     // Needle: map 0..100 => -90..+90 degrees
     if (fgNeedleEl && Number.isFinite(value)) {
       const deg = -90 + (value / 100) * 180;
-      fgNeedleEl.setAttribute("transform", `rotate(${deg} 85 86)`);
+      fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
     }
   } catch (e) {
     console.error("Failed to load Fear & Greed index", e);
@@ -339,4 +339,3 @@ setInterval(loadCryptoPrices, 5 * 60 * 1000);
 
 // Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
 setInterval(loadFearGreed, 30 * 60 * 1000);
-
