@@ -31,34 +31,12 @@ body {
 
 .left-group {
   display: flex;
-  align-items: center;
+  align-items: stretch;            /* changed: all panels same visual height */
   gap: 12px;
-}
-
-/* Brand */
-
-.site-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 10px;
-}
-
-.site-logo {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.site-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
+  flex-wrap: wrap;                 /* changed: wrap nicely on smaller widths */
 }
 
 /* Health factor */
-
 .hf-block {
   padding: 10px 14px;
   border-radius: 16px;
@@ -66,7 +44,10 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   display: inline-flex;
   flex-direction: column;
-  min-width: 220px; /* slightly wider to fit text */
+  min-width: 220px;
+  height: 76px;                    /* new: define a shared panel height */
+  box-sizing: border-box;
+  justify-content: center;
 }
 
 .hf-main-row {
@@ -87,8 +68,9 @@ body {
   color: #ffffff;
   font-weight: 500;
 }
+
 .hf-label {
-  font-size: 18px;            /* was 11px */
+  font-size: 18px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #9aa4d8;
@@ -99,17 +81,7 @@ body {
   font-weight: 600;
 }
 
-.hf-safe {
-  color: #3dd68c;
-}
-.hf-warning {
-  color: #ffb347;
-}
-.hf-danger {
-  color: #ff5c5c;
-}
 /* Color both label and value together based on status */
-
 .hf-main-row.safe .hf-label,
 .hf-main-row.safe .hf-value {
   color: #3dd68c;
@@ -126,11 +98,12 @@ body {
 }
 
 /* BTC/ETH prices */
-
 .prices-row {
   display: flex;
-  flex-direction: column;  /* ETH under BTC */
+  flex-direction: column;
   gap: 6px;
+  height: 76px;                    /* new: match hf-block */
+  justify-content: center;          /* vertically center pills in that height */
 }
 
 .price-pill {
@@ -143,6 +116,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .asset-icon {
@@ -154,19 +128,8 @@ body {
   background-position: center;
 }
 
-.btc-icon {
-  background-image: url("btc.jpg");
-}
-
-.eth-icon {
-  background-image: url("eth.jpg");
-}
-
-.asset-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
+.btc-icon { background-image: url("btc.jpg"); }
+.eth-icon { background-image: url("eth.jpg"); }
 
 .asset-ticker {
   font-size: 11px;
@@ -182,24 +145,12 @@ body {
   color: #ffffff;
 }
 
-.price-up {
-  color: #16c784;
-}
-.price-down {
-  color: #ea3943;
-}
-.price-flat {
-  color: #ffffff;
-}
+.price-up { color: #16c784; }
+.price-down { color: #ea3943; }
+.price-flat { color: #ffffff; }
 
-.change-column {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-left: 6px;
-}
-
-price-label-inline {
+/* NOTE: this was missing a dot in your original CSS; keeping the selector correct */
+.price-label-inline {
   font-size: 10px;
   font-weight: 500;
   color: #ffffff;
@@ -214,8 +165,106 @@ price-label-inline {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* Wallet */
+/* Fear & Greed (version2, but fit-height + smaller width) */
+.fg-block {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: #11152a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  flex-direction: column;
+  height: 76px;                    /* new: match hf-block */
+  box-sizing: border-box;
+  justify-content: center;
+}
 
+.fg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.fg-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Key change: let the gauge be smaller so the whole block fits 76px height */
+.fg-gauge {
+  position: relative;
+  width: 180px;                    /* smaller than before, fits your top bar */
+  height: 44px;                    /* keep compact */
+}
+
+.fg-svg {
+  width: 180px;
+  height: 44px;
+  display: block;
+}
+
+/* Because we are shrinking the rendered SVG, keep the original viewBox in HTML.
+   The drawing scales down automatically. */
+.fg-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.10);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.fg-seg {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.fg-seg-1 { stroke: #ff5c5c; }
+.fg-seg-2 { stroke: #ffb347; }
+.fg-seg-3 { stroke: #f5d547; }
+.fg-seg-4 { stroke: #7ad86d; }
+.fg-seg-5 { stroke: #16c784; }
+
+.fg-needle-line {
+  stroke: #ffffff;
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+}
+
+.fg-needle-dot {
+  fill: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+}
+
+/* Reposition the value/label so they sit nicely inside the smaller gauge */
+.fg-center {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.fg-value {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.fg-label {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #9aa4d8;
+  text-transform: capitalize;
+}
+
+/* Hide the 0..100 scale in compact mode (it consumes height) */
+.fg-scale {
+  display: none;
+}
+
+/* Wallet */
 .wallet-container {
   position: relative;
   display: inline-block;
@@ -298,7 +347,6 @@ price-label-inline {
 }
 
 /* Center */
-
 .page-content {
   flex: 1;
   display: flex;
@@ -309,126 +357,4 @@ price-label-inline {
 
 .hidden {
   display: none;
-}
-
-/* Footer with ETH liq price */
-
-.liq-footer {
-  width: 100%;
-  padding: 12px 24px 20px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #f5f5f5;
-}
-
-.liq-label {
-  color: #9aa4d8;
-  font-weight: 500;
-}
-
-.liq-value {
-  font-weight: 600;
-  color: #ffffff;
-}
-
-/* ================== Fear & Greed (new) ================== */
-
-.fg-block {
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: #11152a;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  display: inline-flex;
-  flex-direction: column;
-  min-width: 220px;
-}
-
-.fg-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.fg-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.fg-gauge {
-  margin-top: 6px;
-  position: relative;
-  width: 220px;
-  height: 130px;
-}
-
-.fg-svg {
-  width: 220px;
-  height: 130px;
-  display: block;
-}
-
-.fg-track {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.10);
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.fg-seg {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.fg-seg-1 { stroke: #ff5c5c; }  /* extreme fear */
-.fg-seg-2 { stroke: #ffb347; }  /* fear */
-.fg-seg-3 { stroke: #f5d547; }  /* neutral */
-.fg-seg-4 { stroke: #7ad86d; }  /* greed */
-.fg-seg-5 { stroke: #16c784; }  /* extreme greed */
-
-.fg-needle-line {
-  stroke: #ffffff;
-  stroke-width: 2;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
-}
-
-.fg-needle-dot {
-  fill: #ffffff;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
-}
-
-.fg-center {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 46px;
-  text-align: center;
-}
-
-.fg-value {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.fg-label {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #9aa4d8;
-  text-transform: capitalize;
-}
-
-.fg-scale {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 4px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
 }
