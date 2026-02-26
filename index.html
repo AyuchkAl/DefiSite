@@ -53,26 +53,29 @@
           </div>
 
           <div class="fg-gauge">
-            <svg class="fg-svg" viewBox="0 0 170 102" role="img" aria-label="Fear and Greed gauge">
+            <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
               <!-- background track -->
-              <path class="fg-track" d="M 23 86 A 62 62 0 0 1 147 86" pathLength="100"></path>
+              <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
 
-  <path class="fg-seg fg-seg-1" d="M 23 86 A 62 62 0 0 1 147 86" pathLength="100"
-    stroke-dasharray="20 80" stroke-dashoffset="0"></path>
-  <path class="fg-seg fg-seg-2" d="M 23 86 A 62 62 0 0 1 147 86" pathLength="100"
-    stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
-  <path class="fg-seg fg-seg-3" d="M 23 86 A 62 62 0 0 1 147 86" pathLength="100"
-    stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
-  <path class="fg-seg fg-seg-4" d="M 23 86 A 62 62 0 0 1 147 86" pathLength="100"
-    stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
-  <path class="fg-seg fg-seg-5" d="M 23 86 A 62 62 0 0 1 147 86" pathLength="100"
-    stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
-            <!-- Needle center moved from (110,110) to (85,86) -->
-  <g class="fg-needle" id="fgNeedle" transform="rotate(-90 85 86)">
-    <line x1="85" y1="86" x2="85" y2="35" class="fg-needle-line"></line>
-    <circle cx="85" cy="86" r="5" class="fg-needle-dot"></circle>
-  </g>
-</svg>
+              <!-- colored segments (approx CoinMarketCap look) -->
+              <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="0"></path>
+              <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
+              <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
+              <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
+              <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
+
+              <!-- needle -->
+              <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
+                <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
+                <circle cx="110" cy="110" r="6" class="fg-needle-dot"></circle>
+              </g>
+            </svg>
+
             <div class="fg-center">
               <div id="fgValue" class="fg-value">–</div>
               <div id="fgLabel" class="fg-label">Loading…</div>
@@ -112,4 +115,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
