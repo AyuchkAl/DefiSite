@@ -97,10 +97,17 @@ function setHealthFactorDisplay(hf) {
 
 // ================== FEAR & GREED (new) =============================
 
-// Alternative.me API (commonly used by dashboards; daily updates)
+// Replace ONLY the Fear & Greed DOM references + UI updates with this.
+// (All Aave + wallet logic stays unchanged.)
+
+// Fear & Greed (updated header layout)
+const fgHeaderValueEl = document.getElementById("fgHeaderValue");
+const fgHeaderLabelEl = document.getElementById("fgHeaderLabel");
+const fgNeedleEl = document.getElementById("fgNeedle");
+
+// Alternative.me API (daily updates)
 async function loadFearGreed() {
   try {
-    // Use a simple, keyless endpoint
     const res = await fetch("https://api.alternative.me/fng/?limit=1&format=json");
     const json = await res.json();
 
@@ -110,19 +117,18 @@ async function loadFearGreed() {
     const value = Number(item.value); // 0..100
     const label = String(item.value_classification || "").toLowerCase();
 
-    // Update UI
-    if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
-    if (fgLabelEl) fgLabelEl.textContent = label ? label : "–";
+    if (fgHeaderValueEl) fgHeaderValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
+    if (fgHeaderLabelEl) fgHeaderLabelEl.textContent = label ? label : "–";
 
-    // Needle: map 0..100 => -90..+90 degrees
+    // Needle: map 0..100 => -90..+90 degrees (still uses original SVG center)
     if (fgNeedleEl && Number.isFinite(value)) {
       const deg = -90 + (value / 100) * 180;
       fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
     }
   } catch (e) {
     console.error("Failed to load Fear & Greed index", e);
-    if (fgValueEl) fgValueEl.textContent = "–";
-    if (fgLabelEl) fgLabelEl.textContent = "Unavailable";
+    if (fgHeaderValueEl) fgHeaderValueEl.textContent = "–";
+    if (fgHeaderLabelEl) fgHeaderLabelEl.textContent = "Unavailable";
   }
 }
 
@@ -339,3 +345,4 @@ setInterval(loadCryptoPrices, 5 * 60 * 1000);
 
 // Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
 setInterval(loadFearGreed, 30 * 60 * 1000);
+
