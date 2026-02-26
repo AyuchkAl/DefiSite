@@ -173,16 +173,16 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   display: inline-flex;
   flex-direction: column;
-  height: 76px;                    /* new: match hf-block */
   box-sizing: border-box;
   justify-content: center;
+  min-width: 220px;           /* keep consistent with HF panel width */
 }
 
 .fg-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .fg-title {
@@ -194,13 +194,13 @@ body {
 /* Key change: let the gauge be smaller so the whole block fits 76px height */
 .fg-gauge {
   position: relative;
-  width: 180px;                    /* smaller than before, fits your top bar */
-  height: 44px;                    /* keep compact */
+  width: 220px;               /* match your original panel width */
+  height: 62px;               /* enough for arc + center text + scale */
 }
 
 .fg-svg {
-  width: 180px;
-  height: 44px;
+  width: 220px;
+  height: 62px;
   display: block;
 }
 
@@ -241,13 +241,13 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 6px;
+  top: 10px;                  /* moved up */
   text-align: center;
   pointer-events: none;
 }
 
 .fg-value {
-  font-size: 16px;
+  font-size: 16px;            /* slightly smaller than before */
   font-weight: 700;
   line-height: 1;
 }
@@ -259,10 +259,18 @@ body {
   text-transform: capitalize;
 }
 
-/* Hide the 0..100 scale in compact mode (it consumes height) */
+/* Keep scale visible (requested) */
 .fg-scale {
-  display: none;
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.6);
 }
+
 
 /* Wallet */
 .wallet-container {
@@ -358,3 +366,4 @@ body {
 .hidden {
   display: none;
 }
+
