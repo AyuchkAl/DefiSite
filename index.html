@@ -10,106 +10,101 @@
 </head>
 <body>
   <header class="topbar">
-  <div class="topbar-inner">
-    <div class="left-group">
-      <!-- Removed site-brand block -->
+    <div class="topbar-inner">
+      <div class="left-group">
+        <div id="hfBlock" class="hf-block">
+          <div class="hf-main-row">
+            <div class="hf-label">Health factor</div>
+            <div id="hfValue" class="hf-value">–</div>
+          </div>
+          <div id="hfLiqLine" class="hf-liq-line">
+            HF = 1 at: <span id="liqEthBottom">ETH ~ –</span>
+            &nbsp;&nbsp;
+            <span id="liqBtcBottom">BTC ~ –</span>
+          </div>
+        </div>
 
-      <div id="hfBlock" class="hf-block">
-        <div class="hf-main-row">
-          <div class="hf-label">Health factor</div>
-          <div id="hfValue" class="hf-value">–</div>
+        <div class="prices-row">
+          <div class="price-pill">
+            <div class="asset-icon btc-icon"></div>
+            <div class="price-row">
+              <span class="asset-ticker">BTC</span>
+              <span id="btcPrice" class="price-value">–</span>
+              <span class="price-label-inline">24h %</span>
+              <span id="btcChange" class="price-change-inline">–</span>
+            </div>
+          </div>
+
+          <div class="price-pill">
+            <div class="asset-icon eth-icon"></div>
+            <div class="price-row">
+              <span class="asset-ticker">ETH</span>
+              <span id="ethPrice" class="price-value">–</span>
+              <span class="price-label-inline">24h %</span>
+              <span id="ethChange" class="price-change-inline">–</span>
+            </div>
+          </div>
         </div>
-        <div id="hfLiqLine" class="hf-liq-line">
-          HF = 1 at: <span id="liqEthBottom">ETH ~ –</span>
-          &nbsp;&nbsp;
-          <span id="liqBtcBottom">BTC ~ –</span>
+
+        <!-- Fear & Greed panel (new) -->
+        <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
+          <div class="fg-header">
+            <div class="fg-title">Fear &amp; Greed</div>
+          </div>
+
+          <div class="fg-gauge">
+            <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
+              <!-- background track -->
+              <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
+
+              <!-- colored segments (approx CoinMarketCap look) -->
+              <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="0"></path>
+              <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
+              <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
+              <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
+              <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
+
+              <!-- needle -->
+              <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
+                <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
+                <circle cx="110" cy="110" r="6" class="fg-needle-dot"></circle>
+              </g>
+            </svg>
+
+            <div class="fg-center">
+              <div id="fgValue" class="fg-value">–</div>
+              <div id="fgLabel" class="fg-label">Loading…</div>
+            </div>
+
+            <div class="fg-scale">
+              <span>0</span>
+              <span>25</span>
+              <span>50</span>
+              <span>75</span>
+              <span>100</span>
+            </div>
+          </div>
         </div>
+        <!-- /Fear & Greed panel -->
       </div>
 
-      <div class="prices-row">
-       <div class="price-pill">
-          <div class="asset-icon btc-icon"></div>
-
-          <div class="price-row">
-            <span class="asset-ticker">BTC</span>
-            <span id="btcPrice" class="price-value">–</span>
-            <span class="price-label-inline">24h %</span>
-            <span id="btcChange" class="price-change-inline">–</span>
-          </div>
+      <div class="wallet-container">
+        <button id="connectButton">
+          <span class="wallet-dot"></span>
+          <span id="connectLabel">Connect wallet</span>
+        </button>
+        <div id="walletMenu" class="wallet-menu">
+          <button id="disconnectButton">Disconnect</button>
         </div>
-
-        <div class="price-pill">
-          <div class="asset-icon eth-icon"></div>
-
-          <div class="price-row">
-            <span class="asset-ticker">ETH</span>
-            <span id="ethPrice" class="price-value">–</span>
-            <span class="price-label-inline">24h %</span>
-            <span id="ethChange" class="price-change-inline">–</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Fear & Greed panel (version2: larger, with scale + center value) -->
-      <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
-        <div class="fg-header">
-          <div class="fg-title">Fear &amp; Greed</div>
-        </div>
-
-        <div class="fg-gauge">
-          <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
-            <!-- background track -->
-            <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
-
-            <!-- colored segments (approx CoinMarketCap look) -->
-            <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-              stroke-dasharray="20 80" stroke-dashoffset="0"></path>
-            <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-              stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
-            <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-              stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
-            <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-              stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
-            <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-              stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
-
-            <!-- needle -->
-            <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
-              <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
-              <circle cx="110" cy="110" r="6" class="fg-needle-dot"></circle>
-            </g>
-          </svg>
-
-          <div class="fg-center">
-            <div id="fgValue" class="fg-value">–</div>
-            <div id="fgLabel" class="fg-label">Loading…</div>
-          </div>
-
-          <div class="fg-scale">
-            <span>0</span>
-            <span>25</span>
-            <span>50</span>
-            <span>75</span>
-            <span>100</span>
-          </div>
-        </div>
-      </div>
-      <!-- /Fear & Greed panel -->
-    </div>
-
-    <div class="wallet-container">
-      <button id="connectButton">
-        <span class="wallet-dot"></span>
-        <span id="connectLabel">Connect wallet</span>
-      </button>
-      <div id="walletMenu" class="wallet-menu">
-        <button id="disconnectButton">Disconnect</button>
       </div>
     </div>
-  </div>
-</header>
+  </header>
 
-  
   <main class="page-content">
     <div id="status"></div>
     <div id="result" class="hidden">
