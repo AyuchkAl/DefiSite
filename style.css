@@ -166,6 +166,8 @@ body {
 }
 
 /* Fear & Greed (version2, but fit-height + smaller width) */
+/* ================== Fear & Greed (updated layout) ================== */
+
 .fg-block {
   padding: 10px 14px;
   border-radius: 16px;
@@ -173,39 +175,60 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   display: inline-flex;
   flex-direction: column;
+  min-width: 220px;
   box-sizing: border-box;
   justify-content: center;
-  min-width: 220px;           /* keep consistent with HF panel width */
 }
 
+/* Header: title + value on same row, classification below */
 .fg-header {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.fg-title-row {
+  display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 4px;
+  gap: 10px;
 }
 
 .fg-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #ffffff;
+  white-space: nowrap;
 }
 
-/* Key change: let the gauge be smaller so the whole block fits 76px height */
+.fg-header-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  min-width: 24px;
+  text-align: right;
+}
+
+.fg-header-label {
+  font-size: 11px;
+  color: #9aa4d8;
+  text-transform: capitalize;
+}
+
+/* Compact gauge area (no scale labels) */
 .fg-gauge {
   position: relative;
-  width: 220px;               /* match your original panel width */
-  height: 62px;               /* enough for arc + center text + scale */
+  width: 220px;
+  height: 48px;
 }
 
 .fg-svg {
   width: 220px;
-  height: 62px;
+  height: 48px;
   display: block;
 }
 
-/* Because we are shrinking the rendered SVG, keep the original viewBox in HTML.
-   The drawing scales down automatically. */
 .fg-track {
   fill: none;
   stroke: rgba(255, 255, 255, 0.10);
@@ -236,41 +259,9 @@ body {
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
 }
 
-/* Reposition the value/label so they sit nicely inside the smaller gauge */
-.fg-center {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 10px;                  /* moved up */
-  text-align: center;
-  pointer-events: none;
-}
-
-.fg-value {
-  font-size: 16px;            /* slightly smaller than before */
-  font-weight: 700;
-  line-height: 1;
-}
-
-.fg-label {
-  margin-top: 2px;
-  font-size: 10px;
-  color: #9aa4d8;
-  text-transform: capitalize;
-}
-
-/* Keep scale visible (requested) */
-.fg-scale {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 2px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
+/* We no longer use these in this layout */
+.fg-center { display: none; }
+.fg-scale { display: none; }
 
 /* Wallet */
 .wallet-container {
@@ -366,4 +357,5 @@ body {
 .hidden {
   display: none;
 }
+
 
