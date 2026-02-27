@@ -405,7 +405,7 @@ price-label-inline {
   position: absolute;
   left: 0;
   right: 0;
-  top: 46px;
+  top: 40px;
   text-align: center;
 }
 
@@ -426,6 +426,7 @@ price-label-inline {
 .fg-scale {
   display: none !important;
 }
+
 
 
 
