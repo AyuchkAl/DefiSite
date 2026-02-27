@@ -11,7 +11,6 @@ const DATA_PROVIDER_ABI = [
   "function getReserveConfigurationData(address asset) view returns (uint256 decimals,uint256 ltv,uint256 liquidationThreshold,uint256 liquidationBonus,uint256 reserveFactor,bool usageAsCollateralEnabled,bool borrowingEnabled,bool stableBorrowRateEnabled,bool isActive,bool isFrozen)"
 ];
 
-
 // Price Oracle
 const ORACLE_ABI = [
   "function getAssetPrice(address asset) view returns (uint256)"
@@ -47,6 +46,11 @@ const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
+// Fear & Greed (new)
+const fgValueEl = document.getElementById("fgValue");
+const fgLabelEl = document.getElementById("fgLabel");
+const fgNeedleEl = document.getElementById("fgNeedle");
+
 let currentAddress = null;
 
 // ================== HELPERS ========================================
@@ -68,6 +72,7 @@ function setDisconnectedUI() {
   addressSpan.textContent = "";
   hfValueEl.textContent = "–";
   liqEthBottomEl.textContent = "–";
+  liqBtcBottomEl.textContent = "–";
   hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
@@ -87,6 +92,37 @@ function setHealthFactorDisplay(hf) {
     hfMainRowEl.classList.add("warning");
   } else {
     hfMainRowEl.classList.add("safe");
+  }
+}
+
+// ================== FEAR & GREED (new) =============================
+
+// Alternative.me API (commonly used by dashboards; daily updates)
+async function loadFearGreed() {
+  try {
+    // Use a simple, keyless endpoint
+    const res = await fetch("https://api.alternative.me/fng/?limit=1&format=json");
+    const json = await res.json();
+
+    const item = json?.data?.[0];
+    if (!item) throw new Error("No Fear & Greed data returned");
+
+    const value = Number(item.value); // 0..100
+    const label = String(item.value_classification || "").toLowerCase();
+
+    // Update UI
+    if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
+    if (fgLabelEl) fgLabelEl.textContent = label ? label : "–";
+
+    // Needle: map 0..100 => -90..+90 degrees
+    if (fgNeedleEl && Number.isFinite(value)) {
+      const deg = -90 + (value / 100) * 180;
+      fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
+    }
+  } catch (e) {
+    console.error("Failed to load Fear & Greed index", e);
+    if (fgValueEl) fgValueEl.textContent = "–";
+    if (fgLabelEl) fgLabelEl.textContent = "Unavailable";
   }
 }
 
@@ -182,20 +218,9 @@ async function loadAaveDataForUser(userAddress, provider) {
       return;
     }
 
-    // --- Global HF=1 liquidation condition --------------------------------
-    // Aave HF ≈ (collateral_value * hlThreshold) / debt_value
-    // HF=1  => collateral_value_at_HF1 = debt / hlThreshold
-    // Assume collateral value scales linearly with the market (all prices move together).
-    // So HF=1 occurs when the market drops by factor:
-    //   dropFactor = (debt / hlThreshold) / current_collateral
-    //             = totalDebt / (hlThreshold * totalCollateral)
-    //
-    // If dropFactor >= 1, you're already at or past HF=1 (edge case).
-
     const dropFactor = totalDebtBase / (hlThreshold * totalCollateralBase);
 
     if (dropFactor >= 1) {
-      // Already at or beyond HF=1
       liqEthBottomEl.textContent = "ETH ~ current";
       liqBtcBottomEl.textContent = "BTC ~ current";
       return;
@@ -222,8 +247,6 @@ async function loadAaveDataForUser(userAddress, provider) {
     liqBtcBottomEl.textContent = "BTC ~ –";
   }
 }
-
-
 
 // ================== WALLET CONNECTION / INIT ======================
 
@@ -283,9 +306,10 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Auto‑restore + initial prices
+// Auto‑restore + initial prices + Fear&Greed
 window.addEventListener("load", () => {
   loadCryptoPrices();
+  loadFearGreed();
 
   if (!window.ethereum) return;
   const saved = localStorage.getItem("savedAddress");
@@ -313,10 +337,5 @@ window.addEventListener("load", () => {
 // Refresh BTC / ETH prices every 5 minutes
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
 
-
-
-
-
-
-
-
+// Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
+setInterval(loadFearGreed, 30 * 60 * 1000);

@@ -125,7 +125,6 @@ body {
   color: #ff5c5c;
 }
 
-
 /* BTC/ETH prices */
 
 .prices-row {
@@ -334,6 +333,109 @@ price-label-inline {
   font-weight: 600;
   color: #ffffff;
 }
+
+/* ================== Fear & Greed (new) ================== */
+
+.fg-block {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: #11152a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 220px;
+}
+
+.fg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fg-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.fg-gauge {
+  margin-top: 6px;
+  position: relative;
+  width: 220px;
+  height: 80px;
+}
+
+.fg-svg {
+  width: 220px;
+  height: 80px;
+  display: block;
+}
+
+.fg-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.10);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.fg-seg {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.fg-seg-1 { stroke: #ff5c5c; }  /* extreme fear */
+.fg-seg-2 { stroke: #ffb347; }  /* fear */
+.fg-seg-3 { stroke: #f5d547; }  /* neutral */
+.fg-seg-4 { stroke: #7ad86d; }  /* greed */
+.fg-seg-5 { stroke: #16c784; }  /* extreme greed */
+
+.fg-needle-line {
+  stroke: #ffffff;
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+}
+
+.fg-needle-dot {
+  fill: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+}
+
+.fg-center {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42px;
+  text-align: center;
+}
+
+.fg-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.fg-label {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #9aa4d8;
+  text-transform: capitalize;
+}
+
+/* Remove the 0/25/50/75/100 scale under the Fear & Greed gauge */
+.fg-scale {
+  display: none !important;
+}
+
+
+
+
+
+
+
+
+
+
 
 
 
