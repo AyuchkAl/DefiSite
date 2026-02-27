@@ -362,12 +362,12 @@ price-label-inline {
   margin-top: 6px;
   position: relative;
   width: 220px;
-  height: 70px;
+  height: 80px;
 }
 
 .fg-svg {
   width: 220px;
-  height: 70px;
+  height: 80px;
   display: block;
 }
 
@@ -426,6 +426,7 @@ price-label-inline {
 .fg-scale {
   display: none !important;
 }
+
 
 
 
