@@ -422,16 +422,11 @@ price-label-inline {
   text-transform: capitalize;
 }
 
+/* Remove the 0/25/50/75/100 scale under the Fear & Greed gauge */
 .fg-scale {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 4px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  display: none !important;
 }
+
 
 
 
