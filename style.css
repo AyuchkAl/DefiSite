@@ -361,13 +361,13 @@ price-label-inline {
 .fg-gauge {
   margin-top: 6px;
   position: relative;
-  width: 250px;
-  height: 80px;
+  width: 220px;
+  height: 70px;
 }
 
 .fg-svg {
-  width: 250px;
-  height: 80px;
+  width: 220px;
+  height: 70px;
   display: block;
 }
 
@@ -426,6 +426,7 @@ price-label-inline {
 .fg-scale {
   display: none !important;
 }
+
 
 
 
