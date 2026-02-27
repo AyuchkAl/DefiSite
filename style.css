@@ -359,16 +359,12 @@ price-label-inline {
 }
 
 .fg-gauge {
-  margin-top: 4px;
-  position: relative;
-  width: 180px;
-  height: 100px;
+  width: 280px;      /* <- increase this (e.g. 260/280/300) */
+  height: auto;      /* keep proportions */
 }
-
 .fg-svg {
-  width: 220px;
-  height: 130px;
-  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .fg-track {
@@ -432,4 +428,5 @@ price-label-inline {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.6);
 }
+
 
