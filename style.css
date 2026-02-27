@@ -405,12 +405,12 @@ price-label-inline {
   position: absolute;
   left: 0;
   right: 0;
-  top: 20px;
+  top: 40px;
   text-align: center;
 }
 
 .fg-value {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1;
 }
@@ -426,6 +426,7 @@ price-label-inline {
 .fg-scale {
   display: none !important;
 }
+
 
 
 
