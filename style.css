@@ -411,8 +411,8 @@ price-label-inline {
 
 .fg-value {
   font-size: 22px;
-  font-weight: 600;
-  line-height: 2;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .fg-label {
@@ -426,6 +426,7 @@ price-label-inline {
 .fg-scale {
   display: none !important;
 }
+
 
 
 
