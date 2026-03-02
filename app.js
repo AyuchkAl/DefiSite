@@ -355,7 +355,13 @@ const TOTAL_ASSETS_CELL_CSV_URL =
 const totalAssetsValueEl = document.getElementById("totalAssetsValue");
 
 function formatUsd(amount) {
-  return "$ " + amount.toFixed(2);
+  return (
+    "$" +
+    Math.round(Number(amount)).toLocaleString("de-DE", {
+      maximumFractionDigits: 0,
+      useGrouping: true,
+    })
+  );
 }
 
 async function loadTotalAssets() {
@@ -391,3 +397,4 @@ window.addEventListener("load", () => {
 
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
