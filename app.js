@@ -339,3 +339,54 @@ setInterval(loadCryptoPrices, 5 * 60 * 1000);
 
 // Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
 setInterval(loadFearGreed, 30 * 60 * 1000);
+
+
+// ================== TOTAL ASSETS (Google Sheet cell T2) ==================
+
+// Published (public) sheet ID from your /pubhtml link:
+const TOTAL_ASSETS_SHEET_ID = "2PACX-1vRxuD9EoFvRcLXkoqETNow2loq4BB2I_CFj0Fje61JwR0j-C3zRyLZRz5m9vucboK6Lw0zuANxJeKoL";
+
+// Read exactly cell T2 from sheet DEFI_invest as CSV
+const TOTAL_ASSETS_CELL_CSV_URL =
+  `https://docs.google.com/spreadsheets/d/e/${TOTAL_ASSETS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=DEFI_invest&range=T2`;
+
+const totalAssetsValueEl = document.getElementById("totalAssetsValue");
+
+function formatUsd(amount) {
+  return "$ " + Number(amount).toFixed(2);
+}
+
+async function loadTotalAssets() {
+  try {
+    if (!totalAssetsValueEl) return;
+
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // For a single cell, CSV is typically: "12728.85"\n
+    let text = (await res.text()).trim();
+
+    // remove surrounding quotes if present
+    text = text.replace(/^"+|"+$/g, "");
+
+    // normalize common formatting
+    const normalized = text.replace(/\s/g, "").replace(/,/g, "");
+    const value = Number(normalized);
+
+    if (!Number.isFinite(value)) throw new Error("Cell value is not numeric: " + text);
+
+    totalAssetsValueEl.textContent = formatUsd(value);
+  } catch (err) {
+    console.error("Failed to load Total Assets", err);
+    if (totalAssetsValueEl) totalAssetsValueEl.textContent = "Unavailable";
+  }
+}
+
+// Call on load (add to your existing load handler, or keep this)
+window.addEventListener("load", () => {
+  loadTotalAssets();
+});
+
+// Optional refresh every 10 minutes
+setInterval(loadTotalAssets, 10 * 60 * 1000);
+
