@@ -340,53 +340,54 @@ setInterval(loadCryptoPrices, 5 * 60 * 1000);
 // Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
 setInterval(loadFearGreed, 30 * 60 * 1000);
 
-
 // ================== TOTAL ASSETS (Google Sheet cell T2) ==================
 
-// Published (public) sheet ID from your /pubhtml link:
-const TOTAL_ASSETS_SHEET_ID = "2PACX-1vRxuD9EoFvRcLXkoqETNow2loq4BB2I_CFj0Fje61JwR0j-C3zRyLZRz5m9vucboK6Lw0zuANxJeKoL";
+// Your original spreadsheet ID (from the older link you shared)
+const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 
-// Read exactly cell T2 from sheet DEFI_invest as CSV
+// From your published link: gid=0
+const TOTAL_ASSETS_GID = "0";
+
+// Direct CSV export of just T2
 const TOTAL_ASSETS_CELL_CSV_URL =
-  `https://docs.google.com/spreadsheets/d/e/${TOTAL_ASSETS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=DEFI_invest&range=T2`;
+  `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
 
 const totalAssetsValueEl = document.getElementById("totalAssetsValue");
 
 function formatUsd(amount) {
-  return "$ " + Number(amount).toFixed(2);
+  return "$ " + amount.toFixed(2);
 }
 
 async function loadTotalAssets() {
   try {
     if (!totalAssetsValueEl) return;
 
-    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, {
+      cache: "no-store",
+    });
+
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // For a single cell, CSV is typically: "12728.85"\n
+    // For a single cell, CSV is typically: 12728.85\n OR "12728.85"\n
     let text = (await res.text()).trim();
+    text = text.replace(/^"+|"+$/g, "");     // strip quotes
+    text = text.replace(/\s/g, "");          // strip spaces
+    text = text.replace(/,/g, "");           // strip thousands separators
 
-    // remove surrounding quotes if present
-    text = text.replace(/^"+|"+$/g, "");
-
-    // normalize common formatting
-    const normalized = text.replace(/\s/g, "").replace(/,/g, "");
-    const value = Number(normalized);
-
-    if (!Number.isFinite(value)) throw new Error("Cell value is not numeric: " + text);
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
 
     totalAssetsValueEl.textContent = formatUsd(value);
   } catch (err) {
     console.error("Failed to load Total Assets", err);
-    if (totalAssetsValueEl) totalAssetsValueEl.textContent = "Unavailable";
+    totalAssetsValueEl.textContent = "Unavailable";
   }
 }
 
-// Call on load (add to your existing load handler, or keep this)
+// call on load (if you already have a window load handler, just call loadTotalAssets() inside it)
 window.addEventListener("load", () => {
   loadTotalAssets();
 });
 
-// Optional refresh every 10 minutes
+// refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
-
