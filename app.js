@@ -371,6 +371,7 @@ setInterval(loadFearGreed, 30 * 60 * 1000);
 
 // Your original spreadsheet ID (from the older link you shared)
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
+const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
 
 // From your published link: gid=0
 const TOTAL_ASSETS_GID = "0";
@@ -390,41 +391,40 @@ function formatUsd(amount) {
     })
   );
 }
+// ✅ Then update loadTotalAssets() to set BOTH elements safely:
 
 async function loadTotalAssets() {
   try {
-    if (!totalAssetsValueEl) return;
+    if (!totalAssetsValueEl && !totalAssetsValueCardEl) return;
 
-    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, {
-      cache: "no-store",
-    });
-
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // For a single cell, CSV is typically: 12728.85\n OR "12728.85"\n
     let text = (await res.text()).trim();
-    text = text.replace(/^"+|"+$/g, "");     // strip quotes
-    text = text.replace(/\s/g, "");          // strip spaces
-    text = text.replace(/,/g, "");           // strip thousands separators
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
 
     const value = Number(text);
     if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
 
     const formatted = formatUsd(value);
 
-if (totalAssetsValueEl) totalAssetsValueEl.textContent = formatted;
-if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = formatted;
+    if (totalAssetsValueEl) totalAssetsValueEl.textContent = formatted;
+    if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = formatted;
   } catch (err) {
     console.error("Failed to load Total Assets", err);
     if (totalAssetsValueEl) totalAssetsValueEl.textContent = "Unavailable";
-if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
+    if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
   }
 }
 
 
 
+
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
 
 
 
