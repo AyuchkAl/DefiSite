@@ -383,10 +383,14 @@ async function loadTotalAssets() {
     const value = Number(text);
     if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
 
-    totalAssetsValueEl.textContent = formatUsd(value);
+    const formatted = formatUsd(value);
+
+if (totalAssetsValueEl) totalAssetsValueEl.textContent = formatted;
+if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = formatted;
   } catch (err) {
     console.error("Failed to load Total Assets", err);
-    totalAssetsValueEl.textContent = "Unavailable";
+    if (totalAssetsValueEl) totalAssetsValueEl.textContent = "Unavailable";
+if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
   }
 }
 
@@ -397,5 +401,6 @@ window.addEventListener("load", () => {
 
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
 
 
