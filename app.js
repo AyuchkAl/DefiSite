@@ -310,6 +310,7 @@ document.addEventListener("click", (e) => {
 window.addEventListener("load", () => {
   loadCryptoPrices();
   loadFearGreed();
+  loadTotalAssets();
 
   if (!window.ethereum) return;
   const saved = localStorage.getItem("savedAddress");
@@ -394,13 +395,11 @@ if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
   }
 }
 
-// call on load (if you already have a window load handler, just call loadTotalAssets() inside it)
-window.addEventListener("load", () => {
-  loadTotalAssets();
-});
+
 
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
 
 
 
