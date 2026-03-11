@@ -105,18 +105,60 @@
     </div>
   </header>
 
-  <main class="page-content">
+ <main class="page-content">
+  <!-- NEW: Left side Total Assets panel (like Total_Assets.jpg, styled to your site) -->
+  <section class="main-left">
+    <div class="assets-card" aria-label="Total Assets panel">
+      <div class="assets-top">
+        <div class="assets-title">Total Assets</div>
+        <button class="assets-menu" aria-label="More options" type="button">⋮</button>
+      </div>
+
+      <div class="assets-mid">
+        <!-- This will be filled by your existing loadTotalAssets() -->
+        <div id="totalAssetsValueCard" class="assets-value">Loading…</div>
+
+        <!-- Optional (static for now, like the template). You can wire real % later -->
+        <div class="assets-change">
+          <div class="assets-change-row">
+            <span class="assets-arrow">↗</span>
+            <span id="assetsPercent" class="assets-percent">+0.0%</span>
+          </div>
+          <div class="assets-sub">from last week</div>
+        </div>
+      </div>
+
+      <!-- Decorative sparkline (same vibe as your Total_Assets.jpg) -->
+      <svg class="assets-spark" viewBox="0 0 260 70" role="img" aria-label="Total Assets chart">
+        <path
+          d="M5 45 C 30 20, 55 55, 80 35 S 130 25, 155 42 S 205 60, 230 30 S 250 15, 255 40"
+          fill="none"
+          stroke="rgba(46, 186, 198, 0.95)"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </div>
+  </section>
+
+  <!-- Existing content in the center (you can keep or remove) -->
+  <section class="main-center">
+    <!-- Keep your old Total Assets line if you want (can be hidden with CSS) -->
     <div id="totalAssets" class="total-assets">
-  <span class="total-assets-label">Total Assets =</span>
-  <span id="totalAssetsValue" class="total-assets-value">Loading…</span>
-</div>
+      <span class="total-assets-label">Total Assets =</span>
+      <span id="totalAssetsValue" class="total-assets-value">Loading…</span>
+    </div>
+
     <div id="status"></div>
     <div id="result" class="hidden">
       <span id="address" style="display:none;"></span>
     </div>
-  </main>
+  </section>
+</main>
 
   <script src="app.js"></script>
 </body>
 </html>
+
 
