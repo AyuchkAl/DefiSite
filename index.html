@@ -108,11 +108,11 @@
  <main class="page-content">
   <!-- NEW: Left side Total Assets panel (like Total_Assets.jpg, styled to your site) -->
   <section class="main-left">
-    <div class="assets-card" aria-label="Total Assets panel">
-      <div class="assets-top">
-        <div class="assets-title">Total Assets</div>
-        <button class="assets-menu" aria-label="More options" type="button">⋮</button>
-      </div>
+  <!-- Replace the content INSIDE your .assets-card with this simpler version -->
+<div class="assets-card" aria-label="Total Assets panel">
+  <div class="assets-title">Total Assets</div>
+  <div id="totalAssetsValueCard" class="assets-value">Loading…</div>
+</div>
 
       <div class="assets-mid">
         <!-- This will be filled by your existing loadTotalAssets() -->
@@ -160,5 +160,6 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 
 
