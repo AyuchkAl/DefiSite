@@ -310,7 +310,33 @@ document.addEventListener("click", (e) => {
 window.addEventListener("load", () => {
   loadCryptoPrices();
   loadFearGreed();
-  loadTotalAssets();
+  loadTotalAssets(
+    async function loadTotalAssets() {
+  try {
+    if (!totalAssetsValueEl) return;
+
+    console.log("Loading Total Assets from:", TOTAL_ASSETS_CELL_CSV_URL);
+
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    let text = (await res.text()).trim();
+    console.log("Total Assets raw CSV:", text);
+
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
+
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
+
+    totalAssetsValueEl.textContent = formatUsd(value);
+  } catch (err) {
+    console.error("Failed to load Total Assets", err);
+    totalAssetsValueEl.textContent = "Unavailable";
+  }
+}
+  );
 
   if (!window.ethereum) return;
   const saved = localStorage.getItem("savedAddress");
@@ -399,6 +425,7 @@ if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
 
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
 
 
 
