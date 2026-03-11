@@ -310,6 +310,33 @@ document.addEventListener("click", (e) => {
 window.addEventListener("load", () => {
   loadCryptoPrices();
   loadFearGreed();
+  loadTotalAssets(
+    async function loadTotalAssets() {
+  try {
+    if (!totalAssetsValueEl) return;
+
+    console.log("Loading Total Assets from:", TOTAL_ASSETS_CELL_CSV_URL);
+
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    let text = (await res.text()).trim();
+    console.log("Total Assets raw CSV:", text);
+
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
+
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
+
+    totalAssetsValueEl.textContent = formatUsd(value);
+  } catch (err) {
+    console.error("Failed to load Total Assets", err);
+    totalAssetsValueEl.textContent = "Unavailable";
+  }
+}
+  );
 
   if (!window.ethereum) return;
   const saved = localStorage.getItem("savedAddress");
@@ -344,6 +371,7 @@ setInterval(loadFearGreed, 30 * 60 * 1000);
 
 // Your original spreadsheet ID (from the older link you shared)
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
+const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
 
 // From your published link: gid=0
 const TOTAL_ASSETS_GID = "0";
@@ -352,7 +380,7 @@ const TOTAL_ASSETS_GID = "0";
 const TOTAL_ASSETS_CELL_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
 
-const totalAssetsValueEl = document.getElementById("totalAssetsValue");
+//const totalAssetsValueEl = document.getElementById("totalAssetsValue");
 
 function formatUsd(amount) {
   return (
@@ -363,39 +391,39 @@ function formatUsd(amount) {
     })
   );
 }
+// ✅ Then update loadTotalAssets() to set BOTH elements safely:
 
 async function loadTotalAssets() {
   try {
-    if (!totalAssetsValueEl) return;
+    if (!totalAssetsValueCardEl) return;
 
-    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, {
-      cache: "no-store",
-    });
-
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // For a single cell, CSV is typically: 12728.85\n OR "12728.85"\n
     let text = (await res.text()).trim();
-    text = text.replace(/^"+|"+$/g, "");     // strip quotes
-    text = text.replace(/\s/g, "");          // strip spaces
-    text = text.replace(/,/g, "");           // strip thousands separators
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
 
     const value = Number(text);
     if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
 
-    totalAssetsValueEl.textContent = formatUsd(value);
+    totalAssetsValueCardEl.textContent = formatUsd(value);
   } catch (err) {
     console.error("Failed to load Total Assets", err);
-    totalAssetsValueEl.textContent = "Unavailable";
+    if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
   }
 }
 
-// call on load (if you already have a window load handler, just call loadTotalAssets() inside it)
-window.addEventListener("load", () => {
-  loadTotalAssets();
-});
+
+
 
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
+
+
+
+
 
 

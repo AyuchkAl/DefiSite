@@ -105,18 +105,36 @@
     </div>
   </header>
 
-  <main class="page-content">
-    <div id="totalAssets" class="total-assets">
-  <span class="total-assets-label">Total Assets =</span>
-  <span id="totalAssetsValue" class="total-assets-value">Loading…</span>
+ <main class="page-content">
+  <!-- NEW: Left side Total Assets panel (like Total_Assets.jpg, styled to your site) -->
+  <section class="main-left">
+  <!-- Replace the content INSIDE your .assets-card with this simpler version -->
+<div class="assets-card" aria-label="Total Assets panel">
+  <div class="assets-title">Total Assets</div>
+  <div id="totalAssetsValueCard" class="assets-value">Loading…</div>
 </div>
+
+         
+          </div>
+  </section>
+
+  <!-- Existing content in the center (you can keep or remove) -->
+  <section class="main-center">
+    <!-- Keep your old Total Assets line if you want (can be hidden with CSS) -->
+  
     <div id="status"></div>
     <div id="result" class="hidden">
       <span id="address" style="display:none;"></span>
     </div>
-  </main>
+  </section>
+</main>
 
   <script src="app.js"></script>
 </body>
 </html>
+
+
+
+
+
 
