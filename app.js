@@ -97,20 +97,20 @@ function setHealthFactorDisplay(hf) {
 
 // ================== FEAR & GREED (new) =============================
 
-// Alternative.me API (commonly used by dashboards; daily updates)
+// ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
+
+const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
+
 async function loadFearGreed() {
   try {
-    // Use a simple, keyless endpoint
-    const res = await fetch("https://api.alternative.me/fng/?limit=1&format=json");
+    const res = await fetch(CMC_FNG_PROXY_URL, { cache: "no-store" });
     const json = await res.json();
 
-    const item = json?.data?.[0];
-    if (!item) throw new Error("No Fear & Greed data returned");
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-    const value = Number(item.value); // 0..100
-    const label = String(item.value_classification || "").toLowerCase();
+    const value = Number(json.value); // 0..100
+    const label = String(json.label || "").toLowerCase();
 
-    // Update UI
     if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
     if (fgLabelEl) fgLabelEl.textContent = label ? label : "–";
 
@@ -120,7 +120,7 @@ async function loadFearGreed() {
       fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
     }
   } catch (e) {
-    console.error("Failed to load Fear & Greed index", e);
+    console.error("Failed to load Fear & Greed (CMC proxy)", e);
     if (fgValueEl) fgValueEl.textContent = "–";
     if (fgLabelEl) fgLabelEl.textContent = "Unavailable";
   }
@@ -397,4 +397,5 @@ window.addEventListener("load", () => {
 
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
 
