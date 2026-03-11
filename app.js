@@ -380,7 +380,7 @@ const TOTAL_ASSETS_GID = "0";
 const TOTAL_ASSETS_CELL_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
 
-const totalAssetsValueEl = document.getElementById("totalAssetsValue");
+//const totalAssetsValueEl = document.getElementById("totalAssetsValue");
 
 function formatUsd(amount) {
   return (
@@ -395,7 +395,7 @@ function formatUsd(amount) {
 
 async function loadTotalAssets() {
   try {
-    if (!totalAssetsValueEl && !totalAssetsValueCardEl) return;
+    if (!totalAssetsValueCardEl) return;
 
     const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -408,13 +408,9 @@ async function loadTotalAssets() {
     const value = Number(text);
     if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
 
-    const formatted = formatUsd(value);
-
-    if (totalAssetsValueEl) totalAssetsValueEl.textContent = formatted;
-    if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = formatted;
+    totalAssetsValueCardEl.textContent = formatUsd(value);
   } catch (err) {
     console.error("Failed to load Total Assets", err);
-    if (totalAssetsValueEl) totalAssetsValueEl.textContent = "Unavailable";
     if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
   }
 }
@@ -424,6 +420,7 @@ async function loadTotalAssets() {
 
 // refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
 
 
 
