@@ -506,6 +506,9 @@ price-label-inline {
   display: none;
 }
 
+/* PnL coloring */
+.assets-value.pnl-positive{ color: #16c784; } /* green */
+.assets-value.pnl-negative{ color: #ea3943; } /* red */
 
 
 

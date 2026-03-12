@@ -522,6 +522,94 @@ window.addEventListener("load", () => {
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
 
+// ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
+
+const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
+
+// Same sheet as DeFi Assets; just a different cell.
+const PNL_RANGE = "X2";
+
+const PNL_ASSETS_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  `&range=${encodeURIComponent(PNL_RANGE)}` +
+  "&tqx=out:json";
+
+async function loadPnlAssets() {
+  try {
+    if (!pnlAssetsValueCardEl) return;
+
+    const res = await fetch(PNL_ASSETS_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    const data = JSON.parse(raw.slice(start, end + 1));
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    // Prefer raw numeric if present
+    let num = (typeof v === "number" && Number.isFinite(v)) ? v : NaN;
+
+    // Fallback: parse formatted string like "-$2.120"
+    if (!Number.isFinite(num)) {
+      let s = String(f ?? v ?? "").trim();
+      s = s.replace(/[^\d.,-]/g, ""); // keep digits/separators/sign
+
+      // Treat "2.120" as thousands when 3 digits after dot
+      const lastDot = s.lastIndexOf(".");
+      const lastComma = s.lastIndexOf(",");
+
+      if (lastDot !== -1 && lastComma !== -1) {
+        if (lastComma > lastDot) {
+          s = s.replace(/\./g, "").replace(/,/g, ".");
+        } else {
+          s = s.replace(/,/g, "");
+        }
+      } else if (lastDot !== -1) {
+        const fracLen = s.length - lastDot - 1;
+        if (fracLen === 3) s = s.replace(/\./g, "");
+      } else if (lastComma !== -1) {
+        const fracLen = s.length - lastComma - 1;
+        if (fracLen === 3) s = s.replace(/,/g, "");
+        else s = s.replace(/,/g, ".");
+      }
+
+      num = Number(s);
+    }
+
+    pnlAssetsValueCardEl.classList.remove("pnl-positive", "pnl-negative");
+
+if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
+if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
+
+    if (!Number.isFinite(num)) {
+      throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
+    }
+
+    // Show negative with minus sign like "-$2.120"
+    // (formatUsd currently rounds and uses de-DE grouping; we keep consistent)
+    const formatted = (num < 0 ? "-" : "") + formatUsd(Math.abs(num));
+    pnlAssetsValueCardEl.textContent = formatted;
+  } catch (err) {
+    console.error("Failed to load PnL Assets", err);
+    pnlAssetsValueCardEl.textContent = "Unavailable";
+  }
+}
+// Call on load (add inside your existing load handler OR add a new one)
+window.addEventListener("load", () => {
+  loadPnlAssets();
+});
+
+// Refresh occasionally (optional)
+setInterval(loadPnlAssets, 10 * 60 * 1000);
+
+
+
+
 
 
 
