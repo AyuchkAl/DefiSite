@@ -630,8 +630,8 @@ function parsePercentLoose(rawValue) {
   s = s.replace(/[^\d.,-%+]/g, "");
 
   const hasPercent = s.includes("%");
-  s = s.replace(/%/g, "");
-  s = s.replace(/\+/g, ""); // Number() handles leading +, but safe
+  s = s.replace(/[^\d.,-%+]/g, "");
+ s = s.replace(/[^\d.,-%+]/g, ""); // Number() handles leading +, but safe
 
   // Normalize separators (treat comma as decimal when it's the only separator)
   const lastDot = s.lastIndexOf(".");
@@ -642,10 +642,10 @@ function parsePercentLoose(rawValue) {
     if (lastComma > lastDot) {
       s = s.replace(/\./g, "").replace(/,/g, ".");
     } else {
-      s = s.replace(/,/g, "");
+      s = s.replace(/[^\d.,-%+]/g, "");
     }
   } else if (lastComma !== -1 && lastDot === -1) {
-    s = s.replace(/,/g, ".");
+   s = s.replace(/[^\d.,-%+]/g, "");
   }
 
   let num = Number(s);
@@ -706,6 +706,7 @@ window.addEventListener("load", () => {
 });
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
+
 
 
 
