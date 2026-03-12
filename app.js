@@ -97,20 +97,20 @@ function setHealthFactorDisplay(hf) {
 
 // ================== FEAR & GREED (new) =============================
 
-// Alternative.me API (commonly used by dashboards; daily updates)
+// ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
+
+const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
+
 async function loadFearGreed() {
   try {
-    // Use a simple, keyless endpoint
-    const res = await fetch("https://api.alternative.me/fng/?limit=1&format=json");
+    const res = await fetch(CMC_FNG_PROXY_URL, { cache: "no-store" });
     const json = await res.json();
 
-    const item = json?.data?.[0];
-    if (!item) throw new Error("No Fear & Greed data returned");
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-    const value = Number(item.value); // 0..100
-    const label = String(item.value_classification || "").toLowerCase();
+    const value = Number(json.value); // 0..100
+    const label = String(json.label || "").toLowerCase();
 
-    // Update UI
     if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
     if (fgLabelEl) fgLabelEl.textContent = label ? label : "–";
 
@@ -120,7 +120,7 @@ async function loadFearGreed() {
       fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
     }
   } catch (e) {
-    console.error("Failed to load Fear & Greed index", e);
+    console.error("Failed to load Fear & Greed (CMC proxy)", e);
     if (fgValueEl) fgValueEl.textContent = "–";
     if (fgLabelEl) fgLabelEl.textContent = "Unavailable";
   }
@@ -310,6 +310,33 @@ document.addEventListener("click", (e) => {
 window.addEventListener("load", () => {
   loadCryptoPrices();
   loadFearGreed();
+  loadTotalAssets(
+    async function loadTotalAssets() {
+  try {
+    if (!totalAssetsValueEl) return;
+
+    console.log("Loading Total Assets from:", TOTAL_ASSETS_CELL_CSV_URL);
+
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    let text = (await res.text()).trim();
+    console.log("Total Assets raw CSV:", text);
+
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
+
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
+
+    totalAssetsValueEl.textContent = formatUsd(value);
+  } catch (err) {
+    console.error("Failed to load Total Assets", err);
+    totalAssetsValueEl.textContent = "Unavailable";
+  }
+}
+  );
 
   if (!window.ethereum) return;
   const saved = localStorage.getItem("savedAddress");
@@ -339,3 +366,64 @@ setInterval(loadCryptoPrices, 5 * 60 * 1000);
 
 // Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
 setInterval(loadFearGreed, 30 * 60 * 1000);
+
+// ================== TOTAL ASSETS (Google Sheet cell T2) ==================
+
+// Your original spreadsheet ID (from the older link you shared)
+const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
+const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
+
+// From your published link: gid=0
+const TOTAL_ASSETS_GID = "0";
+
+// Direct CSV export of just T2
+const TOTAL_ASSETS_CELL_CSV_URL =
+  `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
+
+//const totalAssetsValueEl = document.getElementById("totalAssetsValue");
+
+function formatUsd(amount) {
+  return (
+    "$" +
+    Math.round(Number(amount)).toLocaleString("de-DE", {
+      maximumFractionDigits: 0,
+      useGrouping: true,
+    })
+  );
+}
+// ✅ Then update loadTotalAssets() to set BOTH elements safely:
+
+async function loadTotalAssets() {
+  try {
+    if (!totalAssetsValueCardEl) return;
+
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    let text = (await res.text()).trim();
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
+
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
+
+    totalAssetsValueCardEl.textContent = formatUsd(value);
+  } catch (err) {
+    console.error("Failed to load Total Assets", err);
+    if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
+  }
+}
+
+
+
+
+// refresh occasionally
+setInterval(loadTotalAssets, 10 * 60 * 1000);
+
+
+
+
+
+
+
