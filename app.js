@@ -428,9 +428,10 @@ const DEFI_RANGE = "W2";
 
 // GVIZ returns JS-like response, but with structured data
 const DEFI_ASSETS_GVIZ_URL =
-  `https://docs.google.com/spreadsheets/d/${DEFI_SHEET_ID}/gviz/tq?gid=${DEFI_GID}&range=${encodeURIComponent(
-    DEFI_RANGE
-  )}&tqx=out:json`;
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  "&range=W2" +
+  "&tqx=out:json";
 
 function parseGvizJson(text) {
   // Response looks like: google.visualization.Query.setResponse({...});
@@ -520,6 +521,7 @@ window.addEventListener("load", () => {
 });
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
+
 
 
 
