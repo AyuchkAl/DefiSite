@@ -439,8 +439,10 @@ price-label-inline {
 
 /* Left column matches the empty left area in your screenshot */
 .main-left{
-  width: 360px;               /* controls the left block width */
+  width: 360px;
   display: flex;
+  flex-direction: column; /* stack panels */
+  gap: 18px;              /* space between panels */
   justify-content: flex-start;
 }
 
@@ -501,6 +503,7 @@ price-label-inline {
 .total-assets{
   display: none;
 }
+
 
 
 
