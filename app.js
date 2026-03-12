@@ -420,10 +420,42 @@ setInterval(loadTotalAssets, 10 * 60 * 1000);
 // DeFi Assets (Google Sheet: DEFI_invest!W2)
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
-// Spreadsheet is the same file, different gid:
+// IMPORTANT: use the spreadsheet ID that contains the DEFI_invest sheet.
+// (Keep your existing TOTAL_ASSETS_SPREADSHEET_ID if it's the same file.)
+const DEFI_ASSETS_SPREADSHEET_ID = TOTAL_ASSETS_SPREADSHEET_ID;
+
+// gid you provided for DEFI_invest
 const DEFI_ASSETS_GID = "553100822";
+
+// Prefer output=csv + single-cell range
 const DEFI_ASSETS_CELL_CSV_URL =
-  `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${DEFI_ASSETS_GID}&range=W2`;
+  `https://docs.google.com/spreadsheets/d/${DEFI_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${DEFI_ASSETS_GID}&range=W2&output=csv`;
+
+function parseSingleCellCsv(text) {
+  // Typical single-cell CSV is:
+  //  7800.12\n
+  // or "7,800.12"\n
+  // or "7800"\n
+  let t = String(text || "").trim();
+
+  // If Google returned HTML instead of CSV, fail loudly
+  if (t.startsWith("<!DOCTYPE") || t.startsWith("<html") || /<title>/i.test(t)) {
+    throw new Error("Google returned HTML instead of CSV (sheet not publicly accessible for export).");
+  }
+
+  // Take only first line / first cell (in case a bigger CSV comes back)
+  const firstLine = t.split(/\r?\n/)[0] ?? "";
+  const firstCell = firstLine.split(",")[0] ?? "";
+
+  // Strip wrapping quotes
+  let v = firstCell.trim().replace(/^"+|"+$/g, "");
+
+  // Remove spaces and thousands separators
+  v = v.replace(/\s/g, "");
+  v = v.replace(/,/g, "");
+
+  return v;
+}
 
 async function loadDefiAssets() {
   try {
@@ -432,37 +464,15 @@ async function loadDefiAssets() {
     const res = await fetch(DEFI_ASSETS_CELL_CSV_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    let text = (await res.text()).trim();
-    text = text.replace(/^"+|"+$/g, "");
-    text = text.replace(/\s/g, "");
-    text = text.replace(/,/g, "");
+    const raw = await res.text();
 
-    const value = Number(text);
-    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
+    const v = parseSingleCellCsv(raw);
+    const num = Number(v);
+    if (!Number.isFinite(num)) throw new Error("Not a number: " + v);
 
-    defiAssetsValueCardEl.textContent = formatUsd(value);
+    defiAssetsValueCardEl.textContent = formatUsd(num);
   } catch (err) {
     console.error("Failed to load DeFi Assets", err);
     defiAssetsValueCardEl.textContent = "Unavailable";
   }
 }
-// Call on load (add this inside your existing window load handler)
-window.addEventListener("load", () => {
-  loadDefiAssets();
-});
-
-// Refresh occasionally (optional, same cadence as Total Assets)
-setInterval(loadDefiAssets, 10 * 60 * 1000);
-
-
-
-// refresh occasionally
-
-
-
-
-
-
-
-
-
