@@ -510,6 +510,10 @@ price-label-inline {
 .assets-value.pnl-positive{ color: #16c784; } /* green */
 .assets-value.pnl-negative{ color: #ea3943; } /* red */
 
+/* Percentage coloring (reuse same palette as PnL) */
+.assets-value.pct-positive{ color: #16c784; } /* green */
+.assets-value.pct-negative{ color: #ea3943; } /* red */
+
 
 
 
