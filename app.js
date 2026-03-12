@@ -440,6 +440,54 @@ function parseGvizJson(text) {
   return JSON.parse(text.slice(start, end + 1));
 }
 
+function parseCurrencyLoose(rawValue) {
+  // Accepts: 7900, "7900", "$7.900", "7,900", "7 900", "$7,900.25", "7.900,25"
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  // Remove currency symbols/letters, keep digits and separators
+  s = s.replace(/[^\d.,-]/g, "");
+
+  // If both separators exist, decide decimal by last separator position
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    // Example: "1.234,56" => dot thousands, comma decimal
+    // Example: "1,234.56" => comma thousands, dot decimal
+    if (lastComma > lastDot) {
+      // comma decimal
+      s = s.replace(/\./g, "");     // remove thousands dots
+      s = s.replace(/,/g, ".");     // decimal comma -> dot
+    } else {
+      // dot decimal
+      s = s.replace(/,/g, "");      // remove thousands commas
+      // keep dot as decimal
+    }
+  } else if (lastDot !== -1) {
+    // Only dot present: could be thousands ("7.900") or decimal ("7.90")
+    const fracLen = s.length - lastDot - 1;
+    if (fracLen === 3) {
+      // treat as thousands separator
+      s = s.replace(/\./g, "");
+    }
+    // else treat as decimal dot (leave it)
+  } else if (lastComma !== -1) {
+    // Only comma present: could be thousands or decimal
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen === 3) {
+      // "7,900" thousands
+      s = s.replace(/,/g, "");
+    } else {
+      // "7,90" decimal
+      s = s.replace(/,/g, ".");
+    }
+  }
+
+  return Number(s);
+}
 async function loadDefiAssets() {
   try {
     if (!defiAssetsValueCardEl) return;
@@ -450,28 +498,21 @@ async function loadDefiAssets() {
     const raw = await res.text();
     const data = parseGvizJson(raw);
 
-    // One cell at row 0 col 0
     const cell = data?.table?.rows?.[0]?.c?.[0];
-    const rawValue = cell?.v ?? cell?.f; // v is raw, f is formatted string
+    const v = cell?.v; // raw value
+    const f = cell?.f; // formatted
 
-    // Normalize formatted strings like "$7.800" or "7,800" etc.
-    let s = String(rawValue ?? "").trim();
-    s = s.replace(/[^\d.,-]/g, ""); // keep digits and separators
-    // If it looks like 7.800 (dot thousands), treat dot as thousands
-    // and comma as decimal if present.
-    if (s.includes(".") && !s.includes(",") && s.split(".").pop().length === 3) {
-      s = s.replace(/\./g, "");
+    // Prefer raw numeric if available, else parse formatted string
+    const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
+
+    if (!Number.isFinite(num)) {
+      throw new Error("Not a number. v=" + String(v) + " f=" + String(f));
     }
-    // Remove thousands commas
-    s = s.replace(/,/g, "");
-
-    const num = Number(s);
-    if (!Number.isFinite(num)) throw new Error("Not a number: " + String(rawValue));
 
     defiAssetsValueCardEl.textContent = formatUsd(num);
   } catch (err) {
     console.error("Failed to load DeFi Assets", err);
-    if (defiAssetsValueCardEl) defiAssetsValueCardEl.textContent = "Unavailable";
+    defiAssetsValueCardEl.textContent = "Unavailable";
   }
 }
 window.addEventListener("load", () => {
@@ -479,5 +520,6 @@ window.addEventListener("load", () => {
 });
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
+
 
 
