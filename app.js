@@ -415,11 +415,50 @@ async function loadTotalAssets() {
   }
 }
 
+setInterval(loadTotalAssets, 10 * 60 * 1000);
+
+// DeFi Assets (Google Sheet: DEFI_invest!W2)
+const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
+
+// Spreadsheet is the same file, different gid:
+const DEFI_ASSETS_GID = "553100822";
+const DEFI_ASSETS_CELL_CSV_URL =
+  `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${DEFI_ASSETS_GID}&range=W2`;
+
+async function loadDefiAssets() {
+  try {
+    if (!defiAssetsValueCardEl) return;
+
+    const res = await fetch(DEFI_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    let text = (await res.text()).trim();
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
+
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
+
+    defiAssetsValueCardEl.textContent = formatUsd(value);
+  } catch (err) {
+    console.error("Failed to load DeFi Assets", err);
+    defiAssetsValueCardEl.textContent = "Unavailable";
+  }
+}
+// Call on load (add this inside your existing window load handler)
+window.addEventListener("load", () => {
+  loadDefiAssets();
+});
+
+// Refresh occasionally (optional, same cadence as Total Assets)
+setInterval(loadDefiAssets, 10 * 60 * 1000);
 
 
 
 // refresh occasionally
-setInterval(loadTotalAssets, 10 * 60 * 1000);
+
+
 
 
 
