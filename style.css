@@ -437,13 +437,15 @@ price-label-inline {
   padding: 26px 24px;
 }
 
-/* Left column matches the empty left area in your screenshot */
+/* Make Total Assets + DeFi Assets sit side-by-side (right of each other) */
 .main-left{
-  width: 360px;
+  width: auto;                 /* don’t force 360px */
   display: flex;
-  flex-direction: column; /* stack panels */
-  gap: 18px;              /* space between panels */
+  flex-direction: row;         /* <-- key change */
+  gap: 18px;                   /* space between the two panels */
   justify-content: flex-start;
+  align-items: flex-start;
+  flex-wrap: wrap;             /* allows wrapping on small screens */
 }
 
 /* Center content can remain, but it won’t push the left card */
@@ -503,6 +505,7 @@ price-label-inline {
 .total-assets{
   display: none;
 }
+
 
 
 
