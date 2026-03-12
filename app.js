@@ -415,11 +415,299 @@ async function loadTotalAssets() {
   }
 }
 
-
-
-
-// refresh occasionally
 setInterval(loadTotalAssets, 10 * 60 * 1000);
+
+// DeFi Assets (Google Sheet: DEFI_invest!W2)
+// ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
+
+const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
+
+const DEFI_SHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
+const DEFI_GID = "553100822"; // DEFI_invest
+const DEFI_RANGE = "W2";
+
+// GVIZ returns JS-like response, but with structured data
+const DEFI_ASSETS_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  "&range=W2" +
+  "&tqx=out:json";
+
+function parseGvizJson(text) {
+  // Response looks like: google.visualization.Query.setResponse({...});
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
+  return JSON.parse(text.slice(start, end + 1));
+}
+
+function parseCurrencyLoose(rawValue) {
+  // Accepts: 7900, "7900", "$7.900", "7,900", "7 900", "$7,900.25", "7.900,25"
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  // Remove currency symbols/letters, keep digits and separators
+  s = s.replace(/[^\d.,-]/g, "");
+
+  // If both separators exist, decide decimal by last separator position
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    // Example: "1.234,56" => dot thousands, comma decimal
+    // Example: "1,234.56" => comma thousands, dot decimal
+    if (lastComma > lastDot) {
+      // comma decimal
+      s = s.replace(/\./g, "");     // remove thousands dots
+      s = s.replace(/,/g, ".");     // decimal comma -> dot
+    } else {
+      // dot decimal
+      s = s.replace(/,/g, "");      // remove thousands commas
+      // keep dot as decimal
+    }
+  } else if (lastDot !== -1) {
+    // Only dot present: could be thousands ("7.900") or decimal ("7.90")
+    const fracLen = s.length - lastDot - 1;
+    if (fracLen === 3) {
+      // treat as thousands separator
+      s = s.replace(/\./g, "");
+    }
+    // else treat as decimal dot (leave it)
+  } else if (lastComma !== -1) {
+    // Only comma present: could be thousands or decimal
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen === 3) {
+      // "7,900" thousands
+      s = s.replace(/,/g, "");
+    } else {
+      // "7,90" decimal
+      s = s.replace(/,/g, ".");
+    }
+  }
+
+  return Number(s);
+}
+async function loadDefiAssets() {
+  try {
+    if (!defiAssetsValueCardEl) return;
+
+    const res = await fetch(DEFI_ASSETS_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const data = parseGvizJson(raw);
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v; // raw value
+    const f = cell?.f; // formatted
+
+    // Prefer raw numeric if available, else parse formatted string
+    const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
+
+    if (!Number.isFinite(num)) {
+      throw new Error("Not a number. v=" + String(v) + " f=" + String(f));
+    }
+
+    defiAssetsValueCardEl.textContent = formatUsd(num);
+  } catch (err) {
+    console.error("Failed to load DeFi Assets", err);
+    defiAssetsValueCardEl.textContent = "Unavailable";
+  }
+}
+window.addEventListener("load", () => {
+  loadDefiAssets();
+});
+
+setInterval(loadDefiAssets, 10 * 60 * 1000);
+
+// ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
+
+const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
+
+// Same sheet as DeFi Assets; just a different cell.
+const PNL_RANGE = "X2";
+
+const PNL_ASSETS_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  `&range=${encodeURIComponent(PNL_RANGE)}` +
+  "&tqx=out:json";
+
+async function loadPnlAssets() {
+  try {
+    if (!pnlAssetsValueCardEl) return;
+
+    const res = await fetch(PNL_ASSETS_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    const data = JSON.parse(raw.slice(start, end + 1));
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    // Prefer raw numeric if present
+    let num = (typeof v === "number" && Number.isFinite(v)) ? v : NaN;
+
+    // Fallback: parse formatted string like "-$2.120"
+    if (!Number.isFinite(num)) {
+      let s = String(f ?? v ?? "").trim();
+      s = s.replace(/[^\d.,-]/g, ""); // keep digits/separators/sign
+
+      // Treat "2.120" as thousands when 3 digits after dot
+      const lastDot = s.lastIndexOf(".");
+      const lastComma = s.lastIndexOf(",");
+
+      if (lastDot !== -1 && lastComma !== -1) {
+        if (lastComma > lastDot) {
+          s = s.replace(/\./g, "").replace(/,/g, ".");
+        } else {
+          s = s.replace(/,/g, "");
+        }
+      } else if (lastDot !== -1) {
+        const fracLen = s.length - lastDot - 1;
+        if (fracLen === 3) s = s.replace(/\./g, "");
+      } else if (lastComma !== -1) {
+        const fracLen = s.length - lastComma - 1;
+        if (fracLen === 3) s = s.replace(/,/g, "");
+        else s = s.replace(/,/g, ".");
+      }
+
+      num = Number(s);
+    }
+
+    pnlAssetsValueCardEl.classList.remove("pnl-positive", "pnl-negative");
+
+if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
+if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
+
+    if (!Number.isFinite(num)) {
+      throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
+    }
+
+    // Show negative with minus sign like "-$2.120"
+    // (formatUsd currently rounds and uses de-DE grouping; we keep consistent)
+    const formatted = (num < 0 ? "-" : "") + formatUsd(Math.abs(num));
+    pnlAssetsValueCardEl.textContent = formatted;
+  } catch (err) {
+    console.error("Failed to load PnL Assets", err);
+    pnlAssetsValueCardEl.textContent = "Unavailable";
+  }
+}
+// Call on load (add inside your existing load handler OR add a new one)
+window.addEventListener("load", () => {
+  loadPnlAssets();
+});
+
+// Refresh occasionally (optional)
+setInterval(loadPnlAssets, 10 * 60 * 1000);
+
+// ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
+
+const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
+
+const PCT_RANGE = "Y2";
+
+const PCT_ASSETS_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  `&range=${encodeURIComponent(PCT_RANGE)}` +
+  "&tqx=out:json";
+
+function parsePercentLoose(rawValue) {
+  // Accepts: -0.2062, -20.62, "-20.62%", "+20,62%", "0.1" etc.
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  // Keep digits, sign, separators, percent
+  s = s.replace(/[^\d.,%\-\+]/g, "");
+
+  const hasPercent = s.includes("%");
+  s = s.replace(/[^\d.,%\-\+]/g, "");
+ s = s.replace(/[^\d.,%\-\+]/g, ""); // Number() handles leading +, but safe
+
+  // Normalize separators (treat comma as decimal when it's the only separator)
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    // Decide decimal by last separator
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, "").replace(/,/g, ".");
+    } else {
+      s = s.replace(/[^\d.,%\-\+]/g, "");
+    }
+  } else if (lastComma !== -1 && lastDot === -1) {
+   s = s.replace(/[^\d.,%\-\+]/g, "");
+  }
+
+  let num = Number(s);
+  if (!Number.isFinite(num)) return NaN;
+
+  // If sheet returns 0.2062 and formatted as %, convert to 20.62 for display
+  // Only do this when it clearly looks like a ratio.
+  if (hasPercent && Math.abs(num) <= 1) num = num * 100;
+
+  return num;
+}
+
+async function loadPercentageAssets() {
+  try {
+    if (!pctAssetsValueCardEl) return;
+
+    const res = await fetch(PCT_ASSETS_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    const data = JSON.parse(raw.slice(start, end + 1));
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    let num = (typeof v === "number" && Number.isFinite(v)) ? v : parsePercentLoose(f ?? v);
+
+    // If the sheet gives a ratio without %, convert to percent for display when it looks like ratio
+    if (Number.isFinite(num) && Math.abs(num) <= 1) {
+      num = num * 100;
+    }
+
+    if (!Number.isFinite(num)) {
+      throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
+    }
+
+    // Color
+    pctAssetsValueCardEl.classList.remove("pct-positive", "pct-negative");
+    if (num > 0) pctAssetsValueCardEl.classList.add("pct-positive");
+    if (num < 0) pctAssetsValueCardEl.classList.add("pct-negative");
+
+    // Format like +20.62% / -20.62%
+    const sign = num < 0 ? "-" : "+";
+    const formatted = `${sign}${Math.abs(num).toFixed(2)}%`;
+
+    pctAssetsValueCardEl.textContent = formatted;
+  } catch (err) {
+    console.error("Failed to load Percentage Assets", err);
+    pctAssetsValueCardEl.textContent = "Unavailable";
+  }
+}
+// Call on load + refresh (add alongside your other loaders)
+window.addEventListener("load", () => {
+  loadPercentageAssets();
+});
+
+setInterval(loadPercentageAssets, 10 * 60 * 1000);
+
+
 
 
 
