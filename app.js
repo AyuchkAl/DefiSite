@@ -476,3 +476,9 @@ async function loadDefiAssets() {
     defiAssetsValueCardEl.textContent = "Unavailable";
   }
 }
+window.addEventListener("load", () => {
+  loadDefiAssets();
+});
+
+setInterval(loadDefiAssets, 10 * 60 * 1000);
+
