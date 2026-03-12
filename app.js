@@ -418,62 +418,60 @@ async function loadTotalAssets() {
 setInterval(loadTotalAssets, 10 * 60 * 1000);
 
 // DeFi Assets (Google Sheet: DEFI_invest!W2)
+// ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
+
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
-// IMPORTANT: use the spreadsheet ID that contains the DEFI_invest sheet.
-// (Keep your existing TOTAL_ASSETS_SPREADSHEET_ID if it's the same file.)
-const DEFI_ASSETS_SPREADSHEET_ID = TOTAL_ASSETS_SPREADSHEET_ID;
+const DEFI_SHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
+const DEFI_GID = "553100822"; // DEFI_invest
+const DEFI_RANGE = "W2";
 
-// gid you provided for DEFI_invest
-const DEFI_ASSETS_GID = "553100822";
+// GVIZ returns JS-like response, but with structured data
+const DEFI_ASSETS_GVIZ_URL =
+  `https://docs.google.com/spreadsheets/d/${DEFI_SHEET_ID}/gviz/tq?gid=${DEFI_GID}&range=${encodeURIComponent(
+    DEFI_RANGE
+  )}&tqx=out:json`;
 
-// Prefer output=csv + single-cell range
-const DEFI_ASSETS_CELL_CSV_URL =
-  `https://docs.google.com/spreadsheets/d/${DEFI_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${DEFI_ASSETS_GID}&range=W2&output=csv`;
-
-function parseSingleCellCsv(text) {
-  // Typical single-cell CSV is:
-  //  7800.12\n
-  // or "7,800.12"\n
-  // or "7800"\n
-  let t = String(text || "").trim();
-
-  // If Google returned HTML instead of CSV, fail loudly
-  if (t.startsWith("<!DOCTYPE") || t.startsWith("<html") || /<title>/i.test(t)) {
-    throw new Error("Google returned HTML instead of CSV (sheet not publicly accessible for export).");
-  }
-
-  // Take only first line / first cell (in case a bigger CSV comes back)
-  const firstLine = t.split(/\r?\n/)[0] ?? "";
-  const firstCell = firstLine.split(",")[0] ?? "";
-
-  // Strip wrapping quotes
-  let v = firstCell.trim().replace(/^"+|"+$/g, "");
-
-  // Remove spaces and thousands separators
-  v = v.replace(/\s/g, "");
-  v = v.replace(/,/g, "");
-
-  return v;
+function parseGvizJson(text) {
+  // Response looks like: google.visualization.Query.setResponse({...});
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
+  return JSON.parse(text.slice(start, end + 1));
 }
 
 async function loadDefiAssets() {
   try {
     if (!defiAssetsValueCardEl) return;
 
-    const res = await fetch(DEFI_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    const res = await fetch(DEFI_ASSETS_GVIZ_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const raw = await res.text();
+    const data = parseGvizJson(raw);
 
-    const v = parseSingleCellCsv(raw);
-    const num = Number(v);
-    if (!Number.isFinite(num)) throw new Error("Not a number: " + v);
+    // One cell at row 0 col 0
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const rawValue = cell?.v ?? cell?.f; // v is raw, f is formatted string
+
+    // Normalize formatted strings like "$7.800" or "7,800" etc.
+    let s = String(rawValue ?? "").trim();
+    s = s.replace(/[^\d.,-]/g, ""); // keep digits and separators
+    // If it looks like 7.800 (dot thousands), treat dot as thousands
+    // and comma as decimal if present.
+    if (s.includes(".") && !s.includes(",") && s.split(".").pop().length === 3) {
+      s = s.replace(/\./g, "");
+    }
+    // Remove thousands commas
+    s = s.replace(/,/g, "");
+
+    const num = Number(s);
+    if (!Number.isFinite(num)) throw new Error("Not a number: " + String(rawValue));
 
     defiAssetsValueCardEl.textContent = formatUsd(num);
   } catch (err) {
     console.error("Failed to load DeFi Assets", err);
-    defiAssetsValueCardEl.textContent = "Unavailable";
+    if (defiAssetsValueCardEl) defiAssetsValueCardEl.textContent = "Unavailable";
   }
 }
 window.addEventListener("load", () => {
@@ -481,4 +479,5 @@ window.addEventListener("load", () => {
 });
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
+
 
