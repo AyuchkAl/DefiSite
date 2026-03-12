@@ -607,6 +607,108 @@ window.addEventListener("load", () => {
 // Refresh occasionally (optional)
 setInterval(loadPnlAssets, 10 * 60 * 1000);
 
+// ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
+
+const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
+
+const PCT_RANGE = "Y2";
+
+const PCT_ASSETS_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  `&range=${encodeURIComponent(PCT_RANGE)}` +
+  "&tqx=out:json";
+
+function parsePercentLoose(rawValue) {
+  // Accepts: -0.2062, -20.62, "-20.62%", "+20,62%", "0.1" etc.
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  // Keep digits, sign, separators, percent
+  s = s.replace(/[^\d.,%\-\+]/g, "");
+
+  const hasPercent = s.includes("%");
+  s = s.replace(/[^\d.,%\-\+]/g, "");
+ s = s.replace(/[^\d.,%\-\+]/g, ""); // Number() handles leading +, but safe
+
+  // Normalize separators (treat comma as decimal when it's the only separator)
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    // Decide decimal by last separator
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, "").replace(/,/g, ".");
+    } else {
+      s = s.replace(/[^\d.,%\-\+]/g, "");
+    }
+  } else if (lastComma !== -1 && lastDot === -1) {
+   s = s.replace(/[^\d.,%\-\+]/g, "");
+  }
+
+  let num = Number(s);
+  if (!Number.isFinite(num)) return NaN;
+
+  // If sheet returns 0.2062 and formatted as %, convert to 20.62 for display
+  // Only do this when it clearly looks like a ratio.
+  if (hasPercent && Math.abs(num) <= 1) num = num * 100;
+
+  return num;
+}
+
+async function loadPercentageAssets() {
+  try {
+    if (!pctAssetsValueCardEl) return;
+
+    const res = await fetch(PCT_ASSETS_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    const data = JSON.parse(raw.slice(start, end + 1));
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    let num = (typeof v === "number" && Number.isFinite(v)) ? v : parsePercentLoose(f ?? v);
+
+    // If the sheet gives a ratio without %, convert to percent for display when it looks like ratio
+    if (Number.isFinite(num) && Math.abs(num) <= 1) {
+      num = num * 100;
+    }
+
+    if (!Number.isFinite(num)) {
+      throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
+    }
+
+    // Color
+    pctAssetsValueCardEl.classList.remove("pct-positive", "pct-negative");
+    if (num > 0) pctAssetsValueCardEl.classList.add("pct-positive");
+    if (num < 0) pctAssetsValueCardEl.classList.add("pct-negative");
+
+    // Format like +20.62% / -20.62%
+    const sign = num < 0 ? "-" : "+";
+    const formatted = `${sign}${Math.abs(num).toFixed(2)}%`;
+
+    pctAssetsValueCardEl.textContent = formatted;
+  } catch (err) {
+    console.error("Failed to load Percentage Assets", err);
+    pctAssetsValueCardEl.textContent = "Unavailable";
+  }
+}
+// Call on load + refresh (add alongside your other loaders)
+window.addEventListener("load", () => {
+  loadPercentageAssets();
+});
+
+setInterval(loadPercentageAssets, 10 * 60 * 1000);
+
+
+
 
 
 
