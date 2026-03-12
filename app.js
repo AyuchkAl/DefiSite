@@ -594,6 +594,13 @@ async function loadPnlAssets() {
     pnlAssetsValueCardEl.textContent = "Unavailable";
   }
 }
+// Call on load (add inside your existing load handler OR add a new one)
+window.addEventListener("load", () => {
+  loadPnlAssets();
+});
+
+// Refresh occasionally (optional)
+setInterval(loadPnlAssets, 10 * 60 * 1000);
 
 
 
