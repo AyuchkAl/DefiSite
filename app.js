@@ -581,6 +581,11 @@ async function loadPnlAssets() {
       num = Number(s);
     }
 
+    pnlAssetsValueCardEl.classList.remove("pnl-positive", "pnl-negative");
+
+if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
+if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
+
     if (!Number.isFinite(num)) {
       throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
     }
@@ -601,6 +606,7 @@ window.addEventListener("load", () => {
 
 // Refresh occasionally (optional)
 setInterval(loadPnlAssets, 10 * 60 * 1000);
+
 
 
 
