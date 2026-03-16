@@ -539,7 +539,7 @@ price-label-inline {
 .my-assets-container{
   position: relative;
   display: inline-block;
-  margin-top: 4px; /* adjust: 4px, 6px, 8px… */
+  transform: translateY(4px); /* adjust: 6px..14px */
 }
 
 .my-assets-button{
