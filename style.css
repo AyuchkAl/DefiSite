@@ -602,17 +602,17 @@ price-label-inline {
 
 /* FORCE: move only My Assets down */
 header.topbar .topbar-inner .left-group .my-assets-container{
-  transform: translateY(12px) !important; /* change 12px as needed */
+  transform: translateY(18px) !important; /* change 12px as needed */
 }
 
 /* FORCE: move only the My Assets button down (most reliable) */
 #myAssetsButton{
-  transform: translateY(26px) !important; /* adjust */
+  transform: translateY(30px) !important; /* adjust */
 }
 
 /* Keep dropdown aligned under the moved button */
 #myAssetsMenu{
-  margin-top: 30px !important; /* adjust so it opens below the shifted button */
+  margin-top: 34px !important; /* adjust so it opens below the shifted button */
 }
 
 
