@@ -607,7 +607,7 @@ header.topbar .topbar-inner .left-group .my-assets-container{
 
 /* FORCE: move only the My Assets button down (most reliable) */
 #myAssetsButton{
-  transform: translateY(12px) !important; /* adjust */
+  transform: translateY(16px) !important; /* adjust */
 }
 
 /* Keep dropdown aligned under the moved button */
