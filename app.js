@@ -707,6 +707,37 @@ window.addEventListener("load", () => {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
+// ================== MY ASSETS MENU ==================
+const myAssetsButton = document.getElementById("myAssetsButton");
+const myAssetsMenu = document.getElementById("myAssetsMenu");
+
+function closeMyAssetsMenu() {
+  if (!myAssetsMenu) return;
+  myAssetsMenu.classList.remove("visible");
+  if (myAssetsButton) myAssetsButton.setAttribute("aria-expanded", "false");
+}
+
+if (myAssetsButton && myAssetsMenu) {
+  myAssetsButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = myAssetsMenu.classList.toggle("visible");
+    myAssetsButton.setAttribute("aria-expanded", String(isOpen));
+
+    // Optional: close wallet menu if open
+    walletMenu.classList.remove("visible");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!myAssetsMenu.classList.contains("visible")) return;
+    if (!e.target.closest(".my-assets-container")) closeMyAssetsMenu();
+  });
+
+  // Close on ESC
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMyAssetsMenu();
+  });
+}
+
 
 
 
