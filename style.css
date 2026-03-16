@@ -33,7 +33,7 @@ body {
 
 .left-group{
   display: flex;
-  align-items: center;
+  align-items:flex-start;
   gap: 12px;
   min-width: 0;
    flex-wrap: nowrap;     /* IMPORTANT */
@@ -539,7 +539,7 @@ price-label-inline {
 .my-assets-container{
   position: relative;
   display: inline-block;
-  margin-top: 20px; /* adjust: 4px, 6px, 8px… */
+  margin-top: 10px; /* adjust: 4px, 6px, 8px… */
 }
 
 .my-assets-button{
