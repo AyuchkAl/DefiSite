@@ -607,12 +607,12 @@ header.topbar .topbar-inner .left-group .my-assets-container{
 
 /* FORCE: move only the My Assets button down (most reliable) */
 #myAssetsButton{
-  transform: translateY(22px) !important; /* adjust */
+  transform: translateY(26px) !important; /* adjust */
 }
 
 /* Keep dropdown aligned under the moved button */
 #myAssetsMenu{
-  margin-top: 26px !important; /* adjust so it opens below the shifted button */
+  margin-top: 30px !important; /* adjust so it opens below the shifted button */
 }
 
 
