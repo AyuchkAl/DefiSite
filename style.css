@@ -33,7 +33,7 @@ body {
 
 .left-group{
   display: flex;
-  align-items:flex-start;
+  align-items: center;
   gap: 12px;
   min-width: 0;
    flex-wrap: nowrap;     /* IMPORTANT */
