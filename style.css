@@ -600,6 +600,10 @@ price-label-inline {
   color: #ffffff;
 }
 
+/* FORCE: move only My Assets down */
+header.topbar .topbar-inner .left-group .my-assets-container{
+  transform: translateY(12px) !important; /* change 12px as needed */
+}
 
 
 
