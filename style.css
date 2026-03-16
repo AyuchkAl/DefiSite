@@ -22,11 +22,13 @@ body {
   z-index: 10;
 }
 
-.topbar-inner {
+.topbar-inner{
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;     /* IMPORTANT */
+  gap: 16px;             /* gives breathing room */
 }
 
 .left-group{
@@ -34,10 +36,26 @@ body {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1 1 auto;        /* allow left side to shrink */
+  flex-wrap: nowrap;     /* IMPORTANT */
 }
 
 .left-group-spacer{
   min-width: 12px;
+}
+
+/* Prevent any of the left widgets from shrinking weirdly */
+.hf-block,
+.prices-row,
+.fg-block,
+.my-assets-container{
+  flex: 0 0 auto;
+}
+
+/* Keep wallet on the right and never wrap under */
+.wallet-container{
+  flex: 0 0 auto;
+  margin-left: auto;     /* ensures it stays far right */
 }
 
 /* Brand */
