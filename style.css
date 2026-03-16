@@ -33,12 +33,10 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;              /* IMPORTANT: allow it to grow and take available space */
   min-width: 0;
 }
 
 .left-group-spacer{
-  flex: 1;              /* consumes the free space */
   min-width: 12px;
 }
 
