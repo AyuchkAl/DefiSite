@@ -96,6 +96,22 @@
         </div>
       </div>
     </div>
+<!-- DeFi menu: immediately RIGHT of My Assets -->
+<div class="defi-container" id="defiContainer">
+  <button id="defiButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
+    DeFi
+  </button>
+
+  <!-- Dropdown menu (left click) -->
+  <div id="defiMenu" class="my-assets-menu" role="menu" aria-label="DeFi menu"></div>
+
+  <!-- Custom context menu (right click) -->
+  <div id="defiContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi context menu">
+    <button id="defiAddSiteBtn" class="defi-context-btn" type="button">Add site</button>
+  </div>
+</div>
+
+    
 
     <!-- Wallet: MUST be a sibling of .left-group (so it stays on the right) -->
     <div class="wallet-container">
