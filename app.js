@@ -738,6 +738,176 @@ if (myAssetsButton && myAssetsMenu) {
   });
 }
 
+// ================== DeFi MENU (right-click -> Add site) ==================
+(function initDefiMenu() {
+  const defiContainer = document.getElementById("defiContainer");
+  const defiButton = document.getElementById("defiButton");
+  const defiMenu = document.getElementById("defiMenu");
+  const defiContextMenu = document.getElementById("defiContextMenu");
+  const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
+
+  if (!defiContainer || !defiButton || !defiMenu || !defiContextMenu || !defiAddSiteBtn) return;
+
+  const DEFI_LINKS_KEY = "defiLinks_v1";
+
+  function loadDefiLinks() {
+    try {
+      const raw = localStorage.getItem(DEFI_LINKS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(x => x && typeof x.url === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveDefiLinks(links) {
+    localStorage.setItem(DEFI_LINKS_KEY, JSON.stringify(links));
+  }
+
+  function renderDefiMenu() {
+    const links = loadDefiLinks();
+    defiMenu.innerHTML = "";
+
+    if (links.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.padding = "9px 10px";
+      empty.style.color = "rgba(245,245,245,0.70)";
+      empty.style.fontSize = "13px";
+      empty.textContent = "No sites yet";
+      defiMenu.appendChild(empty);
+      return;
+    }
+
+    for (const link of links) {
+      const a = document.createElement("a");
+      a.className = "my-assets-item"; // reuse same styling
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.href = link.url;
+      a.textContent = link.label || link.url;
+      defiMenu.appendChild(a);
+    }
+  }
+
+  function openDefiMenu() {
+    renderDefiMenu();
+    defiMenu.classList.add("visible");
+    defiButton.setAttribute("aria-expanded", "true");
+  }
+
+  function closeDefiMenu() {
+    defiMenu.classList.remove("visible");
+    defiButton.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleDefiMenu() {
+    if (defiMenu.classList.contains("visible")) closeDefiMenu();
+    else openDefiMenu();
+  }
+
+  function hideContextMenu() {
+    defiContextMenu.classList.remove("visible");
+    defiContextMenu.style.left = "-9999px";
+    defiContextMenu.style.top = "-9999px";
+  }
+
+  function showContextMenu(x, y) {
+    defiContextMenu.style.left = `${x}px`;
+    defiContextMenu.style.top = `${y}px`;
+    defiContextMenu.classList.add("visible");
+  }
+
+  function isValidHttpUrl(s) {
+    try {
+      const u = new URL(s);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  // LEFT CLICK => open dropdown
+  defiButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    hideContextMenu();
+
+    // close My Assets + wallet menu if open
+    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+    if (walletMenu) walletMenu.classList.remove("visible");
+
+    toggleDefiMenu();
+  });
+
+  // RIGHT CLICK => ONLY our context menu (block Edge menu)
+  // Use CAPTURE + stopImmediatePropagation to ensure browser menu doesn't appear.
+  function onDefiContextMenu(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    closeDefiMenu();
+    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+    if (walletMenu) walletMenu.classList.remove("visible");
+
+    showContextMenu(e.clientX, e.clientY);
+    return false;
+  }
+
+  // Attach to BOTH container and button (covers clicks on inner elements)
+  defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
+  defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
+
+  // Add site action
+  defiAddSiteBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideContextMenu();
+
+    const url = prompt("Enter site URL (https://...):");
+    if (!url) return;
+
+    const trimmedUrl = url.trim();
+    if (!isValidHttpUrl(trimmedUrl)) {
+      alert("Invalid URL. Please enter a full URL starting with https://");
+      return;
+    }
+
+    const label = (prompt("Enter label (optional):") || "").trim();
+
+    const links = loadDefiLinks();
+    links.push({ label, url: trimmedUrl });
+    saveDefiLinks(links);
+
+    openDefiMenu();
+  });
+
+  // Close menus when clicking elsewhere
+  document.addEventListener("click", (e) => {
+    if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
+      closeDefiMenu();
+    }
+    if (defiContextMenu.classList.contains("visible") && !e.target.closest("#defiContextMenu")) {
+      hideContextMenu();
+    }
+  });
+
+  // Close on ESC
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeDefiMenu();
+      hideContextMenu();
+    }
+  });
+
+  // Also hide context menu on scroll/resize (nice UX)
+  window.addEventListener("scroll", hideContextMenu, true);
+  window.addEventListener("resize", hideContextMenu);
+
+  // Initial render
+  renderDefiMenu();
+})();
+
 
 
 
