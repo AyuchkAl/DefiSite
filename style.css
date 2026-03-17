@@ -614,7 +614,40 @@ header.topbar .topbar-inner .left-group .my-assets-container{
 #myAssetsMenu{
   margin-top: 32px !important; /* adjust so it opens below the shifted button */
 }
+/* ================== DeFi menu (reuses My Assets styles) ================== */
 
+.defi-container{
+  position: relative;
+  display: inline-block;
+}
+
+/* Context menu uses the same look as .my-assets-menu but must be fixed at mouse position */
+.defi-context{
+  position: fixed !important;
+  left: -9999px;
+  top: -9999px;
+  transform: none !important; /* cancel centering used by my-assets-menu */
+  margin-top: 0 !important;
+  z-index: 9999;
+}
+
+/* "Add site" button inside context menu */
+.defi-context-btn{
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #cfd5ff;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.defi-context-btn:hover{
+  background: rgba(255,255,255,0.06);
+  color: #ffffff;
+}
 
 
 
