@@ -942,9 +942,10 @@ if (myAssetsButton && myAssetsMenu) {
   return false;
 }
 
-  defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
-  defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
-
+ defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
+// REMOVE the next line (important):
+// defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
+  
   // RIGHT CLICK on DeFi MENU ITEM => Delete site context menu (block Edge)
   function onDefiItemContextMenu(e) {
     const item = e.target?.closest?.("#defiMenu a[data-url]");
