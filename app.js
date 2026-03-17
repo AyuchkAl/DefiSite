@@ -919,20 +919,28 @@ if (myAssetsButton && myAssetsMenu) {
   });
 
   // RIGHT CLICK on DeFi BUTTON/CONTAINER => Add site context menu (block Edge)
-  function onDefiContextMenu(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-
-    closeDefiMenu();
-    hideDeleteContextMenu();
-
-    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
-    if (walletMenu) walletMenu.classList.remove("visible");
-
-    showAddContextMenu(e.clientX, e.clientY);
-    return false;
+ function onDefiContextMenu(e) {
+  // If RMB was on a DeFi menu item, do NOT show "Add site" here.
+  // The item-specific handler will show "Delete site".
+  const item = e.target?.closest?.("#defiMenu a[data-url]");
+  if (item) {
+    // Let the defiMenu contextmenu handler handle it
+    return;
   }
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  closeDefiMenu();
+  hideDeleteContextMenu();
+
+  if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+  if (walletMenu) walletMenu.classList.remove("visible");
+
+  showAddContextMenu(e.clientX, e.clientY);
+  return false;
+}
 
   defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
   defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
