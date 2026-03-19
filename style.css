@@ -54,8 +54,10 @@ body {
 
 /* Keep wallet on the right and never wrap under */
 .wallet-container{
+  margin-left: auto;   /* IMPORTANT */
+  position: relative;  /* keeps #walletMenu positioned correctly */
   flex: 0 0 auto;
- }
+}
 
 /* Brand */
 
