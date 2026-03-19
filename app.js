@@ -978,6 +978,8 @@ if (myAssetsButton && myAssetsMenu) {
       alert("Invalid URL. Please enter a full URL starting with https://");
       return;
     }
+    const label = (prompt("Enter label:") || "").trim();
+    if (!label) return; // require label; remove this line if label can be empty
 
     const links = loadDefiLinks();
     links.push({ url: trimmedUrl, label: makeEdgeLikeLabel(trimmedUrl) });
@@ -1032,6 +1034,7 @@ if (myAssetsButton && myAssetsMenu) {
   // Initial render
   renderDefiMenu();
 })();
+
 
 
 
