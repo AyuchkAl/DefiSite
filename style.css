@@ -635,24 +635,7 @@ price-label-inline {
   background: rgba(255,255,255,0.06);
   color: #ffffff;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* DeFi must sit immediately after My Assets */
+.defi-container{
+  margin-left: 0 !important;
+}
