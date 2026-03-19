@@ -641,3 +641,16 @@ price-label-inline {
 .defi-container{
   margin-left: 0 !important;
 }
+
+/* === ONLY move My Assets + DeFi down (everything else unchanged) === */
+#myAssetsButton,
+#defiButton{
+  position: relative;
+  top: 14px;            /* adjust: 4px..14px */
+}
+
+/* Keep dropdowns aligned under the shifted buttons */
+#myAssetsMenu,
+#defiMenu{
+  margin-top: 18px;    /* adjust if needed */
+}
