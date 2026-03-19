@@ -652,8 +652,9 @@ price-label-inline {
 /* Keep dropdowns aligned under the shifted buttons */
 #myAssetsMenu,
 #defiMenu{
-  margin-top: 28px;    /* adjust if needed */
+  margin-top: 18px;    /* adjust if needed */
 }
+
 
 
 
