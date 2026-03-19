@@ -646,14 +646,15 @@ price-label-inline {
 #myAssetsButton,
 #defiButton{
   position: relative;
-  top: 35px;            /* adjust: 4px..14px */
+  top: 45px;            /* adjust: 4px..14px */
 }
 
 /* Keep dropdowns aligned under the shifted buttons */
 #myAssetsMenu,
 #defiMenu{
-  margin-top: 32px;    /* adjust if needed */
+  margin-top: 38px;    /* adjust if needed */
 }
+
 
 
 
