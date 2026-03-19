@@ -982,7 +982,7 @@ if (myAssetsButton && myAssetsMenu) {
     if (!label) return; // require label; remove this line if label can be empty
 
     const links = loadDefiLinks();
-    links.push({ url: trimmedUrl, label: makeEdgeLikeLabel(trimmedUrl) });
+    links.push({ url: trimmedUrl, label });
     saveDefiLinks(links);
 
     openDefiMenu();
@@ -1034,6 +1034,7 @@ if (myAssetsButton && myAssetsMenu) {
   // Initial render
   renderDefiMenu();
 })();
+
 
 
 
