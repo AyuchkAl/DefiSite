@@ -655,6 +655,15 @@ price-label-inline {
   margin-top: 18px;    /* adjust if needed */
 }
 
+/* Group My Assets + DeFi so we can shift them together */
+.menus-group{
+  display: flex;
+  align-items: center;
+  gap: 12px;              /* same spacing as left-group */
+  margin-left: 260px;     /* move right; adjust this value */
+}
+
+
 
 
 
