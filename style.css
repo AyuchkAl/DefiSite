@@ -660,7 +660,7 @@ price-label-inline {
   display: flex;
   align-items: center;
   gap: 12px;              /* same spacing as left-group */
-  margin-left: 260px;     /* move right; adjust this value */
+  margin-left: 360px;     /* move right; adjust this value */
 }
 
 
