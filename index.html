@@ -9,8 +9,9 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
- <header class="topbar">
+<header class="topbar">
   <div class="topbar-inner">
+
     <div class="left-group">
       <div id="hfBlock" class="hf-block">
         <div class="hf-main-row">
@@ -78,7 +79,7 @@
         </div>
       </div>
 
-      <!-- My Assets: immediately NEXT to Fear & Greed -->
+      <!-- My Assets -->
       <div class="my-assets-container">
         <button id="myAssetsButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
           My Assets
@@ -95,9 +96,26 @@
           </a>
         </div>
       </div>
-    </div>
 
-    <!-- Wallet: MUST be a sibling of .left-group (so it stays on the right) -->
+      <!-- DeFi -->
+      <div class="defi-container" id="defiContainer" oncontextmenu="return false;">
+        <button id="defiButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
+          DeFi
+        </button>
+
+        <div id="defiMenu" class="my-assets-menu" role="menu" aria-label="DeFi menu"></div>
+
+        <div id="defiContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi context menu">
+          <button id="defiAddSiteBtn" class="defi-context-btn" type="button">Add site</button>
+        </div>
+
+        <div id="defiItemContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi item context menu">
+          <button id="defiDeleteSiteBtn" class="defi-context-btn" type="button">Delete site</button>
+        </div>
+      </div>
+    </div> <!-- ✅ CLOSE left-group HERE -->
+
+    <!-- Wallet (sibling of left-group) -->
     <div class="wallet-container">
       <button id="connectButton">
         <span class="wallet-dot"></span>
@@ -107,9 +125,9 @@
         <button id="disconnectButton">Disconnect</button>
       </div>
     </div>
-  </div>
-</header>
 
+  </div>
+</header>  
  <main class="page-content">
   <!-- NEW: Left side Total Assets panel (like Total_Assets.jpg, styled to your site) -->
   <section class="main-left">

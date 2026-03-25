@@ -738,6 +738,304 @@ if (myAssetsButton && myAssetsMenu) {
   });
 }
 
+// ================== DeFi MENU (right-click -> Add site / right-click item -> Delete) ==================
+(function initDefiMenu() {
+  const defiContainer = document.getElementById("defiContainer");
+  const defiButton = document.getElementById("defiButton");
+  const defiMenu = document.getElementById("defiMenu");
+  const defiContextMenu = document.getElementById("defiContextMenu");
+  const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
+
+  // NEW: item delete context menu
+  const defiItemContextMenu = document.getElementById("defiItemContextMenu");
+  const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
+
+  if (
+    !defiContainer ||
+    !defiButton ||
+    !defiMenu ||
+    !defiContextMenu ||
+    !defiAddSiteBtn ||
+    !defiItemContextMenu ||
+    !defiDeleteSiteBtn
+  ) return;
+
+  const DEFI_LINKS_KEY = "defiLinks_v1";
+
+  let pendingDeleteUrl = null;
+
+  function loadDefiLinks() {
+    try {
+      const raw = localStorage.getItem(DEFI_LINKS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(x => x && typeof x.url === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveDefiLinks(links) {
+    localStorage.setItem(DEFI_LINKS_KEY, JSON.stringify(links));
+  }
+
+  function isValidHttpUrl(s) {
+    try {
+      const u = new URL(s);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  // NEW: Edge-like label generator (no manual label prompt)
+  function edgeStyleFromDomain(hostname) {
+    let h = String(hostname || "").replace(/^www\./i, "");
+    if (!h) return "Site";
+
+    const parts = h.split(".");
+    let base = parts.length >= 2 ? parts[0] : h;
+
+    base = base
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/defi/ig, "DeFi")
+      .replace(/devops/ig, "DevOps")
+      .replace(/tracker/ig, "Tracker")
+      .replace(/[-_]+/g, " ")
+      .trim();
+
+    // defitracker -> DeFi tracker -> DeFi Tracker
+    base = base.replace(/DeFi([A-Za-z]+)/, "DeFi $1").trim();
+
+    base = base
+      .split(/\s+/)
+      .map(w => (w === "DeFi" || w === "DevOps") ? w : (w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+      .join(" ")
+      .trim();
+
+    return base || h;
+  }
+
+  function makeEdgeLikeLabel(url) {
+    try {
+      const u = new URL(url);
+      const name = edgeStyleFromDomain(u.hostname);
+      const max = 22;
+      return name.length > max ? name.slice(0, max - 1) + "…" : name;
+    } catch {
+      return "Site";
+    }
+  }
+
+  function renderDefiMenu() {
+    const links = loadDefiLinks();
+    defiMenu.innerHTML = "";
+
+    if (links.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.padding = "9px 10px";
+      empty.style.color = "rgba(245,245,245,0.70)";
+      empty.style.fontSize = "13px";
+      empty.textContent = "No sites yet";
+      defiMenu.appendChild(empty);
+      return;
+    }
+
+    for (const link of links) {
+      const a = document.createElement("a");
+      a.className = "my-assets-item"; // reuse same styling
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.href = link.url;
+
+      // IMPORTANT: keep the label short like Edge
+      a.textContent = link.label || makeEdgeLikeLabel(link.url);
+
+      // IMPORTANT: used for delete
+      a.dataset.url = link.url;
+
+      defiMenu.appendChild(a);
+    }
+  }
+
+  function openDefiMenu() {
+    renderDefiMenu();
+    defiMenu.classList.add("visible");
+    defiButton.setAttribute("aria-expanded", "true");
+  }
+
+  function closeDefiMenu() {
+    defiMenu.classList.remove("visible");
+    defiButton.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleDefiMenu() {
+    if (defiMenu.classList.contains("visible")) closeDefiMenu();
+    else openDefiMenu();
+  }
+
+  function hideAddContextMenu() {
+    defiContextMenu.classList.remove("visible");
+    defiContextMenu.style.left = "-9999px";
+    defiContextMenu.style.top = "-9999px";
+  }
+
+  function showAddContextMenu(x, y) {
+    defiContextMenu.style.left = `${x}px`;
+    defiContextMenu.style.top = `${y}px`;
+    defiContextMenu.classList.add("visible");
+  }
+
+  // NEW: Delete context menu show/hide
+  function hideDeleteContextMenu() {
+    defiItemContextMenu.classList.remove("visible");
+    defiItemContextMenu.style.left = "-9999px";
+    defiItemContextMenu.style.top = "-9999px";
+    pendingDeleteUrl = null;
+  }
+
+  function showDeleteContextMenu(x, y, urlToDelete) {
+    pendingDeleteUrl = urlToDelete;
+    defiItemContextMenu.style.left = `${x}px`;
+    defiItemContextMenu.style.top = `${y}px`;
+    defiItemContextMenu.classList.add("visible");
+  }
+
+  function hideAllDefiContextMenus() {
+    hideAddContextMenu();
+    hideDeleteContextMenu();
+  }
+
+  // LEFT CLICK => open dropdown
+  defiButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    hideAllDefiContextMenus();
+
+    // close My Assets + wallet menu if open
+    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+    if (walletMenu) walletMenu.classList.remove("visible");
+
+    toggleDefiMenu();
+  });
+
+  // RIGHT CLICK on DeFi BUTTON/CONTAINER => Add site context menu (block Edge)
+ function onDefiContextMenu(e) {
+  // If RMB was on a DeFi menu item, do NOT show "Add site" here.
+  // The item-specific handler will show "Delete site".
+  const item = e.target?.closest?.("#defiMenu a[data-url]");
+  if (item) {
+    // Let the defiMenu contextmenu handler handle it
+    return;
+  }
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  closeDefiMenu();
+  hideDeleteContextMenu();
+
+  if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+  if (walletMenu) walletMenu.classList.remove("visible");
+
+  showAddContextMenu(e.clientX, e.clientY);
+  return false;
+}
+
+ defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
+// REMOVE the next line (important):
+// defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
+  
+  // RIGHT CLICK on DeFi MENU ITEM => Delete site context menu (block Edge)
+  function onDefiItemContextMenu(e) {
+    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    if (!item) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    hideAddContextMenu();
+    // keep the dropdown open
+    showDeleteContextMenu(e.clientX, e.clientY, item.dataset.url);
+    return false;
+  }
+
+  // Capture phase to suppress Edge menu on links
+  defiMenu.addEventListener("contextmenu", onDefiItemContextMenu, true);
+
+  // Add site action (NO manual label prompt)
+  defiAddSiteBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAddContextMenu();
+
+    const url = prompt("Enter site URL (https://...):");
+    if (!url) return;
+
+    const trimmedUrl = url.trim();
+    if (!isValidHttpUrl(trimmedUrl)) {
+      alert("Invalid URL. Please enter a full URL starting with https://");
+      return;
+    }
+    const label = (prompt("Enter label:") || "").trim();
+    if (!label) return; // require label; remove this line if label can be empty
+
+    const links = loadDefiLinks();
+    links.push({ url: trimmedUrl, label });
+    saveDefiLinks(links);
+
+    openDefiMenu();
+  });
+
+  // Delete site action
+  defiDeleteSiteBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!pendingDeleteUrl) {
+      hideDeleteContextMenu();
+      return;
+    }
+
+    const links = loadDefiLinks();
+    const next = links.filter((l) => l.url !== pendingDeleteUrl);
+    saveDefiLinks(next);
+
+    hideDeleteContextMenu();
+    openDefiMenu(); // re-render and keep it open
+  });
+
+  // Close menus when clicking elsewhere
+  document.addEventListener("click", (e) => {
+    if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
+      closeDefiMenu();
+    }
+    if (defiContextMenu.classList.contains("visible") && !e.target.closest("#defiContextMenu")) {
+      hideAddContextMenu();
+    }
+    if (defiItemContextMenu.classList.contains("visible") && !e.target.closest("#defiItemContextMenu")) {
+      hideDeleteContextMenu();
+    }
+  });
+
+  // Close on ESC
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeDefiMenu();
+      hideAllDefiContextMenus();
+    }
+  });
+
+  // Also hide context menu on scroll/resize (nice UX)
+  window.addEventListener("scroll", hideAllDefiContextMenus, true);
+  window.addEventListener("resize", hideAllDefiContextMenus);
+
+  // Initial render
+  renderDefiMenu();
+})();
+
+
 
 
 
