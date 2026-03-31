@@ -663,9 +663,10 @@ price-label-inline {
   margin-left: 24px;   /* small spacing after Fear&Greed; adjust 12..40 */
   flex: 0 0 auto;
 }
-/* Move ONLY Fear & Greed visually to the RIGHT (does NOT move other menus) */
+/* Move Fear & Greed to the RIGHT using layout (prevents overlap with menus) */
 #fgBlock{
-  transform: translateX(250px); /* adjust: 150px..200px */
+  transform: none !important;
+  margin-left: 250px;   /* adjust: 150px..300px */
 }
 
 /* Put BTC + AVG BTC on one line, and ETH + AVG ETH on one line */
