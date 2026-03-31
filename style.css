@@ -664,7 +664,7 @@ price-label-inline {
 }
 /* Move ONLY Fear & Greed visually to the RIGHT (does NOT move other menus) */
 #fgBlock{
-  transform: translateX(180px); /* adjust: 150px..200px */
+  transform: translateX(250px); /* adjust: 150px..200px */
 }
 
 
