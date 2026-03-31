@@ -667,6 +667,17 @@ price-label-inline {
   transform: translateX(250px); /* adjust: 150px..200px */
 }
 
+/* Put BTC + AVG BTC on one line, and ETH + AVG ETH on one line */
+.prices-pair{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Optional: make AVG pills a bit narrower so it fits nicely */
+.prices-pair .price-pill{
+  white-space: nowrap;
+}
 
 
 
