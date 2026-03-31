@@ -662,12 +662,10 @@ price-label-inline {
   gap: 12px;              /* same spacing as left-group */
   margin-left: 760px;     /* move right; adjust this value */
 }
-/* Move ONLY Fear & Greed to the RIGHT */
+/* Move ONLY Fear & Greed visually to the RIGHT (does NOT move other menus) */
 #fgBlock{
-  margin-left: 180px;   /* adjust: 150px..200px */
+  transform: translateX(180px); /* adjust: 150px..200px */
 }
-
-
 
 
 
