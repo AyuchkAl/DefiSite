@@ -681,6 +681,9 @@ price-label-inline {
   white-space: nowrap;
 }
 
-
+/* AVG BTC value color */
+#avgBtcValue{
+  color: #cfd5ff !important; /* light blue (same tone used elsewhere) */
+}
 
 
