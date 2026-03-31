@@ -655,12 +655,13 @@ price-label-inline {
   margin-top: 18px;    /* adjust if needed */
 }
 
-/* Group My Assets + DeFi so we can shift them together */
+/* Menus should stay LEFT of the wallet (no huge push) */
 .menus-group{
   display: flex;
   align-items: center;
-  gap: 12px;              /* same spacing as left-group */
-  margin-left: 760px;     /* move right; adjust this value */
+  gap: 12px;
+  margin-left: 24px;   /* small spacing after Fear&Greed; adjust 12..40 */
+  flex: 0 0 auto;
 }
 /* Move ONLY Fear & Greed visually to the RIGHT (does NOT move other menus) */
 #fgBlock{
