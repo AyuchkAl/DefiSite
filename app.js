@@ -41,6 +41,8 @@ const btcPriceEl  = document.getElementById("btcPrice");
 const ethPriceEl  = document.getElementById("ethPrice");
 const btcChangeEl = document.getElementById("btcChange");
 const ethChangeEl = document.getElementById("ethChange");
+const avgBtcValueEl = document.getElementById("avgBtcValue");
+const avgEthValueEl = document.getElementById("avgEthValue");
 
 const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
@@ -520,6 +522,72 @@ window.addEventListener("load", () => {
   loadDefiAssets();
 });
 
+// ================== AVG BTC / AVG ETH (Google Sheet DEFI_invest!S2 / L2) ==================
+
+const AVG_BTC_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  "&range=S2" +
+  "&tqx=out:json";
+
+const AVG_ETH_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  "&range=L2" +
+  "&tqx=out:json";
+
+function formatUsd0(num) {
+  return "$" + Math.round(Number(num)).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+async function loadAvgBtc() {
+  try {
+    if (!avgBtcValueEl) return;
+
+    const res = await fetch(AVG_BTC_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const data = parseGvizJson(raw);
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
+    if (!Number.isFinite(num)) throw new Error("AVG BTC not a number");
+
+    avgBtcValueEl.textContent = formatUsd0(num);
+  } catch (err) {
+    console.error("Failed to load AVG BTC", err);
+    if (avgBtcValueEl) avgBtcValueEl.textContent = "–";
+  }
+}
+
+async function loadAvgEth() {
+  try {
+    if (!avgEthValueEl) return;
+
+    const res = await fetch(AVG_ETH_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const data = parseGvizJson(raw);
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
+    if (!Number.isFinite(num)) throw new Error("AVG ETH not a number");
+
+    avgEthValueEl.textContent = formatUsd0(num);
+  } catch (err) {
+    console.error("Failed to load AVG ETH", err);
+    if (avgEthValueEl) avgEthValueEl.textContent = "–";
+  }
+}
+
 setInterval(loadDefiAssets, 10 * 60 * 1000);
 
 // ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
@@ -604,8 +672,15 @@ window.addEventListener("load", () => {
   loadPnlAssets();
 });
 
+window.addEventListener("load", () => {
+  loadAvgBtc();
+  loadAvgEth();
+});
+
 // Refresh occasionally (optional)
 setInterval(loadPnlAssets, 10 * 60 * 1000);
+setInterval(loadAvgBtc, 10 * 60 * 1000);
+setInterval(loadAvgEth, 10 * 60 * 1000);
 
 // ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
 
