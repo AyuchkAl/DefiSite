@@ -682,7 +682,8 @@ price-label-inline {
 }
 
 /* AVG BTC value color */
-#avgBtcValue{
+#avgBtcValue,
+#avgEthValu{
   color: #cfd5ff !important; /* light blue (same tone used elsewhere) */
 }
 
