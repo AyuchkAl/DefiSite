@@ -646,7 +646,7 @@ price-label-inline {
 #myAssetsButton,
 #defiButton{
   position: relative;
-  top: 45px;            /* adjust: 4px..14px */
+  top: 8px;            /* adjust: 4px..14px */
 }
 
 /* Keep dropdowns aligned under the shifted buttons */
@@ -655,9 +655,39 @@ price-label-inline {
   margin-top: 18px;    /* adjust if needed */
 }
 
+/* Menus should stay LEFT of the wallet (no huge push) */
+.menus-group{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 24px;   /* small spacing after Fear&Greed; adjust 12..40 */
+  flex: 0 0 auto;
+}
+/* Move Fear & Greed to the RIGHT using layout (prevents overlap with menus) */
+#fgBlock{
+  transform: none !important;
+  margin-left: 250px;   /* adjust: 150px..300px */
+}
 
+/* Put BTC + AVG BTC on one line, and ETH + AVG ETH on one line */
+.prices-pair{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
+/* Optional: make AVG pills a bit narrower so it fits nicely */
+.prices-pair .price-pill{
+  white-space: nowrap;
+}
 
-
-
+/* AVG BTC value color */
+#avgBtcValue,
+#avgEthValue{
+  color: #2ebac6 !important; /* light blue (same tone used elsewhere) */
+}
+/* Move ONLY the AVG ETH pill a bit to the right */
+.prices-pair:nth-child(2) .price-pill:nth-child(2){
+  margin-left: 6px; /* try 2px–12px */
+}
 
