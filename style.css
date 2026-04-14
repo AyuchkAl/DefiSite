@@ -686,5 +686,8 @@ price-label-inline {
 #avgEthValue{
   color: #2ebac6 !important; /* light blue (same tone used elsewhere) */
 }
-
+/* Move ONLY the AVG ETH pill a bit to the right */
+.prices-pair:nth-child(2) .price-pill:nth-child(2){
+  margin-left: 6px; /* try 2px–12px */
+}
 
