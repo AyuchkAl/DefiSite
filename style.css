@@ -788,4 +788,93 @@ price-label-inline {
   height: 14px;
   top: -3px;
 }
+.right-indicators{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* CMC-like card vibe */
+.cmc-card{
+  width: 220px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(17, 21, 42, 0.92);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.40);
+  color: rgba(245,245,245,0.95);
+}
+
+.cmc-card-title{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.cmc-status-row,
+.cmc-value-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: rgba(207,213,255,0.90);
+}
+
+.cmc-value{
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmc-status-pill{
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #ffffff;
+  text-transform: capitalize;
+}
+
+.cmc-meter{
+  position: relative;
+  margin-top: 6px;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.cmc-meter-track{
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    #16c784 0%,
+    #7ad86d 30%,
+    #f5d547 55%,
+    #ffb347 75%,
+    #ff5c5c 100%
+  );
+  opacity: 0.95;
+}
+
+.cmc-meter-marker{
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+  transform: translateX(-1px);
+}
+
+.cmc-status-pill.is-green{ background: rgba(22,199,132,0.18); border-color: rgba(22,199,132,0.35); }
+.cmc-status-pill.is-yellow{ background: rgba(245,213,71,0.16); border-color: rgba(245,213,71,0.35); }
+.cmc-status-pill.is-orange{ background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.35); }
+.cmc-status-pill.is-red{ background: rgba(255,92,92,0.16); border-color: rgba(255,92,92,0.35); }
 
