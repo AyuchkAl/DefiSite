@@ -756,3 +756,25 @@ price-label-inline {
   white-space: nowrap;
 }
 
+/* Compact version to fit beside AVG panels */
+.hs-panel--compact{
+  min-width: 0;
+  width: 170px;          /* adjust: 150–200 */
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+
+.hs-panel--compact .hs-top{
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.hs-panel--compact .hs-bar{
+  height: 8px;
+}
+
+.hs-panel--compact .hs-marker{
+  height: 14px;
+  top: -3px;
+}
+
