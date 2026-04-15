@@ -1134,8 +1134,9 @@ function clamp(n, a, b) {
 // Map a value x in [-range..+range] to 0..1, where negative => more "sell" (risk-off)
 function pctToSell01(x, range) {
   if (!Number.isFinite(x)) return null;
-  // x = +range => sell=0, x=-range => sell=1
-  return clamp((range - x) / (2 * range), 0, 1);
+  // CONTRARIAN:
+  // x = +range => sell=1, x=-range => sell=0
+  return clamp((x + range) / (2 * range), 0, 1);
 }
 
 // Fear & Greed: higher greed => higher "sell"
