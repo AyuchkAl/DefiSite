@@ -1175,7 +1175,8 @@ function updateHoldSellPanel() {
   const subEl     = document.getElementById("hsSub");
 
   // panel not on page yet? just skip
-  if (!holdEl || !sellEl || !markerEl || !subEl) return;
+ if (!holdEl || !sellEl || !markerEl) return;
+  if (subEl) subEl.textContent = `${fgText} • ${btcText} • ${ethText}`;
 
   const sellPct = computeCompositeSellPct({
     fg: latestFgValue,
