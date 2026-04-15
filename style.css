@@ -152,9 +152,20 @@ body {
 /* BTC/ETH prices */
 
 .prices-row {
+  display: grid;
+  grid-template-columns: auto auto; /* left column (pairs) + right column (panel) */
+  align-items: center;
+  column-gap: 10px;
+}
+.prices-left{
   display: flex;
-  flex-direction: column;  /* ETH under BTC */
+  flex-direction: column; /* BTC row above ETH row */
   gap: 6px;
+}
+
+.prices-right{
+  display: flex;
+  align-items: center;
 }
 
 .price-pill {
