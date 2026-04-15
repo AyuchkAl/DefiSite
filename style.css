@@ -691,3 +691,68 @@ price-label-inline {
   margin-left: 6px; /* try 2px–12px */
 }
 
+/* ================== Hold/Sell composite panel ================== */
+.hs-panel{
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: #11152a;
+  border: 1px solid rgba(255,255,255,0.04);
+  min-width: 230px;
+  flex: 0 0 auto;
+}
+
+.hs-top{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: rgba(245,245,245,0.92);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+.hs-top strong{
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.hs-bar{
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.hs-bar-segs{
+  position: absolute;
+  inset: 0;
+  /* teal -> red */
+  background: linear-gradient(90deg,
+    #2ebac6 0%,
+    #4cc9b5 25%,
+    #7ad86d 45%,
+    #ffb347 70%,
+    #ff5c5c 100%
+  );
+  opacity: 0.95;
+}
+
+.hs-marker{
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+  transform: translateX(-1px);
+}
+
+.hs-sub{
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9aa4d8;
+  white-space: nowrap;
+}
+
