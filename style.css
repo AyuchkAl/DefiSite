@@ -22,23 +22,8 @@ body {
   z-index: 10;
 }
 
-.topbar-inner{
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: nowrap;     /* IMPORTANT */
-  gap: 16px;             /* gives breathing room */
-}
-
-.left-group{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-   flex-wrap: nowrap;     /* IMPORTANT */
-}
-
+.topbar-inner{ flex-wrap: wrap; }
+.left-group{ flex-wrap: wrap; }
 .left-group-spacer{
   min-width: 12px;
 }
@@ -157,17 +142,33 @@ body {
   align-items: center;
   column-gap: 10px;
 }
+.prices-row{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
 .prices-left{
   display: flex;
-  flex-direction: column; /* BTC row above ETH row */
+  flex-direction: column;
   gap: 6px;
+  flex: 0 0 auto;
 }
 
 .prices-right{
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex: 0 0 auto;
 }
 
+.right-indicators{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap; /* keep them on one line */
+}
 .price-pill {
   padding: 6px 10px;
   border-radius: 999px;
@@ -234,7 +235,7 @@ body {
   margin-left: 6px;
 }
 
-price-label-inline {
+.price-label-inline {
   font-size: 10px;
   font-weight: 500;
   color: #ffffff;
@@ -671,14 +672,10 @@ price-label-inline {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 24px;   /* small spacing after Fear&Greed; adjust 12..40 */
+  margin-left: 12px;  /* smaller so it doesn’t create empty space */
   flex: 0 0 auto;
 }
-/* Move Fear & Greed to the RIGHT using layout (prevents overlap with menus) */
-#fgBlock{
-  transform: none !important;
-  margin-left: 250px;   /* adjust: 150px..300px */
-}
+
 
 /* Put BTC + AVG BTC on one line, and ETH + AVG ETH on one line */
 .prices-pair{
