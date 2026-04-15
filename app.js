@@ -52,7 +52,7 @@ const hfMainRowEl = document.querySelector(".hf-main-row");
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
-const PUELL_PROXY_URL = "https://floral-wind-62e0.alexknikola.workers.dev/puell";
+const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
 
 let currentAddress = null;
 // ================== Hold/Sell composite state ==================
