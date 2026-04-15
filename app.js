@@ -1172,11 +1172,8 @@ function updateHoldSellPanel() {
   const holdEl    = document.getElementById("hsHoldPct");
   const sellEl    = document.getElementById("hsSellPct");
   const markerEl  = document.getElementById("hsMarker");
-  const subEl     = document.getElementById("hsSub");
 
-  // panel not on page yet? just skip
- if (!holdEl || !sellEl || !markerEl) return;
-  if (subEl) subEl.textContent = `${fgText} • ${btcText} • ${ethText}`;
+  if (!holdEl || !sellEl || !markerEl) return;
 
   const sellPct = computeCompositeSellPct({
     fg: latestFgValue,
@@ -1187,7 +1184,6 @@ function updateHoldSellPanel() {
   if (!Number.isFinite(sellPct)) {
     holdEl.textContent = "–";
     sellEl.textContent = "–";
-    subEl.textContent = "Waiting for data…";
     return;
   }
 
@@ -1196,11 +1192,6 @@ function updateHoldSellPanel() {
   holdEl.textContent = `${Math.round(holdPct)}%`;
   sellEl.textContent = `${Math.round(sellPct)}%`;
   markerEl.style.left = `${sellPct}%`;
-
-  const fgText  = Number.isFinite(latestFgValue) ? `F&G ${Math.round(latestFgValue)}` : "F&G –";
-  const btcText = Number.isFinite(latestBtc24h)  ? `BTC ${latestBtc24h.toFixed(2)}%` : "BTC –";
-  const ethText = Number.isFinite(latestEth24h)  ? `ETH ${latestEth24h.toFixed(2)}%` : "ETH –";
-  subEl.textContent = `${fgText} • ${btcText} • ${ethText}`;
 }
 
 
