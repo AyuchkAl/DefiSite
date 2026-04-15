@@ -25,11 +25,11 @@
         </div>
       </div>
 
-     <div class="prices-row">
+     div class="prices-row">
+  <!-- LEFT: prices -->
   <div class="prices-left">
     <!-- Row 1: BTC + AVG BTC -->
     <div class="prices-pair">
-      <!-- BTC -->
       <div class="price-pill">
         <div class="asset-icon btc-icon"></div>
         <div class="price-row">
@@ -40,7 +40,6 @@
         </div>
       </div>
 
-      <!-- AVG BTC -->
       <div class="price-pill" aria-label="AVG BTC">
         <div class="asset-icon btc-icon"></div>
         <div class="price-row">
@@ -52,7 +51,6 @@
 
     <!-- Row 2: ETH + AVG ETH -->
     <div class="prices-pair">
-      <!-- ETH -->
       <div class="price-pill">
         <div class="asset-icon eth-icon"></div>
         <div class="price-row">
@@ -63,7 +61,6 @@
         </div>
       </div>
 
-      <!-- AVG ETH -->
       <div class="price-pill" aria-label="AVG ETH">
         <div class="asset-icon eth-icon"></div>
         <div class="price-row">
@@ -73,51 +70,78 @@
       </div>
     </div>
   </div>
-       <div class="prices-right">
-  <div class="right-indicators">
-    <!-- Fear & Greed (LEFT) -->
-    <div id="fgBlock" class="fg-block" aria-label="Fear & Greed Index">
-      <!-- keep your existing Fear & Greed markup here exactly as it is -->
-    </div>
 
-    <!-- Puell Multiple (MIDDLE) -->
-    <div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
-      <div class="cmc-card-title">Puell Multiple</div>
+  <!-- RIGHT: indicators in one row -->
+  <div class="prices-right">
+    <div class="right-indicators">
+      <!-- Fear & Greed (LEFT of Puell) -->
+    
+        <div class="fg-header">
+          <div class="fg-title">Fear &amp; Greed</div>
+        </div>
 
-      <div class="cmc-status-row">
-        <span class="cmc-status-label">Status</span>
-        <span id="puellStatus" class="cmc-status-pill">Loading…</span>
+        <div class="fg-gauge">
+          <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
+            <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
+            <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+              stroke-dasharray="20 80" stroke-dashoffset="0"></path>
+            <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+              stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
+            <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+              stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
+            <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+              stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
+            <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+              stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
+
+            <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
+              <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
+              <circle cx="110" cy="110" r="6" class="fg-needle-dot"></circle>
+            </g>
+          </svg>
+
+          <div class="fg-center">
+            <div id="fgValue" class="fg-value">–</div>
+            <div id="fgLabel" class="fg-label">Loading…</div>
+          </div>
+        </div>
       </div>
 
-      <div class="cmc-value-row">
-        <span class="cmc-value-label">Value</span>
-        <span id="puellValue" class="cmc-value">–</span>
+      <!-- Puell Multiple (MIDDLE) -->
+      <div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
+        <div class="cmc-card-title">Puell Multiple</div>
+
+        <div class="cmc-status-row">
+          <span class="cmc-status-label">Status</span>
+          <span id="puellStatus" class="cmc-status-pill">Loading…</span>
+        </div>
+
+        <div class="cmc-value-row">
+          <span class="cmc-value-label">Value</span>
+          <span id="puellValue" class="cmc-value">–</span>
+        </div>
+
+        <div class="cmc-meter">
+          <div class="cmc-meter-track"></div>
+          <div id="puellMarker" class="cmc-meter-marker" style="left: 50%;"></div>
+        </div>
       </div>
 
-      <div class="cmc-meter">
-        <div class="cmc-meter-track"></div>
-        <div id="puellMarker" class="cmc-meter-marker" style="left: 50%;"></div>
-      </div>
-    </div>
+      <!-- Hold/Sell (RIGHT) -->
+      <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
+        <div class="hs-top">
+          <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
+          <span class="hs-right"><strong id="hsSellPct">–</strong> Sell</span>
+        </div>
 
-    <!-- Hold/Sell (RIGHT) -->
-    <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
-      <div class="hs-top">
-        <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
-        <span class="hs-right"><strong id="hsSellPct">–</strong> Sell</span>
-      </div>
-
-      <div class="hs-bar" role="img" aria-label="Hold vs Sell bar">
-        <div class="hs-bar-segs"></div>
-        <div class="hs-marker" id="hsMarker" style="left: 50%;"></div>
+        <div class="hs-bar" role="img" aria-label="Hold vs Sell bar">
+          <div class="hs-bar-segs"></div>
+          <div class="hs-marker" id="hsMarker" style="left: 50%;"></div>
+        </div>
       </div>
     </div>
   </div>
 </div>
-
-
-
-
       <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
         <div class="fg-header">
           <div class="fg-title">Fear &amp; Greed</div>
