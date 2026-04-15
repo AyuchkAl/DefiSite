@@ -136,12 +136,6 @@ body {
 
 /* BTC/ETH prices */
 
-.prices-row {
-  display: grid;
-  grid-template-columns: auto auto; /* left column (pairs) + right column (panel) */
-  align-items: center;
-  column-gap: 10px;
-}
 .prices-row{
   display: flex;
   align-items: center;
@@ -877,14 +871,22 @@ body {
 
 /* === FORCE TOP BAR TO ONE LINE === */
 .topbar-inner{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   flex-wrap: nowrap !important;
-  overflow-x: auto;            /* if screen is too small, allow horizontal scroll */
+  overflow-x: auto;
   overflow-y: hidden;
 }
 
 .left-group{
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex-wrap: nowrap !important;
-  min-width: max-content;      /* prevents flex from squeezing and wrapping */
+  min-width: max-content;
 }
 
 .prices-row{
