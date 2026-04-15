@@ -52,6 +52,7 @@ const hfMainRowEl = document.querySelector(".hf-main-row");
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
+const PUELL_PROXY_URL = "https://floral-wind-62e0.alexknikola.workers.dev/puell";
 
 let currentAddress = null;
 // ================== Hold/Sell composite state ==================
@@ -1194,7 +1195,39 @@ function updateHoldSellPanel() {
   sellEl.textContent = `${Math.round(sellPct)}%`;
   markerEl.style.left = `${sellPct}%`;
 }
+async function loadPuell() {
+  const statusEl = document.getElementById("puellStatus");
+  const valueEl  = document.getElementById("puellValue");
+  const markerEl = document.getElementById("puellMarker");
 
+  try {
+    const res = await fetch(PUELL_PROXY_URL, { cache: "no-store" });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+    const puell = Number(json.puell);
+
+    if (valueEl) valueEl.textContent = Number.isFinite(puell) ? puell.toFixed(2) : "–";
+
+    if (statusEl) {
+      statusEl.textContent = json.status || "–";
+      statusEl.classList.remove("is-green","is-yellow","is-orange","is-red");
+      if (json.statusColor) statusEl.classList.add(`is-${json.statusColor}`);
+    }
+
+    if (markerEl && Number.isFinite(json.markerPct)) {
+      markerEl.style.left = `${Math.max(0, Math.min(100, json.markerPct))}%`;
+    }
+  } catch (e) {
+    console.error("Failed to load Puell", e);
+    if (statusEl) statusEl.textContent = "Unavailable";
+    if (valueEl) valueEl.textContent = "–";
+  }
+}
+window.addEventListener("load", () => {
+  loadPuell();
+});
+setInterval(loadPuell, 60 * 60 * 1000);
 
 
 
