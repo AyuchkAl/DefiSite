@@ -54,6 +54,10 @@ const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
 
 let currentAddress = null;
+// ================== Hold/Sell composite state ==================
+let latestFgValue = null;  // 0..100
+let latestBtc24h  = null;  // percent (e.g. -1.25)
+let latestEth24h  = null;  // percent
 
 // ================== HELPERS ========================================
 
@@ -111,6 +115,8 @@ async function loadFearGreed() {
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
     const value = Number(json.value); // 0..100
+    latestFgValue = Number.isFinite(value) ? value : null;
+updateHoldSellPanel();
     const label = String(json.label || "").toLowerCase();
 
     if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
@@ -163,6 +169,15 @@ async function loadCryptoPrices() {
     const data = await res.json();
     const btc = data.find((c) => c.id === "bitcoin");
     const eth = data.find((c) => c.id === "ethereum");
+    latestBtc24h = Number.isFinite(btc?.price_change_percentage_24h)
+  ? btc.price_change_percentage_24h
+  : null;
+
+latestEth24h = Number.isFinite(eth?.price_change_percentage_24h)
+  ? eth.price_change_percentage_24h
+  : null;
+
+updateHoldSellPanel();
 
     function setCoin(elPrice, elChange, coin) {
       if (!coin) return;
@@ -1109,6 +1124,76 @@ if (myAssetsButton && myAssetsMenu) {
   // Initial render
   renderDefiMenu();
 })();
+
+// ================== Hold/Sell composite logic ==================
+
+function clamp(n, a, b) {
+  return Math.max(a, Math.min(b, n));
+}
+
+// Map a value x in [-range..+range] to 0..1, where negative => more "sell" (risk-off)
+function pctToSell01(x, range) {
+  if (!Number.isFinite(x)) return null;
+  // CONTRARIAN:
+  // x = +range => sell=1, x=-range => sell=0
+  return clamp((x + range) / (2 * range), 0, 1);
+}
+
+// Fear & Greed: higher greed => higher "sell"
+function fgToSell01(fg) {
+  if (!Number.isFinite(fg)) return null;
+  return clamp(fg / 100, 0, 1);
+}
+
+function computeCompositeSellPct({ fg, btc24h, eth24h }) {
+  // weights (tweak if you want)
+  const wFg  = 0.55;
+  const wBtc = 0.25;
+  const wEth = 0.20;
+
+  const sFg = fgToSell01(fg);          // 0..1
+  const sB  = pctToSell01(btc24h, 8);  // +/-8% treated as "big move"
+  const sE  = pctToSell01(eth24h, 10); // ETH moves more
+
+  const parts = [
+    { w: wFg,  v: sFg },
+    { w: wBtc, v: sB },
+    { w: wEth, v: sE },
+  ].filter(p => p.v !== null);
+
+  if (parts.length === 0) return null;
+
+  const wSum = parts.reduce((a, p) => a + p.w, 0);
+  const val  = parts.reduce((a, p) => a + p.w * p.v, 0) / wSum;
+
+  return clamp(val * 100, 0, 100);
+}
+
+function updateHoldSellPanel() {
+  const holdEl    = document.getElementById("hsHoldPct");
+  const sellEl    = document.getElementById("hsSellPct");
+  const markerEl  = document.getElementById("hsMarker");
+
+  if (!holdEl || !sellEl || !markerEl) return;
+
+  const sellPct = computeCompositeSellPct({
+    fg: latestFgValue,
+    btc24h: latestBtc24h,
+    eth24h: latestEth24h,
+  });
+
+  if (!Number.isFinite(sellPct)) {
+    holdEl.textContent = "–";
+    sellEl.textContent = "–";
+    return;
+  }
+
+  const holdPct = 100 - sellPct;
+
+  holdEl.textContent = `${Math.round(holdPct)}%`;
+  sellEl.textContent = `${Math.round(sellPct)}%`;
+  markerEl.style.left = `${sellPct}%`;
+}
 
 
 

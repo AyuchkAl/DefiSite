@@ -26,53 +26,68 @@
       </div>
 
      <div class="prices-row">
+  <div class="prices-left">
+    <!-- Row 1: BTC + AVG BTC -->
+    <div class="prices-pair">
+      <!-- BTC -->
+      <div class="price-pill">
+        <div class="asset-icon btc-icon"></div>
+        <div class="price-row">
+          <span class="asset-ticker">BTC</span>
+          <span id="btcPrice" class="price-value">–</span>
+          <span class="price-label-inline">24h %</span>
+          <span id="btcChange" class="price-change-inline">–</span>
+        </div>
+      </div>
 
-  <!-- Row 1: BTC + AVG BTC -->
-  <div class="prices-pair">
-    <!-- BTC -->
-    <div class="price-pill">
-      <div class="asset-icon btc-icon"></div>
-      <div class="price-row">
-        <span class="asset-ticker">BTC</span>
-        <span id="btcPrice" class="price-value">–</span>
-        <span class="price-label-inline">24h %</span>
-        <span id="btcChange" class="price-change-inline">–</span>
+      <!-- AVG BTC -->
+      <div class="price-pill" aria-label="AVG BTC">
+        <div class="asset-icon btc-icon"></div>
+        <div class="price-row">
+          <span class="asset-ticker">AVG BTC</span>
+          <span id="avgBtcValue" class="price-value">–</span>
+        </div>
       </div>
     </div>
 
-    <!-- AVG BTC -->
-    <div class="price-pill" aria-label="AVG BTC">
-      <div class="asset-icon btc-icon"></div>
-      <div class="price-row">
-        <span class="asset-ticker">AVG BTC</span>
-        <span id="avgBtcValue" class="price-value">–</span>
+    <!-- Row 2: ETH + AVG ETH -->
+    <div class="prices-pair">
+      <!-- ETH -->
+      <div class="price-pill">
+        <div class="asset-icon eth-icon"></div>
+        <div class="price-row">
+          <span class="asset-ticker">ETH</span>
+          <span id="ethPrice" class="price-value">–</span>
+          <span class="price-label-inline">24h %</span>
+          <span id="ethChange" class="price-change-inline">–</span>
+        </div>
+      </div>
+
+      <!-- AVG ETH -->
+      <div class="price-pill" aria-label="AVG ETH">
+        <div class="asset-icon eth-icon"></div>
+        <div class="price-row">
+          <span class="asset-ticker">AVG ETH</span>
+          <span id="avgEthValue" class="price-value">–</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Row 2: ETH + AVG ETH -->
-  <div class="prices-pair">
-    <!-- ETH -->
-    <div class="price-pill">
-      <div class="asset-icon eth-icon"></div>
-      <div class="price-row">
-        <span class="asset-ticker">ETH</span>
-        <span id="ethPrice" class="price-value">–</span>
-        <span class="price-label-inline">24h %</span>
-        <span id="ethChange" class="price-change-inline">–</span>
+  <div class="prices-right">
+    <!-- Hold/Sell on the RIGHT of both rows -->
+    <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
+      <div class="hs-top">
+        <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
+        <span class="hs-right"><strong id="hsSellPct">–</strong> Sell</span>
       </div>
-    </div>
 
-    <!-- AVG ETH -->
-    <div class="price-pill" aria-label="AVG ETH">
-      <div class="asset-icon eth-icon"></div>
-      <div class="price-row">
-        <span class="asset-ticker">AVG ETH</span>
-        <span id="avgEthValue" class="price-value">–</span>
+      <div class="hs-bar" role="img" aria-label="Hold vs Sell bar">
+        <div class="hs-bar-segs"></div>
+        <div class="hs-marker" id="hsMarker" style="left: 50%;"></div>
       </div>
     </div>
   </div>
-
 </div>
 
       <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
