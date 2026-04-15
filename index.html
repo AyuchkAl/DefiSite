@@ -73,9 +73,34 @@
       </div>
     </div>
   </div>
+       <div class="prices-right">
+  <div class="right-indicators">
+    <!-- Fear & Greed (LEFT) -->
+    <div id="fgBlock" class="fg-block" aria-label="Fear & Greed Index">
+      <!-- keep your existing Fear & Greed markup here exactly as it is -->
+    </div>
 
-  <div class="prices-right">
-    <!-- Hold/Sell on the RIGHT of both rows -->
+    <!-- Puell Multiple (MIDDLE) -->
+    <div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
+      <div class="cmc-card-title">Puell Multiple</div>
+
+      <div class="cmc-status-row">
+        <span class="cmc-status-label">Status</span>
+        <span id="puellStatus" class="cmc-status-pill">Loading…</span>
+      </div>
+
+      <div class="cmc-value-row">
+        <span class="cmc-value-label">Value</span>
+        <span id="puellValue" class="cmc-value">–</span>
+      </div>
+
+      <div class="cmc-meter">
+        <div class="cmc-meter-track"></div>
+        <div id="puellMarker" class="cmc-meter-marker" style="left: 50%;"></div>
+      </div>
+    </div>
+
+    <!-- Hold/Sell (RIGHT) -->
     <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
       <div class="hs-top">
         <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
@@ -87,26 +112,10 @@
         <div class="hs-marker" id="hsMarker" style="left: 50%;"></div>
       </div>
     </div>
-<div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
-  <div class="cmc-card-title">Puell Multiple</div>
-
-  <div class="cmc-status-row">
-    <span class="cmc-status-label">Status</span>
-    <span id="puellStatus" class="cmc-status-pill">Loading…</span>
-  </div>
-
-  <div class="cmc-value-row">
-    <span class="cmc-value-label">Value</span>
-    <span id="puellValue" class="cmc-value">–</span>
-  </div>
-
-  <div class="cmc-meter">
-    <div class="cmc-meter-track"></div>
-    <div id="puellMarker" class="cmc-meter-marker" style="left: 50%;"></div>
   </div>
 </div>
-    
-  </div>
+
+
 </div>
 
       <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
