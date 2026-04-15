@@ -875,3 +875,47 @@ body {
 .cmc-status-pill.is-orange{ background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.35); }
 .cmc-status-pill.is-red{ background: rgba(255,92,92,0.16); border-color: rgba(255,92,92,0.35); }
 
+/* === FORCE TOP BAR TO ONE LINE === */
+.topbar-inner{
+  flex-wrap: nowrap !important;
+  overflow-x: auto;            /* if screen is too small, allow horizontal scroll */
+  overflow-y: hidden;
+}
+
+.left-group{
+  flex-wrap: nowrap !important;
+  min-width: max-content;      /* prevents flex from squeezing and wrapping */
+}
+
+.prices-row{
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 14px;
+  min-width: max-content;      /* keep it one line */
+}
+
+.right-indicators{
+  flex-wrap: nowrap !important;
+  min-width: max-content;
+}
+
+/* Prevent panels from shrinking into weird shapes */
+.hf-block,
+.prices-left,
+.fg-block,
+.cmc-card,
+.hs-panel,
+.menus-group{
+  flex: 0 0 auto !important;
+}
+
+/* Optional: make horizontal scroll look nicer */
+.topbar-inner::-webkit-scrollbar{
+  height: 8px;
+}
+.topbar-inner::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.12);
+  border-radius: 999px;
+}
+
