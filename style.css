@@ -955,3 +955,31 @@ body {
   margin-top: 0 !important;
   z-index: 20000 !important;
 }
+/* === FIXED DROPDOWNS (NOT CLIPPED BY TOPBAR SCROLL CONTAINER) === */
+
+/* My Assets dropdown: fixed */
+#myAssetsMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
+/* DeFi dropdown: fixed (same reason) */
+#defiMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
+/* Ensure the context menus are still above everything */
+#defiContextMenu,
+#defiItemContextMenu{
+  z-index: 20001 !important;
+}
+
