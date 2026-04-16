@@ -623,7 +623,7 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== MY ASSETS MENU (fixed-position dropdown to avoid clipping) ==================
+// ================== MY ASSETS MENU (fixed-position dropdown + close on link click) ==================
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -679,9 +679,18 @@ if (myAssetsButton && myAssetsMenu) {
 
   window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
   window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
+
+  // ✅ Close My Assets menu when a link is activated (capture + pointerdown for reliability)
+  function closeMyAssetsOnLink(e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (!a) return;
+    closeMyAssetsMenu();
+  }
+  myAssetsMenu.addEventListener("pointerdown", closeMyAssetsOnLink, true);
+  myAssetsMenu.addEventListener("click", closeMyAssetsOnLink, true);
 }
 
-// ================== DeFi MENU (click dropdown + right-click context menus) ==================
+// ================== DeFi MENU (fixed-position dropdown + close on link click) ==================
 (function initDefiMenu() {
   const defiContainer = document.getElementById("defiContainer");
   const defiButton = document.getElementById("defiButton");
@@ -866,6 +875,15 @@ if (myAssetsButton && myAssetsMenu) {
 
     toggleDefiMenu();
   });
+
+  // ✅ Close DeFi dropdown when user clicks a link (capture + pointerdown for reliability)
+  function closeDefiOnLink(e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (!a) return;
+    closeDefiMenu();
+  }
+  defiMenu.addEventListener("pointerdown", closeDefiOnLink, true);
+  defiMenu.addEventListener("click", closeDefiOnLink, true);
 
   // RIGHT CLICK on DeFi button => Add site context menu
   function onDefiContextMenu(e) {
@@ -1084,21 +1102,4 @@ window.addEventListener("load", () => {
       const accounts = await window.ethereum.request({ method: "eth_accounts" });
       if (!accounts.includes(saved)) return;
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const network  = await provider.getNetwork();
-      if (Number(network.chainId) !== 42161) return;
-
-      statusDiv.textContent = "Reading your Aave account data...";
-      await loadAaveDataForUser(saved, provider);
-      setConnectedUI(saved);
-      statusDiv.textContent = "Loaded from previous connection.";
-    } catch (err) {
-      console.error(err);
-    }
-  })();
-});
-
-// Refresh intervals
-setInterval(loadCryptoPrices, 5 * 60 * 1000);
-setInterval(loadFearGreed, 30 * 60 * 1000);
-setInterval(loadPuell, 60 * 60 * 1000);
+      const provider = new ethers.B](#)*
