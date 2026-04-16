@@ -1102,4 +1102,21 @@ window.addEventListener("load", () => {
       const accounts = await window.ethereum.request({ method: "eth_accounts" });
       if (!accounts.includes(saved)) return;
 
-      const provider = new ethers.B](#)*
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network  = await provider.getNetwork();
+      if (Number(network.chainId) !== 42161) return;
+
+      statusDiv.textContent = "Reading your Aave account data...";
+      await loadAaveDataForUser(saved, provider);
+      setConnectedUI(saved);
+      statusDiv.textContent = "Loaded from previous connection.";
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+});
+
+// Refresh intervals
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
+setInterval(loadFearGreed, 30 * 60 * 1000);
+setInterval(loadPuell, 60 * 60 * 1000);
