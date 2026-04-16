@@ -921,3 +921,28 @@ body {
   border-radius: 999px;
 }
 
+/* Always keep the sticky topbar above the whole page */
+.topbar{
+  z-index: 10000; /* higher than any content */
+}
+
+/* Make sure the menu containers can stack above other elements */
+.my-assets-container,
+.defi-container,
+.wallet-container{
+  position: relative;
+  z-index: 10001;
+}
+
+/* Dropdown menus must be above the main page cards */
+.my-assets-menu,
+.wallet-menu{
+  z-index: 10002;
+}
+
+/* Also raise DeFi menus + context menus */
+#defiMenu,
+#defiContextMenu,
+#defiItemContextMenu{
+  z-index: 10002;
+}
