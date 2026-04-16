@@ -306,6 +306,22 @@ document.addEventListener("click", (e) => {
   }
 });
 
+  // Close menu when a menu link is clicked
+  myAssetsMenu.addEventListener("click", (e) => {
+    const link = e.target.closest("a");
+    if (!link) return;
+
+      // Close DeFi menu when a link is clicked (normal left click)
+  defiMenu.addEventListener("click", (e) => {
+    const link = e.target.closest("a");
+    if (!link) return;
+    closeDefiMenu();
+  });
+
+    closeMyAssetsMenu();
+    // allow navigation to continue
+  });
+
 // Auto‑restore + initial prices + Fear&Greed
 window.addEventListener("load", () => {
   loadCryptoPrices();
