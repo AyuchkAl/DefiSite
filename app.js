@@ -53,7 +53,7 @@ const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
 
-// Puell
+// Puell proxy
 const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
 
 let currentAddress = null;
@@ -84,7 +84,6 @@ function setDisconnectedUI() {
   hfValueEl.textContent = "–";
   liqEthBottomEl.textContent = "–";
   liqBtcBottomEl.textContent = "–";
-  hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
@@ -97,13 +96,9 @@ function setHealthFactorDisplay(hf) {
 
   hfMainRowEl.classList.remove("safe", "warning", "danger");
 
-  if (hf < 1.0) {
-    hfMainRowEl.classList.add("danger");
-  } else if (hf < 1.5) {
-    hfMainRowEl.classList.add("warning");
-  } else {
-    hfMainRowEl.classList.add("safe");
-  }
+  if (hf < 1.0) hfMainRowEl.classList.add("danger");
+  else if (hf < 1.5) hfMainRowEl.classList.add("warning");
+  else hfMainRowEl.classList.add("safe");
 }
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
@@ -255,7 +250,6 @@ async function loadAaveDataForUser(userAddress, provider) {
 
 async function connectAndLoad() {
   try {
-    console.log("CONNECT CLICK");
     if (!window.ethereum) {
       statusDiv.textContent = "No browser wallet detected (MetaMask / Rabby).";
       return;
@@ -269,7 +263,6 @@ async function connectAndLoad() {
 
     statusDiv.textContent = "Connecting wallet...";
     const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    console.log("ACCOUNTS", accounts);
     if (!accounts || accounts.length === 0) {
       statusDiv.textContent = "No account returned from wallet.";
       return;
@@ -280,7 +273,6 @@ async function connectAndLoad() {
 
     const provider = new ethers.BrowserProvider(window.ethereum);
     const network  = await provider.getNetwork();
-    console.log("NETWORK", network);
     if (Number(network.chainId) !== 42161) {
       statusDiv.textContent = "Please switch wallet to the Arbitrum One network and try again.";
       return;
@@ -304,21 +296,15 @@ disconnectBtn.addEventListener("click", () => {
 
 document.addEventListener("click", (e) => {
   if (!walletMenu.classList.contains("visible")) return;
-  if (!e.target.closest(".wallet-container")) {
-    walletMenu.classList.remove("visible");
-  }
+  if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
 
 // ================== TOTAL ASSETS (Google Sheet cell T2) ==================
 
-// Your original spreadsheet ID (from the older link you shared)
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
-
-// From your published link: gid=0
 const TOTAL_ASSETS_GID = "0";
 
-// Direct CSV export of just T2
 const TOTAL_ASSETS_CELL_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
 
@@ -360,7 +346,7 @@ setInterval(loadTotalAssets, 10 * 60 * 1000);
 
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
-const DEFI_GVIZ_URL =
+const DEFI_ASSETS_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
   "?sheet=DEFI_invest" +
   "&range=W2" +
@@ -407,7 +393,7 @@ async function loadDefiAssets() {
   try {
     if (!defiAssetsValueCardEl) return;
 
-    const res = await fetch(DEFI_GVIZ_URL, { cache: "no-store" });
+    const res = await fetch(DEFI_ASSETS_GVIZ_URL, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const raw = await res.text();
@@ -534,11 +520,8 @@ async function loadPnlAssets() {
       const lastComma = s.lastIndexOf(",");
 
       if (lastDot !== -1 && lastComma !== -1) {
-        if (lastComma > lastDot) {
-          s = s.replace(/\./g, "").replace(/,/g, ".");
-        } else {
-          s = s.replace(/,/g, "");
-        }
+        if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+        else s = s.replace(/,/g, "");
       } else if (lastDot !== -1) {
         const fracLen = s.length - lastDot - 1;
         if (fracLen === 3) s = s.replace(/\./g, "");
@@ -555,9 +538,7 @@ async function loadPnlAssets() {
     if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
     if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
 
-    if (!Number.isFinite(num)) {
-      throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
-    }
+    if (!Number.isFinite(num)) throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
 
     const formatted = (num < 0 ? "-" : "") + formatUsd(Math.abs(num));
     pnlAssetsValueCardEl.textContent = formatted;
@@ -592,14 +573,9 @@ function parsePercentLoose(rawValue) {
   const lastComma = s.lastIndexOf(",");
 
   if (lastDot !== -1 && lastComma !== -1) {
-    if (lastComma > lastDot) {
-      s = s.replace(/\./g, "").replace(/,/g, ".");
-    } else {
-      s = s.replace(/,/g, "");
-    }
+    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
   } else if (lastComma !== -1 && lastDot === -1) {
-    // if only comma present, allow it as decimal
-    // (Number("12,34") is NaN, so normalize)
     const fracLen = s.length - lastComma - 1;
     if (fracLen !== 3) s = s.replace(/,/g, ".");
     else s = s.replace(/,/g, "");
@@ -629,21 +605,16 @@ async function loadPercentageAssets() {
     const f = cell?.f;
 
     let num = (typeof v === "number" && Number.isFinite(v)) ? v : parsePercentLoose(f ?? v);
-
     if (Number.isFinite(num) && Math.abs(num) <= 1) num = num * 100;
 
-    if (!Number.isFinite(num)) {
-      throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
-    }
+    if (!Number.isFinite(num)) throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
 
     pctAssetsValueCardEl.classList.remove("pct-positive", "pct-negative");
     if (num > 0) pctAssetsValueCardEl.classList.add("pct-positive");
     if (num < 0) pctAssetsValueCardEl.classList.add("pct-negative");
 
     const sign = num < 0 ? "-" : "+";
-    const formatted = `${sign}${Math.abs(num).toFixed(2)}%`;
-
-    pctAssetsValueCardEl.textContent = formatted;
+    pctAssetsValueCardEl.textContent = `${sign}${Math.abs(num).toFixed(2)}%`;
   } catch (err) {
     console.error("Failed to load Percentage Assets", err);
     pctAssetsValueCardEl.textContent = "Unavailable";
@@ -652,7 +623,7 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== MY ASSETS MENU ==================
+// ================== MY ASSETS MENU (fixed-position dropdown to avoid clipping) ==================
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -664,48 +635,6 @@ function closeMyAssetsMenu() {
   if (myAssetsButton) myAssetsButton.setAttribute("aria-expanded", "false");
 }
 
-if (myAssetsButton && myAssetsMenu) {
-  myAssetsButton.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (!myAssetsMenu) return;
-
-  // Toggle
-  const willOpen = !myAssetsMenu.classList.contains("visible");
-
-  // Close others
-  walletMenu.classList.remove("visible");
-
-  if (!willOpen) {
-    closeMyAssetsMenu();
-    return;
-  }
-
-  // Open first so it has size
-  myAssetsMenu.classList.add("visible");
-  myAssetsButton.setAttribute("aria-expanded", "true");
-
-  // Position under the button (fixed coordinates)
-  const r = myAssetsButton.getBoundingClientRect();
-  const menuW = myAssetsMenu.offsetWidth || 190;
-
-  let left = r.left + (r.width / 2) - (menuW / 2);
-  left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
-
-  const top = r.bottom + 10;
-
-  myAssetsMenu.style.left = `${Math.round(left)}px`;
-  myAssetsMenu.style.top  = `${Math.round(top)}px`;
-});
-  document.addEventListener("click", (e) => {
-    if (!myAssetsMenu.classList.contains("visible")) return;
-    if (!e.target.closest(".my-assets-container")) closeMyAssetsMenu();
-  });
-
-  // Close on ESC
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeMyAssetsMenu();
-  });
-}
 function repositionMyAssetsMenuIfOpen() {
   if (!myAssetsMenu || !myAssetsButton) return;
   if (!myAssetsMenu.classList.contains("visible")) return;
@@ -715,17 +644,44 @@ function repositionMyAssetsMenuIfOpen() {
 
   let left = r.left + (r.width / 2) - (menuW / 2);
   left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
-
   const top = r.bottom + 10;
 
   myAssetsMenu.style.left = `${Math.round(left)}px`;
   myAssetsMenu.style.top  = `${Math.round(top)}px`;
 }
 
-window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
-window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
+if (myAssetsButton && myAssetsMenu) {
+  myAssetsButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = !myAssetsMenu.classList.contains("visible");
 
-// ================== DeFi MENU (right-click -> Add site / right-click item -> Delete) ==================
+    // close wallet menu if open
+    walletMenu.classList.remove("visible");
+
+    if (!willOpen) {
+      closeMyAssetsMenu();
+      return;
+    }
+
+    myAssetsMenu.classList.add("visible");
+    myAssetsButton.setAttribute("aria-expanded", "true");
+    repositionMyAssetsMenuIfOpen();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!myAssetsMenu.classList.contains("visible")) return;
+    if (!e.target.closest(".my-assets-container")) closeMyAssetsMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMyAssetsMenu();
+  });
+
+  window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
+  window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
+}
+
+// ================== DeFi MENU (click dropdown + right-click context menus) ==================
 (function initDefiMenu() {
   const defiContainer = document.getElementById("defiContainer");
   const defiButton = document.getElementById("defiButton");
@@ -733,7 +689,6 @@ window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
   const defiContextMenu = document.getElementById("defiContextMenu");
   const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
 
-  // item delete context menu
   const defiItemContextMenu = document.getElementById("defiItemContextMenu");
   const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
 
@@ -837,15 +792,32 @@ window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
     }
   }
 
+  function closeDefiMenu() {
+    defiMenu.classList.remove("visible");
+    defiMenu.style.left = "";
+    defiMenu.style.top = "";
+    defiButton.setAttribute("aria-expanded", "false");
+  }
+
+  function repositionDefiMenuIfOpen() {
+    if (!defiMenu.classList.contains("visible")) return;
+
+    const r = defiButton.getBoundingClientRect();
+    const menuW = defiMenu.offsetWidth || 190;
+
+    let left = r.left + (r.width / 2) - (menuW / 2);
+    left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+    const top = r.bottom + 10;
+
+    defiMenu.style.left = `${Math.round(left)}px`;
+    defiMenu.style.top  = `${Math.round(top)}px`;
+  }
+
   function openDefiMenu() {
     renderDefiMenu();
     defiMenu.classList.add("visible");
     defiButton.setAttribute("aria-expanded", "true");
-  }
-
-  function closeDefiMenu() {
-    defiMenu.classList.remove("visible");
-    defiButton.setAttribute("aria-expanded", "false");
+    repositionDefiMenuIfOpen();
   }
 
   function toggleDefiMenu() {
@@ -992,22 +964,27 @@ window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
     }
   });
 
-  window.addEventListener("scroll", hideAllDefiContextMenus, true);
-  window.addEventListener("resize", hideAllDefiContextMenus);
+  window.addEventListener("scroll", () => {
+    hideAllDefiContextMenus();
+    repositionDefiMenuIfOpen();
+  }, true);
+
+  window.addEventListener("resize", () => {
+    hideAllDefiContextMenus();
+    repositionDefiMenuIfOpen();
+  });
 
   renderDefiMenu();
 })();
 
-// ================== Hold/Sell (CoinGlass-like) ==================
+// ================== Hold/Sell (CoinGlass-like peak signals) ==================
 
 function computePeakSignals({ fg, puell, btc24h, eth24h }) {
-  // CoinGlass-like: Sell% reflects how many "peak" signals are ON.
-  // If none are ON => Hold 100%.
   return [
-    { name: "FearGreed >= 80",  on: Number.isFinite(fg) && fg >= 80 },
-    { name: "Puell >= 2.0",     on: Number.isFinite(puell) && puell >= 2.0 },
-    { name: "BTC 24h >= +8%",   on: Number.isFinite(btc24h) && btc24h >= 8 },
-    { name: "ETH 24h >= +10%",  on: Number.isFinite(eth24h) && eth24h >= 10 },
+    { name: "FearGreed >= 80", on: Number.isFinite(fg) && fg >= 80 },
+    { name: "Puell >= 2.0", on: Number.isFinite(puell) && puell >= 2.0 },
+    { name: "BTC 24h >= +8%", on: Number.isFinite(btc24h) && btc24h >= 8 },
+    { name: "ETH 24h >= +10%", on: Number.isFinite(eth24h) && eth24h >= 10 },
   ];
 }
 
