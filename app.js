@@ -659,19 +659,43 @@ const myAssetsMenu = document.getElementById("myAssetsMenu");
 function closeMyAssetsMenu() {
   if (!myAssetsMenu) return;
   myAssetsMenu.classList.remove("visible");
+  myAssetsMenu.style.left = "";
+  myAssetsMenu.style.top = "";
   if (myAssetsButton) myAssetsButton.setAttribute("aria-expanded", "false");
 }
 
 if (myAssetsButton && myAssetsMenu) {
   myAssetsButton.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isOpen = myAssetsMenu.classList.toggle("visible");
-    myAssetsButton.setAttribute("aria-expanded", String(isOpen));
+  e.stopPropagation();
+  if (!myAssetsMenu) return;
 
-    // Optional: close wallet menu if open
-    walletMenu.classList.remove("visible");
-  });
+  // Toggle
+  const willOpen = !myAssetsMenu.classList.contains("visible");
 
+  // Close others
+  walletMenu.classList.remove("visible");
+
+  if (!willOpen) {
+    closeMyAssetsMenu();
+    return;
+  }
+
+  // Open first so it has size
+  myAssetsMenu.classList.add("visible");
+  myAssetsButton.setAttribute("aria-expanded", "true");
+
+  // Position under the button (fixed coordinates)
+  const r = myAssetsButton.getBoundingClientRect();
+  const menuW = myAssetsMenu.offsetWidth || 190;
+
+  let left = r.left + (r.width / 2) - (menuW / 2);
+  left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+
+  const top = r.bottom + 10;
+
+  myAssetsMenu.style.left = `${Math.round(left)}px`;
+  myAssetsMenu.style.top  = `${Math.round(top)}px`;
+});
   document.addEventListener("click", (e) => {
     if (!myAssetsMenu.classList.contains("visible")) return;
     if (!e.target.closest(".my-assets-container")) closeMyAssetsMenu();
@@ -682,6 +706,24 @@ if (myAssetsButton && myAssetsMenu) {
     if (e.key === "Escape") closeMyAssetsMenu();
   });
 }
+function repositionMyAssetsMenuIfOpen() {
+  if (!myAssetsMenu || !myAssetsButton) return;
+  if (!myAssetsMenu.classList.contains("visible")) return;
+
+  const r = myAssetsButton.getBoundingClientRect();
+  const menuW = myAssetsMenu.offsetWidth || 190;
+
+  let left = r.left + (r.width / 2) - (menuW / 2);
+  left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+
+  const top = r.bottom + 10;
+
+  myAssetsMenu.style.left = `${Math.round(left)}px`;
+  myAssetsMenu.style.top  = `${Math.round(top)}px`;
+}
+
+window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
+window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
 
 // ================== DeFi MENU (right-click -> Add site / right-click item -> Delete) ==================
 (function initDefiMenu() {
