@@ -623,7 +623,7 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== MY ASSETS MENU (fixed-position dropdown to avoid clipping) ==================
+// ================== MY ASSETS MENU (fixed-position dropdown + close on link click) ==================
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -679,9 +679,19 @@ if (myAssetsButton && myAssetsMenu) {
 
   window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
   window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
+
+  // ✅ Close My Assets menu when a link is activated BUT DO NOT block navigation
+  // The previous pointerdown handler could cancel the default click in some browsers.
+  function closeMyAssetsOnLinkClick(e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (!a) return;
+    // close after click so default navigation isn't affected
+    setTimeout(closeMyAssetsMenu, 0);
+  }
+  myAssetsMenu.addEventListener("click", closeMyAssetsOnLinkClick, true);
 }
 
-// ================== DeFi MENU (click dropdown + right-click context menus) ==================
+// ================== DeFi MENU (fixed-position dropdown + close on link click) ==================
 (function initDefiMenu() {
   const defiContainer = document.getElementById("defiContainer");
   const defiButton = document.getElementById("defiButton");
@@ -866,6 +876,14 @@ if (myAssetsButton && myAssetsMenu) {
 
     toggleDefiMenu();
   });
+
+  // ✅ Close DeFi dropdown on link click AFTER default navigation
+  function closeDefiOnLinkClick(e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (!a) return;
+    setTimeout(closeDefiMenu, 0);
+  }
+  defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
 
   // RIGHT CLICK on DeFi button => Add site context menu
   function onDefiContextMenu(e) {
