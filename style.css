@@ -921,3 +921,65 @@ body {
   border-radius: 999px;
 }
 
+/* Always keep the sticky topbar above the whole page */
+.topbar{
+  z-index: 10000; /* higher than any content */
+}
+
+/* Make sure the menu containers can stack above other elements */
+.my-assets-container,
+.defi-container,
+.wallet-container{
+  position: relative;
+  z-index: 10001;
+}
+
+/* Dropdown menus must be above the main page cards */
+.my-assets-menu,
+.wallet-menu{
+  z-index: 10002;
+}
+
+/* Also raise DeFi menus + context menus */
+#defiMenu,
+#defiContextMenu,
+#defiItemContextMenu{
+  z-index: 10002;
+}
+/* My Assets dropdown: fixed so it can escape the scrolling topbar */
+#myAssetsMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+/* === FIXED DROPDOWNS (NOT CLIPPED BY TOPBAR SCROLL CONTAINER) === */
+
+/* My Assets dropdown: fixed */
+#myAssetsMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
+/* DeFi dropdown: fixed (same reason) */
+#defiMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
+/* Ensure the context menus are still above everything */
+#defiContextMenu,
+#defiItemContextMenu{
+  z-index: 20001 !important;
+}
+

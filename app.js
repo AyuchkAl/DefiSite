@@ -48,17 +48,21 @@ const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
-// Fear & Greed (new)
+// Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
+
+// Puell proxy
 const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
 
 let currentAddress = null;
-// ================== Hold/Sell composite state ==================
-let latestFgValue = null;  // 0..100
-let latestBtc24h  = null;  // percent (e.g. -1.25)
-let latestEth24h  = null;  // percent
+
+// ================== Hold/Sell (CoinGlass-like peak signals) state ==================
+let latestFgValue = null;    // 0..100
+let latestBtc24h  = null;    // percent (e.g. -1.25)
+let latestEth24h  = null;    // percent
+let latestPuell   = null;    // number
 
 // ================== HELPERS ========================================
 
@@ -80,7 +84,6 @@ function setDisconnectedUI() {
   hfValueEl.textContent = "–";
   liqEthBottomEl.textContent = "–";
   liqBtcBottomEl.textContent = "–";
-  hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
@@ -93,16 +96,10 @@ function setHealthFactorDisplay(hf) {
 
   hfMainRowEl.classList.remove("safe", "warning", "danger");
 
-  if (hf < 1.0) {
-    hfMainRowEl.classList.add("danger");
-  } else if (hf < 1.5) {
-    hfMainRowEl.classList.add("warning");
-  } else {
-    hfMainRowEl.classList.add("safe");
-  }
+  if (hf < 1.0) hfMainRowEl.classList.add("danger");
+  else if (hf < 1.5) hfMainRowEl.classList.add("warning");
+  else hfMainRowEl.classList.add("safe");
 }
-
-// ================== FEAR & GREED (new) =============================
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
 
@@ -117,7 +114,7 @@ async function loadFearGreed() {
 
     const value = Number(json.value); // 0..100
     latestFgValue = Number.isFinite(value) ? value : null;
-updateHoldSellPanel();
+
     const label = String(json.label || "").toLowerCase();
 
     if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
@@ -128,36 +125,15 @@ updateHoldSellPanel();
       const deg = -90 + (value / 100) * 180;
       fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
     }
+
+    updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load Fear & Greed (CMC proxy)", e);
+    latestFgValue = null;
     if (fgValueEl) fgValueEl.textContent = "–";
     if (fgLabelEl) fgLabelEl.textContent = "Unavailable";
+    updateHoldSellPanel();
   }
-}
-
-// liquidationThreshold from config struct (not bitmask)
-function getLiquidationThresholdFromConfig(cfg) {
-  return Number(cfg.liquidationThreshold) / 10000; // 0..1
-}
-
-// Approx ETH liquidation price (USD) assuming only ETH moves
-function computeEthLiqPrice({
-  totalDebtUsd,
-  totalCollateralBaseUsd,
-  hlThreshold,
-  ethCollateralAmount,
-  ethLtv,
-  ethPriceNow,
-}) {
-  if (ethCollateralAmount <= 0 || ethLtv <= 0) return null;
-
-  const totalCollAtLT  = totalCollateralBaseUsd * hlThreshold;
-  const ethCollAtLTNow = ethCollateralAmount * ethPriceNow * ethLtv;
-  const otherCollAtLT  = Math.max(totalCollAtLT - ethCollAtLTNow, 0);
-  const numerator      = totalDebtUsd - otherCollAtLT;
-  if (numerator <= 0) return null;
-
-  return numerator / (ethCollateralAmount * ethLtv);
 }
 
 // ================== MARKET PRICES (COINGECKO) ======================
@@ -170,15 +146,14 @@ async function loadCryptoPrices() {
     const data = await res.json();
     const btc = data.find((c) => c.id === "bitcoin");
     const eth = data.find((c) => c.id === "ethereum");
+
     latestBtc24h = Number.isFinite(btc?.price_change_percentage_24h)
-  ? btc.price_change_percentage_24h
-  : null;
+      ? btc.price_change_percentage_24h
+      : null;
 
-latestEth24h = Number.isFinite(eth?.price_change_percentage_24h)
-  ? eth.price_change_percentage_24h
-  : null;
-
-updateHoldSellPanel();
+    latestEth24h = Number.isFinite(eth?.price_change_percentage_24h)
+      ? eth.price_change_percentage_24h
+      : null;
 
     function setCoin(elPrice, elChange, coin) {
       if (!coin) return;
@@ -208,8 +183,13 @@ updateHoldSellPanel();
 
     setCoin(btcPriceEl, btcChangeEl, btc);
     setCoin(ethPriceEl, ethChangeEl, eth);
+
+    updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
+    latestBtc24h = null;
+    latestEth24h = null;
+    updateHoldSellPanel();
   }
 }
 
@@ -270,7 +250,6 @@ async function loadAaveDataForUser(userAddress, provider) {
 
 async function connectAndLoad() {
   try {
-    console.log("CONNECT CLICK");
     if (!window.ethereum) {
       statusDiv.textContent = "No browser wallet detected (MetaMask / Rabby).";
       return;
@@ -284,7 +263,6 @@ async function connectAndLoad() {
 
     statusDiv.textContent = "Connecting wallet...";
     const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    console.log("ACCOUNTS", accounts);
     if (!accounts || accounts.length === 0) {
       statusDiv.textContent = "No account returned from wallet.";
       return;
@@ -295,7 +273,6 @@ async function connectAndLoad() {
 
     const provider = new ethers.BrowserProvider(window.ethereum);
     const network  = await provider.getNetwork();
-    console.log("NETWORK", network);
     if (Number(network.chainId) !== 42161) {
       statusDiv.textContent = "Please switch wallet to the Arbitrum One network and try again.";
       return;
@@ -319,86 +296,17 @@ disconnectBtn.addEventListener("click", () => {
 
 document.addEventListener("click", (e) => {
   if (!walletMenu.classList.contains("visible")) return;
-  if (!e.target.closest(".wallet-container")) {
-    walletMenu.classList.remove("visible");
-  }
+  if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
-
-// Auto‑restore + initial prices + Fear&Greed
-window.addEventListener("load", () => {
-  loadCryptoPrices();
-  loadFearGreed();
-  loadTotalAssets(
-    async function loadTotalAssets() {
-  try {
-    if (!totalAssetsValueEl) return;
-
-    console.log("Loading Total Assets from:", TOTAL_ASSETS_CELL_CSV_URL);
-
-    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    let text = (await res.text()).trim();
-    console.log("Total Assets raw CSV:", text);
-
-    text = text.replace(/^"+|"+$/g, "");
-    text = text.replace(/\s/g, "");
-    text = text.replace(/,/g, "");
-
-    const value = Number(text);
-    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
-
-    totalAssetsValueEl.textContent = formatUsd(value);
-  } catch (err) {
-    console.error("Failed to load Total Assets", err);
-    totalAssetsValueEl.textContent = "Unavailable";
-  }
-}
-  );
-
-  if (!window.ethereum) return;
-  const saved = localStorage.getItem("savedAddress");
-  if (!saved) return;
-
-  (async () => {
-    try {
-      const accounts = await window.ethereum.request({ method: "eth_accounts" });
-      if (!accounts.includes(saved)) return;
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const network  = await provider.getNetwork();
-      if (Number(network.chainId) !== 42161) return;
-
-      statusDiv.textContent = "Reading your Aave account data...";
-      await loadAaveDataForUser(saved, provider);
-      setConnectedUI(saved);
-      statusDiv.textContent = "Loaded from previous connection.";
-    } catch (err) {
-      console.error(err);
-    }
-  })();
-});
-
-// Refresh BTC / ETH prices every 5 minutes
-setInterval(loadCryptoPrices, 5 * 60 * 1000);
-
-// Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
-setInterval(loadFearGreed, 30 * 60 * 1000);
 
 // ================== TOTAL ASSETS (Google Sheet cell T2) ==================
 
-// Your original spreadsheet ID (from the older link you shared)
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
-
-// From your published link: gid=0
 const TOTAL_ASSETS_GID = "0";
 
-// Direct CSV export of just T2
 const TOTAL_ASSETS_CELL_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
-
-//const totalAssetsValueEl = document.getElementById("totalAssetsValue");
 
 function formatUsd(amount) {
   return (
@@ -409,7 +317,6 @@ function formatUsd(amount) {
     })
   );
 }
-// ✅ Then update loadTotalAssets() to set BOTH elements safely:
 
 async function loadTotalAssets() {
   try {
@@ -435,16 +342,10 @@ async function loadTotalAssets() {
 
 setInterval(loadTotalAssets, 10 * 60 * 1000);
 
-// DeFi Assets (Google Sheet: DEFI_invest!W2)
 // ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
 
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
-const DEFI_SHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
-const DEFI_GID = "553100822"; // DEFI_invest
-const DEFI_RANGE = "W2";
-
-// GVIZ returns JS-like response, but with structured data
 const DEFI_ASSETS_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
   "?sheet=DEFI_invest" +
@@ -452,7 +353,6 @@ const DEFI_ASSETS_GVIZ_URL =
   "&tqx=out:json";
 
 function parseGvizJson(text) {
-  // Response looks like: google.visualization.Query.setResponse({...});
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
@@ -460,53 +360,35 @@ function parseGvizJson(text) {
 }
 
 function parseCurrencyLoose(rawValue) {
-  // Accepts: 7900, "7900", "$7.900", "7,900", "7 900", "$7,900.25", "7.900,25"
   if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
 
   let s = String(rawValue ?? "").trim();
   if (!s) return NaN;
 
-  // Remove currency symbols/letters, keep digits and separators
   s = s.replace(/[^\d.,-]/g, "");
 
-  // If both separators exist, decide decimal by last separator position
   const lastDot = s.lastIndexOf(".");
   const lastComma = s.lastIndexOf(",");
 
   if (lastDot !== -1 && lastComma !== -1) {
-    // Example: "1.234,56" => dot thousands, comma decimal
-    // Example: "1,234.56" => comma thousands, dot decimal
     if (lastComma > lastDot) {
-      // comma decimal
-      s = s.replace(/\./g, "");     // remove thousands dots
-      s = s.replace(/,/g, ".");     // decimal comma -> dot
+      s = s.replace(/\./g, "");
+      s = s.replace(/,/g, ".");
     } else {
-      // dot decimal
-      s = s.replace(/,/g, "");      // remove thousands commas
-      // keep dot as decimal
+      s = s.replace(/,/g, "");
     }
   } else if (lastDot !== -1) {
-    // Only dot present: could be thousands ("7.900") or decimal ("7.90")
     const fracLen = s.length - lastDot - 1;
-    if (fracLen === 3) {
-      // treat as thousands separator
-      s = s.replace(/\./g, "");
-    }
-    // else treat as decimal dot (leave it)
+    if (fracLen === 3) s = s.replace(/\./g, "");
   } else if (lastComma !== -1) {
-    // Only comma present: could be thousands or decimal
     const fracLen = s.length - lastComma - 1;
-    if (fracLen === 3) {
-      // "7,900" thousands
-      s = s.replace(/,/g, "");
-    } else {
-      // "7,90" decimal
-      s = s.replace(/,/g, ".");
-    }
+    if (fracLen === 3) s = s.replace(/,/g, "");
+    else s = s.replace(/,/g, ".");
   }
 
   return Number(s);
 }
+
 async function loadDefiAssets() {
   try {
     if (!defiAssetsValueCardEl) return;
@@ -518,15 +400,11 @@ async function loadDefiAssets() {
     const data = parseGvizJson(raw);
 
     const cell = data?.table?.rows?.[0]?.c?.[0];
-    const v = cell?.v; // raw value
-    const f = cell?.f; // formatted
+    const v = cell?.v;
+    const f = cell?.f;
 
-    // Prefer raw numeric if available, else parse formatted string
     const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
-
-    if (!Number.isFinite(num)) {
-      throw new Error("Not a number. v=" + String(v) + " f=" + String(f));
-    }
+    if (!Number.isFinite(num)) throw new Error("Not a number. v=" + String(v) + " f=" + String(f));
 
     defiAssetsValueCardEl.textContent = formatUsd(num);
   } catch (err) {
@@ -534,9 +412,8 @@ async function loadDefiAssets() {
     defiAssetsValueCardEl.textContent = "Unavailable";
   }
 }
-window.addEventListener("load", () => {
-  loadDefiAssets();
-});
+
+setInterval(loadDefiAssets, 10 * 60 * 1000);
 
 // ================== AVG BTC / AVG ETH (Google Sheet DEFI_invest!S2 / L2) ==================
 
@@ -604,19 +481,17 @@ async function loadAvgEth() {
   }
 }
 
-setInterval(loadDefiAssets, 10 * 60 * 1000);
+setInterval(loadAvgBtc, 10 * 60 * 1000);
+setInterval(loadAvgEth, 10 * 60 * 1000);
 
 // ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
 
 const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
 
-// Same sheet as DeFi Assets; just a different cell.
-const PNL_RANGE = "X2";
-
 const PNL_ASSETS_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
   "?sheet=DEFI_invest" +
-  `&range=${encodeURIComponent(PNL_RANGE)}` +
+  "&range=X2" +
   "&tqx=out:json";
 
 async function loadPnlAssets() {
@@ -635,24 +510,18 @@ async function loadPnlAssets() {
     const v = cell?.v;
     const f = cell?.f;
 
-    // Prefer raw numeric if present
     let num = (typeof v === "number" && Number.isFinite(v)) ? v : NaN;
 
-    // Fallback: parse formatted string like "-$2.120"
     if (!Number.isFinite(num)) {
       let s = String(f ?? v ?? "").trim();
-      s = s.replace(/[^\d.,-]/g, ""); // keep digits/separators/sign
+      s = s.replace(/[^\d.,-]/g, "");
 
-      // Treat "2.120" as thousands when 3 digits after dot
       const lastDot = s.lastIndexOf(".");
       const lastComma = s.lastIndexOf(",");
 
       if (lastDot !== -1 && lastComma !== -1) {
-        if (lastComma > lastDot) {
-          s = s.replace(/\./g, "").replace(/,/g, ".");
-        } else {
-          s = s.replace(/,/g, "");
-        }
+        if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+        else s = s.replace(/,/g, "");
       } else if (lastDot !== -1) {
         const fracLen = s.length - lastDot - 1;
         if (fracLen === 3) s = s.replace(/\./g, "");
@@ -666,16 +535,11 @@ async function loadPnlAssets() {
     }
 
     pnlAssetsValueCardEl.classList.remove("pnl-positive", "pnl-negative");
+    if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
+    if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
 
-if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
-if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
+    if (!Number.isFinite(num)) throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
 
-    if (!Number.isFinite(num)) {
-      throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
-    }
-
-    // Show negative with minus sign like "-$2.120"
-    // (formatUsd currently rounds and uses de-DE grouping; we keep consistent)
     const formatted = (num < 0 ? "-" : "") + formatUsd(Math.abs(num));
     pnlAssetsValueCardEl.textContent = formatted;
   } catch (err) {
@@ -683,69 +547,44 @@ if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
     pnlAssetsValueCardEl.textContent = "Unavailable";
   }
 }
-// Call on load (add inside your existing load handler OR add a new one)
-window.addEventListener("load", () => {
-  loadPnlAssets();
-});
 
-window.addEventListener("load", () => {
-  loadAvgBtc();
-  loadAvgEth();
-});
-
-// Refresh occasionally (optional)
 setInterval(loadPnlAssets, 10 * 60 * 1000);
-setInterval(loadAvgBtc, 10 * 60 * 1000);
-setInterval(loadAvgEth, 10 * 60 * 1000);
 
 // ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
 
 const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
 
-const PCT_RANGE = "Y2";
-
 const PCT_ASSETS_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
   "?sheet=DEFI_invest" +
-  `&range=${encodeURIComponent(PCT_RANGE)}` +
+  "&range=Y2" +
   "&tqx=out:json";
 
 function parsePercentLoose(rawValue) {
-  // Accepts: -0.2062, -20.62, "-20.62%", "+20,62%", "0.1" etc.
   if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
 
   let s = String(rawValue ?? "").trim();
   if (!s) return NaN;
 
-  // Keep digits, sign, separators, percent
   s = s.replace(/[^\d.,%\-\+]/g, "");
-
   const hasPercent = s.includes("%");
-  s = s.replace(/[^\d.,%\-\+]/g, "");
- s = s.replace(/[^\d.,%\-\+]/g, ""); // Number() handles leading +, but safe
 
-  // Normalize separators (treat comma as decimal when it's the only separator)
   const lastDot = s.lastIndexOf(".");
   const lastComma = s.lastIndexOf(",");
 
   if (lastDot !== -1 && lastComma !== -1) {
-    // Decide decimal by last separator
-    if (lastComma > lastDot) {
-      s = s.replace(/\./g, "").replace(/,/g, ".");
-    } else {
-      s = s.replace(/[^\d.,%\-\+]/g, "");
-    }
+    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
   } else if (lastComma !== -1 && lastDot === -1) {
-   s = s.replace(/[^\d.,%\-\+]/g, "");
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen !== 3) s = s.replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
   }
 
-  let num = Number(s);
+  let num = Number(s.replace("%", ""));
   if (!Number.isFinite(num)) return NaN;
 
-  // If sheet returns 0.2062 and formatted as %, convert to 20.62 for display
-  // Only do this when it clearly looks like a ratio.
   if (hasPercent && Math.abs(num) <= 1) num = num * 100;
-
   return num;
 }
 
@@ -766,56 +605,67 @@ async function loadPercentageAssets() {
     const f = cell?.f;
 
     let num = (typeof v === "number" && Number.isFinite(v)) ? v : parsePercentLoose(f ?? v);
+    if (Number.isFinite(num) && Math.abs(num) <= 1) num = num * 100;
 
-    // If the sheet gives a ratio without %, convert to percent for display when it looks like ratio
-    if (Number.isFinite(num) && Math.abs(num) <= 1) {
-      num = num * 100;
-    }
+    if (!Number.isFinite(num)) throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
 
-    if (!Number.isFinite(num)) {
-      throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
-    }
-
-    // Color
     pctAssetsValueCardEl.classList.remove("pct-positive", "pct-negative");
     if (num > 0) pctAssetsValueCardEl.classList.add("pct-positive");
     if (num < 0) pctAssetsValueCardEl.classList.add("pct-negative");
 
-    // Format like +20.62% / -20.62%
     const sign = num < 0 ? "-" : "+";
-    const formatted = `${sign}${Math.abs(num).toFixed(2)}%`;
-
-    pctAssetsValueCardEl.textContent = formatted;
+    pctAssetsValueCardEl.textContent = `${sign}${Math.abs(num).toFixed(2)}%`;
   } catch (err) {
     console.error("Failed to load Percentage Assets", err);
     pctAssetsValueCardEl.textContent = "Unavailable";
   }
 }
-// Call on load + refresh (add alongside your other loaders)
-window.addEventListener("load", () => {
-  loadPercentageAssets();
-});
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== MY ASSETS MENU ==================
+// ================== MY ASSETS MENU (fixed-position dropdown to avoid clipping) ==================
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
 function closeMyAssetsMenu() {
   if (!myAssetsMenu) return;
   myAssetsMenu.classList.remove("visible");
+  myAssetsMenu.style.left = "";
+  myAssetsMenu.style.top = "";
   if (myAssetsButton) myAssetsButton.setAttribute("aria-expanded", "false");
+}
+
+function repositionMyAssetsMenuIfOpen() {
+  if (!myAssetsMenu || !myAssetsButton) return;
+  if (!myAssetsMenu.classList.contains("visible")) return;
+
+  const r = myAssetsButton.getBoundingClientRect();
+  const menuW = myAssetsMenu.offsetWidth || 190;
+
+  let left = r.left + (r.width / 2) - (menuW / 2);
+  left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+  const top = r.bottom + 10;
+
+  myAssetsMenu.style.left = `${Math.round(left)}px`;
+  myAssetsMenu.style.top  = `${Math.round(top)}px`;
 }
 
 if (myAssetsButton && myAssetsMenu) {
   myAssetsButton.addEventListener("click", (e) => {
     e.stopPropagation();
-    const isOpen = myAssetsMenu.classList.toggle("visible");
-    myAssetsButton.setAttribute("aria-expanded", String(isOpen));
+    const willOpen = !myAssetsMenu.classList.contains("visible");
 
-    // Optional: close wallet menu if open
+    // close wallet menu if open
     walletMenu.classList.remove("visible");
+
+    if (!willOpen) {
+      closeMyAssetsMenu();
+      return;
+    }
+
+    myAssetsMenu.classList.add("visible");
+    myAssetsButton.setAttribute("aria-expanded", "true");
+    repositionMyAssetsMenuIfOpen();
   });
 
   document.addEventListener("click", (e) => {
@@ -823,13 +673,15 @@ if (myAssetsButton && myAssetsMenu) {
     if (!e.target.closest(".my-assets-container")) closeMyAssetsMenu();
   });
 
-  // Close on ESC
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMyAssetsMenu();
   });
+
+  window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
+  window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
 }
 
-// ================== DeFi MENU (right-click -> Add site / right-click item -> Delete) ==================
+// ================== DeFi MENU (click dropdown + right-click context menus) ==================
 (function initDefiMenu() {
   const defiContainer = document.getElementById("defiContainer");
   const defiButton = document.getElementById("defiButton");
@@ -837,7 +689,6 @@ if (myAssetsButton && myAssetsMenu) {
   const defiContextMenu = document.getElementById("defiContextMenu");
   const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
 
-  // NEW: item delete context menu
   const defiItemContextMenu = document.getElementById("defiItemContextMenu");
   const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
 
@@ -852,7 +703,6 @@ if (myAssetsButton && myAssetsMenu) {
   ) return;
 
   const DEFI_LINKS_KEY = "defiLinks_v1";
-
   let pendingDeleteUrl = null;
 
   function loadDefiLinks() {
@@ -879,7 +729,6 @@ if (myAssetsButton && myAssetsMenu) {
     }
   }
 
-  // NEW: Edge-like label generator (no manual label prompt)
   function edgeStyleFromDomain(hostname) {
     let h = String(hostname || "").replace(/^www\./i, "");
     if (!h) return "Site";
@@ -895,7 +744,6 @@ if (myAssetsButton && myAssetsMenu) {
       .replace(/[-_]+/g, " ")
       .trim();
 
-    // defitracker -> DeFi tracker -> DeFi Tracker
     base = base.replace(/DeFi([A-Za-z]+)/, "DeFi $1").trim();
 
     base = base
@@ -934,30 +782,42 @@ if (myAssetsButton && myAssetsMenu) {
 
     for (const link of links) {
       const a = document.createElement("a");
-      a.className = "my-assets-item"; // reuse same styling
+      a.className = "my-assets-item";
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.href = link.url;
-
-      // IMPORTANT: keep the label short like Edge
       a.textContent = link.label || makeEdgeLikeLabel(link.url);
-
-      // IMPORTANT: used for delete
       a.dataset.url = link.url;
-
       defiMenu.appendChild(a);
     }
+  }
+
+  function closeDefiMenu() {
+    defiMenu.classList.remove("visible");
+    defiMenu.style.left = "";
+    defiMenu.style.top = "";
+    defiButton.setAttribute("aria-expanded", "false");
+  }
+
+  function repositionDefiMenuIfOpen() {
+    if (!defiMenu.classList.contains("visible")) return;
+
+    const r = defiButton.getBoundingClientRect();
+    const menuW = defiMenu.offsetWidth || 190;
+
+    let left = r.left + (r.width / 2) - (menuW / 2);
+    left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+    const top = r.bottom + 10;
+
+    defiMenu.style.left = `${Math.round(left)}px`;
+    defiMenu.style.top  = `${Math.round(top)}px`;
   }
 
   function openDefiMenu() {
     renderDefiMenu();
     defiMenu.classList.add("visible");
     defiButton.setAttribute("aria-expanded", "true");
-  }
-
-  function closeDefiMenu() {
-    defiMenu.classList.remove("visible");
-    defiButton.setAttribute("aria-expanded", "false");
+    repositionDefiMenuIfOpen();
   }
 
   function toggleDefiMenu() {
@@ -977,7 +837,6 @@ if (myAssetsButton && myAssetsMenu) {
     defiContextMenu.classList.add("visible");
   }
 
-  // NEW: Delete context menu show/hide
   function hideDeleteContextMenu() {
     defiItemContextMenu.classList.remove("visible");
     defiItemContextMenu.style.left = "-9999px";
@@ -1002,42 +861,34 @@ if (myAssetsButton && myAssetsMenu) {
     e.stopPropagation();
     hideAllDefiContextMenus();
 
-    // close My Assets + wallet menu if open
     if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
     if (walletMenu) walletMenu.classList.remove("visible");
 
     toggleDefiMenu();
   });
 
-  // RIGHT CLICK on DeFi BUTTON/CONTAINER => Add site context menu (block Edge)
- function onDefiContextMenu(e) {
-  // If RMB was on a DeFi menu item, do NOT show "Add site" here.
-  // The item-specific handler will show "Delete site".
-  const item = e.target?.closest?.("#defiMenu a[data-url]");
-  if (item) {
-    // Let the defiMenu contextmenu handler handle it
-    return;
+  // RIGHT CLICK on DeFi button => Add site context menu
+  function onDefiContextMenu(e) {
+    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    if (item) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    closeDefiMenu();
+    hideDeleteContextMenu();
+
+    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+    if (walletMenu) walletMenu.classList.remove("visible");
+
+    showAddContextMenu(e.clientX, e.clientY);
+    return false;
   }
 
-  e.preventDefault();
-  e.stopPropagation();
-  e.stopImmediatePropagation();
+  defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
 
-  closeDefiMenu();
-  hideDeleteContextMenu();
-
-  if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
-  if (walletMenu) walletMenu.classList.remove("visible");
-
-  showAddContextMenu(e.clientX, e.clientY);
-  return false;
-}
-
- defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
-// REMOVE the next line (important):
-// defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
-  
-  // RIGHT CLICK on DeFi MENU ITEM => Delete site context menu (block Edge)
+  // RIGHT CLICK on DeFi menu item => Delete site context menu
   function onDefiItemContextMenu(e) {
     const item = e.target?.closest?.("#defiMenu a[data-url]");
     if (!item) return;
@@ -1047,15 +898,12 @@ if (myAssetsButton && myAssetsMenu) {
     e.stopImmediatePropagation();
 
     hideAddContextMenu();
-    // keep the dropdown open
     showDeleteContextMenu(e.clientX, e.clientY, item.dataset.url);
     return false;
   }
 
-  // Capture phase to suppress Edge menu on links
   defiMenu.addEventListener("contextmenu", onDefiItemContextMenu, true);
 
-  // Add site action (NO manual label prompt)
   defiAddSiteBtn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1069,8 +917,9 @@ if (myAssetsButton && myAssetsMenu) {
       alert("Invalid URL. Please enter a full URL starting with https://");
       return;
     }
+
     const label = (prompt("Enter label:") || "").trim();
-    if (!label) return; // require label; remove this line if label can be empty
+    if (!label) return;
 
     const links = loadDefiLinks();
     links.push({ url: trimmedUrl, label });
@@ -1079,7 +928,6 @@ if (myAssetsButton && myAssetsMenu) {
     openDefiMenu();
   });
 
-  // Delete site action
   defiDeleteSiteBtn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1094,10 +942,9 @@ if (myAssetsButton && myAssetsMenu) {
     saveDefiLinks(next);
 
     hideDeleteContextMenu();
-    openDefiMenu(); // re-render and keep it open
+    openDefiMenu();
   });
 
-  // Close menus when clicking elsewhere
   document.addEventListener("click", (e) => {
     if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
       closeDefiMenu();
@@ -1110,7 +957,6 @@ if (myAssetsButton && myAssetsMenu) {
     }
   });
 
-  // Close on ESC
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeDefiMenu();
@@ -1118,83 +964,68 @@ if (myAssetsButton && myAssetsMenu) {
     }
   });
 
-  // Also hide context menu on scroll/resize (nice UX)
-  window.addEventListener("scroll", hideAllDefiContextMenus, true);
-  window.addEventListener("resize", hideAllDefiContextMenus);
+  window.addEventListener("scroll", () => {
+    hideAllDefiContextMenus();
+    repositionDefiMenuIfOpen();
+  }, true);
 
-  // Initial render
+  window.addEventListener("resize", () => {
+    hideAllDefiContextMenus();
+    repositionDefiMenuIfOpen();
+  });
+
   renderDefiMenu();
 })();
 
-// ================== Hold/Sell composite logic ==================
+// ================== Hold/Sell (CoinGlass-like peak signals) ==================
 
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
-}
-
-// Map a value x in [-range..+range] to 0..1, where negative => more "sell" (risk-off)
-function pctToSell01(x, range) {
-  if (!Number.isFinite(x)) return null;
-  // CONTRARIAN:
-  // x = +range => sell=1, x=-range => sell=0
-  return clamp((x + range) / (2 * range), 0, 1);
-}
-
-// Fear & Greed: higher greed => higher "sell"
-function fgToSell01(fg) {
-  if (!Number.isFinite(fg)) return null;
-  return clamp(fg / 100, 0, 1);
-}
-
-function computeCompositeSellPct({ fg, btc24h, eth24h }) {
-  // weights (tweak if you want)
-  const wFg  = 0.55;
-  const wBtc = 0.25;
-  const wEth = 0.20;
-
-  const sFg = fgToSell01(fg);          // 0..1
-  const sB  = pctToSell01(btc24h, 8);  // +/-8% treated as "big move"
-  const sE  = pctToSell01(eth24h, 10); // ETH moves more
-
-  const parts = [
-    { w: wFg,  v: sFg },
-    { w: wBtc, v: sB },
-    { w: wEth, v: sE },
-  ].filter(p => p.v !== null);
-
-  if (parts.length === 0) return null;
-
-  const wSum = parts.reduce((a, p) => a + p.w, 0);
-  const val  = parts.reduce((a, p) => a + p.w * p.v, 0) / wSum;
-
-  return clamp(val * 100, 0, 100);
+function computePeakSignals({ fg, puell, btc24h, eth24h }) {
+  return [
+    { name: "FearGreed >= 80", on: Number.isFinite(fg) && fg >= 80 },
+    { name: "Puell >= 2.0", on: Number.isFinite(puell) && puell >= 2.0 },
+    { name: "BTC 24h >= +8%", on: Number.isFinite(btc24h) && btc24h >= 8 },
+    { name: "ETH 24h >= +10%", on: Number.isFinite(eth24h) && eth24h >= 10 },
+  ];
 }
 
 function updateHoldSellPanel() {
-  const holdEl    = document.getElementById("hsHoldPct");
-  const sellEl    = document.getElementById("hsSellPct");
-  const markerEl  = document.getElementById("hsMarker");
-
+  const holdEl   = document.getElementById("hsHoldPct");
+  const sellEl   = document.getElementById("hsSellPct");
+  const markerEl = document.getElementById("hsMarker");
   if (!holdEl || !sellEl || !markerEl) return;
 
-  const sellPct = computeCompositeSellPct({
-    fg: latestFgValue,
-    btc24h: latestBtc24h,
-    eth24h: latestEth24h,
-  });
+  const anyKnown =
+    Number.isFinite(latestFgValue) ||
+    Number.isFinite(latestPuell) ||
+    Number.isFinite(latestBtc24h) ||
+    Number.isFinite(latestEth24h);
 
-  if (!Number.isFinite(sellPct)) {
+  if (!anyKnown) {
     holdEl.textContent = "–";
     sellEl.textContent = "–";
     return;
   }
 
+  const signals = computePeakSignals({
+    fg: latestFgValue,
+    puell: latestPuell,
+    btc24h: latestBtc24h,
+    eth24h: latestEth24h,
+  });
+
+  const total = signals.length || 1;
+  const onCount = signals.filter(s => s.on).length;
+
+  const sellPct = Math.round((onCount / total) * 100);
   const holdPct = 100 - sellPct;
 
-  holdEl.textContent = `${Math.round(holdPct)}%`;
-  sellEl.textContent = `${Math.round(sellPct)}%`;
+  holdEl.textContent = `${holdPct}%`;
+  sellEl.textContent = `${sellPct}%`;
   markerEl.style.left = `${sellPct}%`;
 }
+
+// ================== PUELL MULTIPLE ==================
+
 async function loadPuell() {
   const statusEl = document.getElementById("puellStatus");
   const valueEl  = document.getElementById("puellValue");
@@ -1206,34 +1037,68 @@ async function loadPuell() {
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
     const puell = Number(json.puell);
+    latestPuell = Number.isFinite(puell) ? puell : null;
 
     if (valueEl) valueEl.textContent = Number.isFinite(puell) ? puell.toFixed(2) : "–";
 
     if (statusEl) {
       statusEl.textContent = json.status || "–";
-      statusEl.classList.remove("is-green","is-yellow","is-orange","is-red");
+      statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
       if (json.statusColor) statusEl.classList.add(`is-${json.statusColor}`);
     }
 
     if (markerEl && Number.isFinite(json.markerPct)) {
       markerEl.style.left = `${Math.max(0, Math.min(100, json.markerPct))}%`;
     }
+
+    updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load Puell", e);
+    latestPuell = null;
     if (statusEl) statusEl.textContent = "Unavailable";
     if (valueEl) valueEl.textContent = "–";
+    updateHoldSellPanel();
   }
 }
+
+// ================== INITIAL LOADS / REFRESH ==================
+
 window.addEventListener("load", () => {
+  loadCryptoPrices();
+  loadFearGreed();
   loadPuell();
+
+  loadTotalAssets();
+  loadDefiAssets();
+  loadAvgBtc();
+  loadAvgEth();
+  loadPnlAssets();
+  loadPercentageAssets();
+
+  if (!window.ethereum) return;
+  const saved = localStorage.getItem("savedAddress");
+  if (!saved) return;
+
+  (async () => {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (!accounts.includes(saved)) return;
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network  = await provider.getNetwork();
+      if (Number(network.chainId) !== 42161) return;
+
+      statusDiv.textContent = "Reading your Aave account data...";
+      await loadAaveDataForUser(saved, provider);
+      setConnectedUI(saved);
+      statusDiv.textContent = "Loaded from previous connection.";
+    } catch (err) {
+      console.error(err);
+    }
+  })();
 });
+
+// Refresh intervals
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
+setInterval(loadFearGreed, 30 * 60 * 1000);
 setInterval(loadPuell, 60 * 60 * 1000);
-
-
-
-
-
-
-
-
-
