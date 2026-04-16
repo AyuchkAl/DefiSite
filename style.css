@@ -22,23 +22,8 @@ body {
   z-index: 10;
 }
 
-.topbar-inner{
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: nowrap;     /* IMPORTANT */
-  gap: 16px;             /* gives breathing room */
-}
-
-.left-group{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-   flex-wrap: nowrap;     /* IMPORTANT */
-}
-
+.topbar-inner{ flex-wrap: wrap; }
+.left-group{ flex-wrap: wrap; }
 .left-group-spacer{
   min-width: 12px;
 }
@@ -151,23 +136,33 @@ body {
 
 /* BTC/ETH prices */
 
-.prices-row {
-  display: grid;
-  grid-template-columns: auto auto; /* left column (pairs) + right column (panel) */
+.prices-row{
+  display: flex;
   align-items: center;
-  column-gap: 10px;
+  gap: 14px;
+  min-width: 0;
 }
+
 .prices-left{
   display: flex;
-  flex-direction: column; /* BTC row above ETH row */
+  flex-direction: column;
   gap: 6px;
+  flex: 0 0 auto;
 }
 
 .prices-right{
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex: 0 0 auto;
 }
 
+.right-indicators{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap; /* keep them on one line */
+}
 .price-pill {
   padding: 6px 10px;
   border-radius: 999px;
@@ -234,7 +229,7 @@ body {
   margin-left: 6px;
 }
 
-price-label-inline {
+.price-label-inline {
   font-size: 10px;
   font-weight: 500;
   color: #ffffff;
@@ -671,14 +666,10 @@ price-label-inline {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 24px;   /* small spacing after Fear&Greed; adjust 12..40 */
+  margin-left: 12px;  /* smaller so it doesn’t create empty space */
   flex: 0 0 auto;
 }
-/* Move Fear & Greed to the RIGHT using layout (prevents overlap with menus) */
-#fgBlock{
-  transform: none !important;
-  margin-left: 250px;   /* adjust: 150px..300px */
-}
+
 
 /* Put BTC + AVG BTC on one line, and ETH + AVG ETH on one line */
 .prices-pair{
@@ -787,5 +778,146 @@ price-label-inline {
 .hs-panel--compact .hs-marker{
   height: 14px;
   top: -3px;
+}
+.right-indicators{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* CMC-like card vibe */
+.cmc-card{
+  width: 220px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(17, 21, 42, 0.92);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.40);
+  color: rgba(245,245,245,0.95);
+}
+
+.cmc-card-title{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.cmc-status-row,
+.cmc-value-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: rgba(207,213,255,0.90);
+}
+
+.cmc-value{
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmc-status-pill{
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #ffffff;
+  text-transform: capitalize;
+}
+
+.cmc-meter{
+  position: relative;
+  margin-top: 6px;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.cmc-meter-track{
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    #16c784 0%,
+    #7ad86d 30%,
+    #f5d547 55%,
+    #ffb347 75%,
+    #ff5c5c 100%
+  );
+  opacity: 0.95;
+}
+
+.cmc-meter-marker{
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+  transform: translateX(-1px);
+}
+
+.cmc-status-pill.is-green{ background: rgba(22,199,132,0.18); border-color: rgba(22,199,132,0.35); }
+.cmc-status-pill.is-yellow{ background: rgba(245,213,71,0.16); border-color: rgba(245,213,71,0.35); }
+.cmc-status-pill.is-orange{ background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.35); }
+.cmc-status-pill.is-red{ background: rgba(255,92,92,0.16); border-color: rgba(255,92,92,0.35); }
+
+/* === FORCE TOP BAR TO ONE LINE === */
+.topbar-inner{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.left-group{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap !important;
+  min-width: max-content;
+}
+
+.prices-row{
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 14px;
+  min-width: max-content;      /* keep it one line */
+}
+
+.right-indicators{
+  flex-wrap: nowrap !important;
+  min-width: max-content;
+}
+
+/* Prevent panels from shrinking into weird shapes */
+.hf-block,
+.prices-left,
+.fg-block,
+.cmc-card,
+.hs-panel,
+.menus-group{
+  flex: 0 0 auto !important;
+}
+
+/* Optional: make horizontal scroll look nicer */
+.topbar-inner::-webkit-scrollbar{
+  height: 8px;
+}
+.topbar-inner::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.12);
+  border-radius: 999px;
 }
 
