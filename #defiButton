@@ -650,14 +650,9 @@ body {
 
 /* === ONLY move My Assets + DeFi down (everything else unchanged) === */
 #myAssetsButton,
-#defiButton::before{
-  content: "";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  background: url("DeFi.png") center/cover no-repeat;
-  vertical-align: -3px;
+#defiButton{
+  position: relative;
+  top: 8px;            /* adjust: 4px..14px */
 }
 
 /* Keep dropdowns aligned under the shifted buttons */
