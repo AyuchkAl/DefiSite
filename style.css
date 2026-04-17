@@ -185,11 +185,11 @@ body {
 }
 
 .btc-icon {
-  background-image: url("btc.jpg");
+  background-image: url("btc.png");
 }
 
 .eth-icon {
-  background-image: url("eth.jpg");
+  background-image: url("eth.png");
 }
 
 .asset-text {
