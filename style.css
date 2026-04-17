@@ -185,11 +185,11 @@ body {
 }
 
 .btc-icon {
-  background-image: url("btc.jpg");
+  background-image: url("btc.png");
 }
 
 .eth-icon {
-  background-image: url("eth.jpg");
+  background-image: url("eth.png");
 }
 
 .asset-text {
@@ -650,9 +650,14 @@ body {
 
 /* === ONLY move My Assets + DeFi down (everything else unchanged) === */
 #myAssetsButton,
-#defiButton{
-  position: relative;
-  top: 8px;            /* adjust: 4px..14px */
+#defiButton::before{
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  background: url("DeFi.png") center/cover no-repeat;
+  vertical-align: -3px;
 }
 
 /* Keep dropdowns aligned under the shifted buttons */
