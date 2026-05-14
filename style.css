@@ -167,8 +167,10 @@ body {
   flex-direction: column;
   gap: 6px;
   flex: 0 0 auto;
+  justify-content: center;
+  position: relative;
+  top: 6px;
 }
-
 .prices-right{
   display: flex;
   align-items: center;
