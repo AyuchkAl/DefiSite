@@ -48,6 +48,11 @@ const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
+// Morpho HF
+const MORPHO_HF_PROXY_URL = "https://market-enumerator-worker.alexknikola.workers.dev/morpho-hf";
+const morphoHfValueEl = document.getElementById("morphoHfValue");
+const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
+
 // Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
@@ -55,13 +60,6 @@ const fgNeedleEl = document.getElementById("fgNeedle");
 
 // Puell proxy
 const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
-
-// Morpho HF proxy
-const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
-
-// Morpho DOM
-const morphoHfValueEl = document.getElementById("morphoHfValue");
-const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
 
 let currentAddress = null;
 
@@ -98,6 +96,7 @@ function setDisconnectedUI() {
   statusDiv.textContent = "";
   localStorage.removeItem("savedAddress");
 
+  hfMainRowEl.classList.remove("safe", "warning", "danger");
   if (morphoHfMainRowEl) {
     morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
   }
@@ -114,25 +113,21 @@ function setHealthFactorDisplay(hf) {
 }
 
 function setMorphoHealthFactorDisplay(hf) {
-  if (!morphoHfValueEl) return;
+  if (!morphoHfValueEl || !morphoHfMainRowEl) return;
 
   if (!Number.isFinite(hf)) {
     morphoHfValueEl.textContent = "–";
-    if (morphoHfMainRowEl) {
-      morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
-    }
+    morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
     return;
   }
 
   morphoHfValueEl.textContent = hf.toFixed(2);
 
-  if (morphoHfMainRowEl) {
-    morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+  morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
 
-    if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
-    else if (hf < 1.5) morphoHfMainRowEl.classList.add("warning");
-    else morphoHfMainRowEl.classList.add("safe");
-  }
+  if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
+  else if (hf < 1.5) morphoHfMainRowEl.classList.add("warning");
+  else morphoHfMainRowEl.classList.add("safe");
 }
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
@@ -280,15 +275,10 @@ async function loadAaveDataForUser(userAddress, provider) {
   }
 }
 
-// ================== MORPHO LOGIC (HF via Cloudflare Worker) =======
+// ================== MORPHO LOGIC ==================================
 
 async function loadMorphoHealthFactor(userAddress) {
   try {
-    if (!MORPHO_HF_PROXY_URL) {
-      setMorphoHealthFactorDisplay(NaN);
-      return;
-    }
-
     const res = await fetch(
       `${MORPHO_HF_PROXY_URL}?address=${encodeURIComponent(userAddress)}`,
       { cache: "no-store" }
@@ -297,7 +287,7 @@ async function loadMorphoHealthFactor(userAddress) {
 
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-    const hf = Number(json?.healthFactor);
+    const hf = Number(json.healthFactor);
     if (!Number.isFinite(hf)) {
       setMorphoHealthFactorDisplay(NaN);
       return;
@@ -745,12 +735,9 @@ if (myAssetsButton && myAssetsMenu) {
   window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
   window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
 
-  // ✅ Close My Assets menu when a link is activated BUT DO NOT block navigation
-  // The previous pointerdown handler could cancel the default click in some browsers.
   function closeMyAssetsOnLinkClick(e) {
     const a = e.target && e.target.closest ? e.target.closest("a") : null;
     if (!a) return;
-    // close after click so default navigation isn't affected
     setTimeout(closeMyAssetsMenu, 0);
   }
   myAssetsMenu.addEventListener("click", closeMyAssetsOnLinkClick, true);
@@ -931,7 +918,6 @@ if (myAssetsButton && myAssetsMenu) {
     hideDeleteContextMenu();
   }
 
-  // LEFT CLICK => open dropdown
   defiButton.addEventListener("click", (e) => {
     e.stopPropagation();
     hideAllDefiContextMenus();
@@ -942,7 +928,6 @@ if (myAssetsButton && myAssetsMenu) {
     toggleDefiMenu();
   });
 
-  // ✅ Close DeFi dropdown on link click AFTER default navigation
   function closeDefiOnLinkClick(e) {
     const a = e.target && e.target.closest ? e.target.closest("a") : null;
     if (!a) return;
@@ -950,7 +935,6 @@ if (myAssetsButton && myAssetsMenu) {
   }
   defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
 
-  // RIGHT CLICK on DeFi button => Add site context menu
   function onDefiContextMenu(e) {
     const item = e.target?.closest?.("#defiMenu a[data-url]");
     if (item) return;
@@ -971,7 +955,6 @@ if (myAssetsButton && myAssetsMenu) {
 
   defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
 
-  // RIGHT CLICK on DeFi menu item => Delete site context menu
   function onDefiItemContextMenu(e) {
     const item = e.target?.closest?.("#defiMenu a[data-url]");
     if (!item) return;
