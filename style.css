@@ -42,7 +42,6 @@ body {
   margin-left: auto;
   position: relative;
   flex: 0 0 auto;
-  align-self: flex-start;
 }
 
 /* Brand */
@@ -72,7 +71,7 @@ body {
   flex-direction: column;
   gap: 8px;
   flex: 0 0 auto;
-  align-self: flex-start;
+  justify-content: center;
 }
 
 /* Health factor */
@@ -160,7 +159,7 @@ body {
 /* BTC/ETH prices */
 .prices-row{
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   min-width: 0;
 }
@@ -170,20 +169,19 @@ body {
   flex-direction: column;
   gap: 6px;
   flex: 0 0 auto;
-  align-self: flex-start;
+  justify-content: center;
 }
 
 .prices-right{
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   min-width: 0;
   flex: 0 0 auto;
-  align-self: flex-start;
 }
 
 .right-indicators{
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
 }
@@ -390,7 +388,6 @@ body {
   display: inline-flex;
   flex-direction: column;
   min-width: 220px;
-  align-self: flex-start;
 }
 
 .fg-header {
@@ -776,7 +773,7 @@ body {
 
 .right-indicators{
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
 
@@ -864,11 +861,11 @@ body {
 .cmc-status-pill.is-orange{ background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.35); }
 .cmc-status-pill.is-red{ background: rgba(255,92,92,0.16); border-color: rgba(255,92,92,0.35); }
 
-/* Force top bar to one line and align tops */
+/* Force top bar to one line, centered like before */
 .topbar-inner{
   width: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: nowrap !important;
@@ -878,7 +875,7 @@ body {
 
 .left-group{
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   flex-wrap: nowrap !important;
   min-width: max-content;
@@ -887,7 +884,7 @@ body {
 .prices-row{
   display: flex !important;
   flex-wrap: nowrap !important;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   min-width: max-content;
 }
