@@ -169,7 +169,7 @@ body {
   flex: 0 0 auto;
   justify-content: center;
   position: relative;
-  top: 9px;
+  top: 15px;
 }
 .prices-right{
   display: flex;
