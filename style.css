@@ -19,7 +19,7 @@ body {
   background: linear-gradient(90deg, rgba(10,10,20,0.95), rgba(8,10,30,0.9));
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 10000;
 }
 
 .topbar-inner{ flex-wrap: wrap; }
@@ -28,7 +28,6 @@ body {
   min-width: 12px;
 }
 
-/* Prevent any of the left widgets from shrinking weirdly */
 .hf-block,
 .prices-row,
 .fg-block,
@@ -37,14 +36,12 @@ body {
   flex: 0 0 auto;
 }
 
-/* Keep wallet on the right and never wrap under */
 .wallet-container{
-  margin-left: auto;   /* IMPORTANT */
-  position: relative;  /* keeps #walletMenu positioned correctly */
+  margin-left: auto;
+  position: relative;
   flex: 0 0 auto;
+  z-index: 10001;
 }
-
-/* Brand */
 
 .site-brand {
   display: flex;
@@ -66,8 +63,6 @@ body {
   color: #ffffff;
 }
 
-/* Health factor */
-
 .hf-block {
   padding: 10px 14px;
   border-radius: 16px;
@@ -75,7 +70,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   display: inline-flex;
   flex-direction: column;
-  min-width: 220px; /* slightly wider to fit text */
+  min-width: 220px;
 }
 
 .hf-main-row {
@@ -96,8 +91,9 @@ body {
   color: #ffffff;
   font-weight: 500;
 }
+
 .hf-label {
-  font-size: 18px;            /* was 11px */
+  font-size: 18px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #9aa4d8;
@@ -107,17 +103,6 @@ body {
   font-size: 18px;
   font-weight: 600;
 }
-
-.hf-safe {
-  color: #3dd68c;
-}
-.hf-warning {
-  color: #ffb347;
-}
-.hf-danger {
-  color: #ff5c5c;
-}
-/* Color both label and value together based on status */
 
 .hf-main-row.safe .hf-label,
 .hf-main-row.safe .hf-value {
@@ -133,8 +118,6 @@ body {
 .hf-main-row.danger .hf-value {
   color: #ff5c5c;
 }
-
-/* BTC/ETH prices */
 
 .prices-row{
   display: flex;
@@ -161,8 +144,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: nowrap; /* keep them on one line */
+  flex-wrap: nowrap;
 }
+
 .price-pill {
   padding: 6px 10px;
   border-radius: 999px;
@@ -244,9 +228,6 @@ body {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* Wallet */
-
-
 #walletMenu {
   position: absolute;
   right: 0;
@@ -323,21 +304,20 @@ body {
   flex-shrink: 0;
 }
 
-/* Center */
-
 .page-content {
   flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 28px;
+  padding: 26px 24px;
+  justify-items: stretch;
+  align-items: start;
 }
 
 .hidden {
   display: none;
 }
-
-/* Footer with ETH liq price */
 
 .liq-footer {
   width: 100%;
@@ -359,8 +339,6 @@ body {
   font-weight: 600;
   color: #ffffff;
 }
-
-/* ================== Fear & Greed (new) ================== */
 
 .fg-block {
   padding: 10px 14px;
@@ -410,11 +388,11 @@ body {
   stroke-linecap: round;
 }
 
-.fg-seg-1 { stroke: #ff5c5c; }  /* extreme fear */
-.fg-seg-2 { stroke: #ffb347; }  /* fear */
-.fg-seg-3 { stroke: #f5d547; }  /* neutral */
-.fg-seg-4 { stroke: #7ad86d; }  /* greed */
-.fg-seg-5 { stroke: #16c784; }  /* extreme greed */
+.fg-seg-1 { stroke: #ff5c5c; }
+.fg-seg-2 { stroke: #ffb347; }
+.fg-seg-3 { stroke: #f5d547; }
+.fg-seg-4 { stroke: #7ad86d; }
+.fg-seg-5 { stroke: #16c784; }
 
 .fg-needle-line {
   stroke: #ffffff;
@@ -448,37 +426,28 @@ body {
   text-transform: capitalize;
 }
 
-/* Remove the 0/25/50/75/100 scale under the Fear & Greed gauge */
 .fg-scale {
   display: none !important;
 }
 
-/* ================== MAIN LAYOUT (panel on left like Total_panel.jpg) ================== */
-.page-content{
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr;  /* one column */
-  grid-template-rows: auto 1fr;
-  gap: 28px;
-  padding: 26px 24px;
-
-  justify-items: stretch; /* stretch children to full width */
-  align-items: start;
-}
-
-/* 4 panels evenly across the available width */
 .main-left{
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 equal cards across */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
 }
-/* Cards fill their cell */
+
 .assets-card{
   width: 100%;
   height: 190px;
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(17,21,42,0.95), rgba(12,16,35,0.92));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
 }
-/* Center content below, full width (still centered inside) */
+
 .main-center{
   width: 100%;
   display: flex;
@@ -487,7 +456,6 @@ body {
   flex-direction: column;
 }
 
-/* Responsive: stack on small screens */
 @media (max-width: 980px){
   .page-content{
     flex-direction: column;
@@ -501,18 +469,6 @@ body {
     width: 100%;
   }
 }
-/* Optional: tighten spacing for the simplified card */
-.assets-card{
-  width: 100%;
-  height: 190px;
-  border-radius: 18px;
-  padding: 18px 18px 16px;
-  box-sizing: border-box;
-
-  background: linear-gradient(180deg, rgba(17,21,42,0.95), rgba(12,16,35,0.92));
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
-}
 
 .assets-title{
   font-size: 14px;
@@ -522,31 +478,30 @@ body {
 }
 
 .assets-value{
-  font-size: 42px;      /* a bit bigger since it's the only main content */
+  font-size: 42px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #ffffff;
   line-height: 1.05;
 }
 
-
-/* Optional: hide the old "Total Assets =" text line once card is in place */
 .total-assets{
   display: none;
 }
 
-/* PnL coloring */
-.assets-value.pnl-positive{ color: #16c784; } /* green */
-.assets-value.pnl-negative{ color: #ea3943; } /* red */
+.assets-value.pnl-positive{ color: #16c784; }
+.assets-value.pnl-negative{ color: #ea3943; }
+.assets-value.pct-positive{ color: #16c784; }
+.assets-value.pct-negative{ color: #ea3943; }
 
-/* Percentage coloring (reuse same palette as PnL) */
-.assets-value.pct-positive{ color: #16c784; } /* green */
-.assets-value.pct-negative{ color: #ea3943; } /* red */
-
-/* ================== My Assets menu ================== */
+.my-assets-container,
+.defi-container,
+.wallet-container{
+  position: relative;
+  z-index: 10001;
+}
 
 .my-assets-container{
-  position: relative;
   display: inline-block;
 }
 
@@ -555,13 +510,11 @@ body {
   background: rgba(17,21,42,0.65);
   backdrop-filter: blur(10px);
   color: rgba(245,245,245,0.92);
-
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-
   box-shadow: 0 10px 24px rgba(0,0,0,0.35);
   transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
 }
@@ -577,16 +530,14 @@ body {
   left: 50%;
   transform: translateX(-50%);
   margin-top: 10px;
-
   background: #151a30;
   border-radius: 12px;
   padding: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.06);
-
   min-width: 190px;
   display: none;
-  z-index: 30;
+  z-index: 20000 !important;
 }
 
 .my-assets-menu.visible{
@@ -608,25 +559,20 @@ body {
   color: #ffffff;
 }
 
-
-/* ================== DeFi menu (reuses My Assets styles) ================== */
-
 .defi-container{
-  position: relative;
   display: inline-block;
+  margin-left: 0 !important;
 }
 
-/* Context menu uses the same look as .my-assets-menu but must be fixed at mouse position */
 .defi-context{
   position: fixed !important;
   left: -9999px;
   top: -9999px;
-  transform: none !important; /* cancel centering used by my-assets-menu */
+  transform: none !important;
   margin-top: 0 !important;
-  z-index: 9999;
+  z-index: 20001 !important;
 }
 
-/* "Add site" button inside context menu */
 .defi-context-btn{
   width: 100%;
   border: none;
@@ -643,57 +589,62 @@ body {
   background: rgba(255,255,255,0.06);
   color: #ffffff;
 }
-/* DeFi must sit immediately after My Assets */
-.defi-container{
-  margin-left: 0 !important;
-}
 
-/* === ONLY move My Assets + DeFi down (everything else unchanged) === */
 #myAssetsButton,
 #defiButton{
   position: relative;
-  top: 8px;            /* adjust: 4px..14px */
+  top: 8px;
 }
 
-/* Keep dropdowns aligned under the shifted buttons */
 #myAssetsMenu,
 #defiMenu{
-  margin-top: 18px;    /* adjust if needed */
+  margin-top: 18px;
 }
 
-/* Menus should stay LEFT of the wallet (no huge push) */
+#myAssetsMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+}
+
+#defiMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
 .menus-group{
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 12px;  /* smaller so it doesn’t create empty space */
+  margin-left: 12px;
   flex: 0 0 auto;
 }
 
-
-/* Put BTC + AVG BTC on one line, and ETH + AVG ETH on one line */
 .prices-pair{
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-/* Optional: make AVG pills a bit narrower so it fits nicely */
 .prices-pair .price-pill{
   white-space: nowrap;
 }
 
-/* AVG BTC value color */
 #avgBtcValue,
 #avgEthValue{
-  color: #2ebac6 !important; /* light blue (same tone used elsewhere) */
-}
-/* Move ONLY the AVG ETH pill a bit to the right */
-.prices-pair:nth-child(2) .price-pill:nth-child(2){
-  margin-left: 6px; /* try 2px–12px */
+  color: #2ebac6 !important;
 }
 
-/* ================== Hold/Sell composite panel ================== */
+.prices-pair:nth-child(2) .price-pill:nth-child(2){
+  margin-left: 6px;
+}
+
 .hs-panel{
   padding: 8px 12px;
   border-radius: 14px;
@@ -712,6 +663,7 @@ body {
   margin-bottom: 6px;
   white-space: nowrap;
 }
+
 .hs-top strong{
   font-weight: 800;
   color: #ffffff;
@@ -729,7 +681,6 @@ body {
 .hs-bar-segs{
   position: absolute;
   inset: 0;
-  /* teal -> red */
   background: linear-gradient(90deg,
     #2ebac6 0%,
     #4cc9b5 25%,
@@ -758,10 +709,9 @@ body {
   white-space: nowrap;
 }
 
-/* Compact version to fit beside AVG panels */
 .hs-panel--compact{
   min-width: 0;
-  width: 170px;          /* adjust: 150–200 */
+  width: 170px;
   padding: 6px 10px;
   border-radius: 12px;
 }
@@ -779,13 +729,7 @@ body {
   height: 14px;
   top: -3px;
 }
-.right-indicators{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
 
-/* CMC-like card vibe */
 .cmc-card{
   width: 220px;
   padding: 10px 12px;
@@ -869,7 +813,6 @@ body {
 .cmc-status-pill.is-orange{ background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.35); }
 .cmc-status-pill.is-red{ background: rgba(255,92,92,0.16); border-color: rgba(255,92,92,0.35); }
 
-/* === FORCE TOP BAR TO ONE LINE === */
 .topbar-inner{
   width: 100%;
   display: flex;
@@ -894,7 +837,7 @@ body {
   flex-wrap: nowrap !important;
   align-items: center;
   gap: 14px;
-  min-width: max-content;      /* keep it one line */
+  min-width: max-content;
 }
 
 .right-indicators{
@@ -902,7 +845,6 @@ body {
   min-width: max-content;
 }
 
-/* Prevent panels from shrinking into weird shapes */
 .hf-block,
 .prices-left,
 .fg-block,
@@ -912,7 +854,6 @@ body {
   flex: 0 0 auto !important;
 }
 
-/* Optional: make horizontal scroll look nicer */
 .topbar-inner::-webkit-scrollbar{
   height: 8px;
 }
@@ -920,66 +861,3 @@ body {
   background: rgba(255,255,255,0.12);
   border-radius: 999px;
 }
-
-/* Always keep the sticky topbar above the whole page */
-.topbar{
-  z-index: 10000; /* higher than any content */
-}
-
-/* Make sure the menu containers can stack above other elements */
-.my-assets-container,
-.defi-container,
-.wallet-container{
-  position: relative;
-  z-index: 10001;
-}
-
-/* Dropdown menus must be above the main page cards */
-.my-assets-menu,
-.wallet-menu{
-  z-index: 10002;
-}
-
-/* Also raise DeFi menus + context menus */
-#defiMenu,
-#defiContextMenu,
-#defiItemContextMenu{
-  z-index: 10002;
-}
-/* My Assets dropdown: fixed so it can escape the scrolling topbar */
-#myAssetsMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 20000 !important;
-}
-/* === FIXED DROPDOWNS (NOT CLIPPED BY TOPBAR SCROLL CONTAINER) === */
-
-/* My Assets dropdown: fixed */
-#myAssetsMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 20000 !important;
-}
-
-/* DeFi dropdown: fixed (same reason) */
-#defiMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 20000 !important;
-}
-
-/* Ensure the context menus are still above everything */
-#defiContextMenu,
-#defiItemContextMenu{
-  z-index: 20001 !important;
-}
-
