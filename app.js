@@ -49,7 +49,7 @@ const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
 // Morpho HF
-const MORPHO_HF_PROXY_URL = "https://market-enumerator-worker.alexknikola.workers.dev/morpho-hf";
+const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
 const morphoHfValueEl = document.getElementById("morphoHfValue");
 const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
 
