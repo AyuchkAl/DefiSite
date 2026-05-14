@@ -19,7 +19,7 @@ body {
   background: linear-gradient(90deg, rgba(10,10,20,0.95), rgba(8,10,30,0.9));
   position: sticky;
   top: 0;
-  z-index: 10000;
+  z-index: 10;
 }
 
 .topbar-inner{ flex-wrap: wrap; }
@@ -28,6 +28,7 @@ body {
   min-width: 12px;
 }
 
+/* Prevent any of the left widgets from shrinking weirdly */
 .hf-block,
 .prices-row,
 .fg-block,
@@ -36,12 +37,14 @@ body {
   flex: 0 0 auto;
 }
 
+/* Keep wallet on the right and never wrap under */
 .wallet-container{
   margin-left: auto;
   position: relative;
   flex: 0 0 auto;
-  z-index: 10001;
 }
+
+/* Brand */
 
 .site-brand {
   display: flex;
@@ -62,6 +65,8 @@ body {
   font-weight: 600;
   color: #ffffff;
 }
+
+/* Health factor */
 
 .hf-block {
   padding: 10px 14px;
@@ -104,6 +109,17 @@ body {
   font-weight: 600;
 }
 
+.hf-safe {
+  color: #3dd68c;
+}
+.hf-warning {
+  color: #ffb347;
+}
+.hf-danger {
+  color: #ff5c5c;
+}
+
+/* Color both label and value together based on status */
 .hf-main-row.safe .hf-label,
 .hf-main-row.safe .hf-value {
   color: #3dd68c;
@@ -118,6 +134,21 @@ body {
 .hf-main-row.danger .hf-value {
   color: #ff5c5c;
 }
+
+/* Morpho HF block uses identical styling */
+.morpho-hf-block {
+  min-width: 170px;
+  justify-content: center;
+}
+
+.morpho-hf-main-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* BTC/ETH prices */
 
 .prices-row{
   display: flex;
@@ -228,6 +259,8 @@ body {
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* Wallet */
+
 #walletMenu {
   position: absolute;
   right: 0;
@@ -304,20 +337,21 @@ body {
   flex-shrink: 0;
 }
 
+/* Center */
+
 .page-content {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 28px;
-  padding: 26px 24px;
-  justify-items: stretch;
-  align-items: start;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
 }
 
 .hidden {
   display: none;
 }
+
+/* Footer with ETH liq price */
 
 .liq-footer {
   width: 100%;
@@ -339,6 +373,8 @@ body {
   font-weight: 600;
   color: #ffffff;
 }
+
+/* ================== Fear & Greed (new) ================== */
 
 .fg-block {
   padding: 10px 14px;
@@ -430,6 +466,18 @@ body {
   display: none !important;
 }
 
+/* ================== MAIN LAYOUT ================== */
+.page-content{
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 28px;
+  padding: 26px 24px;
+  justify-items: stretch;
+  align-items: start;
+}
+
 .main-left{
   width: 100%;
   display: grid;
@@ -440,12 +488,6 @@ body {
 .assets-card{
   width: 100%;
   height: 190px;
-  border-radius: 18px;
-  padding: 18px 18px 16px;
-  box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(17,21,42,0.95), rgba(12,16,35,0.92));
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
 }
 
 .main-center{
@@ -470,6 +512,17 @@ body {
   }
 }
 
+.assets-card{
+  width: 100%;
+  height: 190px;
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(17,21,42,0.95), rgba(12,16,35,0.92));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+}
+
 .assets-title{
   font-size: 14px;
   font-weight: 600;
@@ -491,17 +544,14 @@ body {
 
 .assets-value.pnl-positive{ color: #16c784; }
 .assets-value.pnl-negative{ color: #ea3943; }
+
 .assets-value.pct-positive{ color: #16c784; }
 .assets-value.pct-negative{ color: #ea3943; }
 
-.my-assets-container,
-.defi-container,
-.wallet-container{
-  position: relative;
-  z-index: 10001;
-}
+/* ================== My Assets menu ================== */
 
 .my-assets-container{
+  position: relative;
   display: inline-block;
 }
 
@@ -537,7 +587,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.06);
   min-width: 190px;
   display: none;
-  z-index: 20000 !important;
+  z-index: 30;
 }
 
 .my-assets-menu.visible{
@@ -559,9 +609,11 @@ body {
   color: #ffffff;
 }
 
+/* ================== DeFi menu ================== */
+
 .defi-container{
+  position: relative;
   display: inline-block;
-  margin-left: 0 !important;
 }
 
 .defi-context{
@@ -570,7 +622,7 @@ body {
   top: -9999px;
   transform: none !important;
   margin-top: 0 !important;
-  z-index: 20001 !important;
+  z-index: 9999;
 }
 
 .defi-context-btn{
@@ -590,6 +642,11 @@ body {
   color: #ffffff;
 }
 
+.defi-container{
+  margin-left: 0 !important;
+}
+
+/* Move ONLY My Assets + DeFi down */
 #myAssetsButton,
 #defiButton{
   position: relative;
@@ -599,23 +656,6 @@ body {
 #myAssetsMenu,
 #defiMenu{
   margin-top: 18px;
-}
-
-#myAssetsMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-}
-
-#defiMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 20000 !important;
 }
 
 .menus-group{
@@ -645,6 +685,7 @@ body {
   margin-left: 6px;
 }
 
+/* ================== Hold/Sell composite panel ================== */
 .hs-panel{
   padding: 8px 12px;
   border-radius: 14px;
@@ -663,7 +704,6 @@ body {
   margin-bottom: 6px;
   white-space: nowrap;
 }
-
 .hs-top strong{
   font-weight: 800;
   color: #ffffff;
@@ -730,6 +770,13 @@ body {
   top: -3px;
 }
 
+.right-indicators{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* CMC-like card vibe */
 .cmc-card{
   width: 220px;
   padding: 10px 12px;
@@ -813,6 +860,7 @@ body {
 .cmc-status-pill.is-orange{ background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.35); }
 .cmc-status-pill.is-red{ background: rgba(255,92,92,0.16); border-color: rgba(255,92,92,0.35); }
 
+/* Force top bar to one line */
 .topbar-inner{
   width: 100%;
   display: flex;
@@ -860,4 +908,58 @@ body {
 .topbar-inner::-webkit-scrollbar-thumb{
   background: rgba(255,255,255,0.12);
   border-radius: 999px;
+}
+
+.topbar{
+  z-index: 10000;
+}
+
+.my-assets-container,
+.defi-container,
+.wallet-container{
+  position: relative;
+  z-index: 10001;
+}
+
+.my-assets-menu,
+.wallet-menu{
+  z-index: 10002;
+}
+
+#defiMenu,
+#defiContextMenu,
+#defiItemContextMenu{
+  z-index: 10002;
+}
+
+#myAssetsMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
+#myAssetsMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
+#defiMenu{
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  margin-top: 0 !important;
+  z-index: 20000 !important;
+}
+
+#defiContextMenu,
+#defiItemContextMenu{
+  z-index: 20001 !important;
 }
