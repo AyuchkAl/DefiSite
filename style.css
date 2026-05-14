@@ -45,7 +45,6 @@ body {
 }
 
 /* Brand */
-
 .site-brand {
   display: flex;
   align-items: center;
@@ -66,10 +65,17 @@ body {
   color: #ffffff;
 }
 
-/* Health factor */
+/* HF stacked block */
+.hf-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+}
 
+/* Health factor */
 .hf-block {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 16px;
   background: #11152a;
   border: 1px solid rgba(255, 255, 255, 0.04);
@@ -87,7 +93,7 @@ body {
 
 .hf-liq-line {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 10px;
   color: #9aa4d8;
   white-space: nowrap;
 }
@@ -98,14 +104,14 @@ body {
 }
 
 .hf-label {
-  font-size: 18px;
+  font-size: 14px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: #9aa4d8;
 }
 
 .hf-value {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -135,9 +141,9 @@ body {
   color: #ff5c5c;
 }
 
-/* Morpho HF block uses identical styling */
+/* Morpho HF block */
 .morpho-hf-block {
-  min-width: 170px;
+  min-width: 220px;
   justify-content: center;
 }
 
@@ -149,7 +155,6 @@ body {
 }
 
 /* BTC/ETH prices */
-
 .prices-row{
   display: flex;
   align-items: center;
@@ -260,7 +265,6 @@ body {
 }
 
 /* Wallet */
-
 #walletMenu {
   position: absolute;
   right: 0;
@@ -338,7 +342,6 @@ body {
 }
 
 /* Center */
-
 .page-content {
   flex: 1;
   display: flex;
@@ -352,7 +355,6 @@ body {
 }
 
 /* Footer with ETH liq price */
-
 .liq-footer {
   width: 100%;
   padding: 12px 24px 20px;
@@ -374,8 +376,7 @@ body {
   color: #ffffff;
 }
 
-/* ================== Fear & Greed (new) ================== */
-
+/* Fear & Greed */
 .fg-block {
   padding: 10px 14px;
   border-radius: 16px;
@@ -466,7 +467,7 @@ body {
   display: none !important;
 }
 
-/* ================== MAIN LAYOUT ================== */
+/* MAIN LAYOUT */
 .page-content{
   flex: 1;
   display: grid;
@@ -548,8 +549,7 @@ body {
 .assets-value.pct-positive{ color: #16c784; }
 .assets-value.pct-negative{ color: #ea3943; }
 
-/* ================== My Assets menu ================== */
-
+/* My Assets menu */
 .my-assets-container{
   position: relative;
   display: inline-block;
@@ -609,8 +609,7 @@ body {
   color: #ffffff;
 }
 
-/* ================== DeFi menu ================== */
-
+/* DeFi menu */
 .defi-container{
   position: relative;
   display: inline-block;
@@ -646,7 +645,6 @@ body {
   margin-left: 0 !important;
 }
 
-/* Move ONLY My Assets + DeFi down */
 #myAssetsButton,
 #defiButton{
   position: relative;
@@ -685,7 +683,7 @@ body {
   margin-left: 6px;
 }
 
-/* ================== Hold/Sell composite panel ================== */
+/* Hold/Sell */
 .hs-panel{
   padding: 8px 12px;
   border-radius: 14px;
@@ -776,7 +774,7 @@ body {
   gap: 10px;
 }
 
-/* CMC-like card vibe */
+/* CMC-like card */
 .cmc-card{
   width: 220px;
   padding: 10px 12px;
@@ -864,7 +862,7 @@ body {
 .topbar-inner{
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: nowrap !important;
@@ -874,7 +872,7 @@ body {
 
 .left-group{
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   flex-wrap: nowrap !important;
   min-width: max-content;
@@ -883,7 +881,7 @@ body {
 .prices-row{
   display: flex !important;
   flex-wrap: nowrap !important;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   min-width: max-content;
 }
@@ -898,7 +896,8 @@ body {
 .fg-block,
 .cmc-card,
 .hs-panel,
-.menus-group{
+.menus-group,
+.hf-stack{
   flex: 0 0 auto !important;
 }
 
@@ -930,15 +929,6 @@ body {
 #defiContextMenu,
 #defiItemContextMenu{
   z-index: 10002;
-}
-
-#myAssetsMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 20000 !important;
 }
 
 #myAssetsMenu{
