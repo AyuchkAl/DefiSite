@@ -10,237 +10,233 @@
 </head>
 <body>
   <header class="topbar">
-  <div class="topbar-inner">
-        <!-- LEFT SIDE: all panels -->
-    <div class="left-group">
-      <!-- Health Factor -->
-      <div id="hfBlock" class="hf-block">
-        <div class="hf-main-row">
-          <div class="hf-label">Health factor</div>
-          <div id="hfValue" class="hf-value">–</div>
+    <div class="topbar-inner">
+      <!-- LEFT SIDE: all panels -->
+      <div class="left-group">
+        <!-- HF AAVE -->
+        <div id="hfBlock" class="hf-block">
+          <div class="hf-main-row">
+            <div class="hf-label">HF AAVE</div>
+            <div id="hfValue" class="hf-value">–</div>
+          </div>
+          <div id="hfLiqLine" class="hf-liq-line">
+            HF = 1 at: <span id="liqEthBottom">ETH ~ –</span>
+            &nbsp;&nbsp;
+            <span id="liqBtcBottom">BTC ~ –</span>
+          </div>
         </div>
-        <div id="hfLiqLine" class="hf-liq-line">
-          HF = 1 at: <span id="liqEthBottom">ETH ~ –</span>
-          &nbsp;&nbsp;
-          <span id="liqBtcBottom">BTC ~ –</span>
+
+        <!-- HF MORPHO -->
+        <div id="morphoHfBlock" class="hf-block">
+          <div class="hf-main-row" id="morphoHfMainRow">
+            <div class="hf-label">HF MORPHO</div>
+            <div id="morphoHfValue" class="hf-value">–</div>
+          </div>
+          <div class="hf-liq-line">
+            Morpho Health Factor
+          </div>
+        </div>
+
+        <!-- Prices + Indicators -->
+        <div class="prices-row">
+          <!-- Prices left -->
+          <div class="prices-left">
+            <div class="prices-pair">
+              <div class="price-pill">
+                <div class="asset-icon btc-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">BTC</span>
+                  <span id="btcPrice" class="price-value">–</span>
+                  <span class="price-label-inline">24h %</span>
+                  <span id="btcChange" class="price-change-inline">–</span>
+                </div>
+              </div>
+
+              <div class="price-pill" aria-label="AVG BTC">
+                <div class="asset-icon btc-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">AVG BTC</span>
+                  <span id="avgBtcValue" class="price-value">–</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="prices-pair">
+              <div class="price-pill">
+                <div class="asset-icon eth-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">ETH</span>
+                  <span id="ethPrice" class="price-value">–</span>
+                  <span class="price-label-inline">24h %</span>
+                  <span id="ethChange" class="price-change-inline">–</span>
+                </div>
+              </div>
+
+              <div class="price-pill" aria-label="AVG ETH">
+                <div class="asset-icon eth-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">AVG ETH</span>
+                  <span id="avgEthValue" class="price-value">–</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Indicators right -->
+          <div class="prices-right">
+            <div class="right-indicators">
+              <!-- Fear & Greed -->
+              <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
+                <div class="fg-header">
+                  <div class="fg-title">Fear &amp; Greed</div>
+                </div>
+
+                <div class="fg-gauge">
+                  <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
+                    <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
+                    <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="0"></path>
+                    <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
+                    <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
+                    <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
+                    <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
+
+                    <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
+                      <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
+                      <circle cx="110" cy="110" r="6" class="fg-needle-dot"></circle>
+                    </g>
+                  </svg>
+
+                  <div class="fg-center">
+                    <div id="fgValue" class="fg-value">–</div>
+                    <div id="fgLabel" class="fg-label">Loading…</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Puell -->
+              <div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
+                <div class="cmc-card-title">Puell Multiple</div>
+
+                <div class="cmc-status-row">
+                  <span class="cmc-status-label">Status</span>
+                  <span id="puellStatus" class="cmc-status-pill">Loading…</span>
+                </div>
+
+                <div class="cmc-value-row">
+                  <span class="cmc-value-label">Value</span>
+                  <span id="puellValue" class="cmc-value">–</span>
+                </div>
+
+                <div class="cmc-meter">
+                  <div class="cmc-meter-track"></div>
+                  <div id="puellMarker" class="cmc-meter-marker" style="left: 50%;"></div>
+                </div>
+              </div>
+
+              <!-- Hold/Sell -->
+              <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
+                <div class="hs-top">
+                  <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
+                  <span class="hs-right"><strong id="hsSellPct">–</strong> Sell</span>
+                </div>
+
+                <div class="hs-bar" role="img" aria-label="Hold vs Sell bar">
+                  <div class="hs-bar-segs"></div>
+                  <div class="hs-marker" id="hsMarker" style="left: 50%;"></div>
+                </div>
+              </div>
+
+              <!-- Menus -->
+              <div class="menus-group">
+                <div class="my-assets-container">
+                  <button id="myAssetsButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
+                    My Assets
+                  </button>
+                  <div id="myAssetsMenu" class="my-assets-menu" role="menu" aria-label="My Assets menu">
+                    <a class="my-assets-item" role="menuitem" target="_blank" rel="noopener noreferrer"
+                      href="https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/edit?gid=553100822#gid=553100822">
+                      Google Sheet
+                    </a>
+                    <a class="my-assets-item" role="menuitem" target="_blank" rel="noopener noreferrer"
+                      href="https://debank.com/profile/0xc474c3723c095758b7655a17248d73da262bd26a">
+                      DeBank
+                    </a>
+                  </div>
+                </div>
+
+                <div class="defi-container" id="defiContainer" oncontextmenu="return false;">
+                  <button id="defiButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
+                    DeFi
+                  </button>
+                  <div id="defiMenu" class="my-assets-menu" role="menu" aria-label="DeFi menu"></div>
+
+                  <div id="defiContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi context menu">
+                    <button id="defiAddSiteBtn" class="defi-context-btn" type="button">Add site</button>
+                  </div>
+
+                  <div id="defiItemContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi item context menu">
+                    <button id="defiDeleteSiteBtn" class="defi-context-btn" type="button">Delete site</button>
+                  </div>
+                </div>
+              </div>
+              <!-- /menus-group -->
+
+            </div>
+          </div>
+        </div>
+        <!-- /prices-row -->
+      </div>
+      <!-- /left-group -->
+
+      <!-- RIGHT SIDE: wallet -->
+      <div class="wallet-container">
+        <button id="connectButton">
+          <span class="wallet-dot"></span>
+          <span id="connectLabel">Connect wallet</span>
+        </button>
+        <div id="walletMenu" class="wallet-menu">
+          <button id="disconnectButton">Disconnect</button>
         </div>
       </div>
+    </div>
+  </header>
 
-      <!-- Prices + Indicators -->
-      <div class="prices-row">
-        <!-- Prices left -->
-        <div class="prices-left">
-          <div class="prices-pair">
-            <div class="price-pill">
-              <div class="asset-icon btc-icon"></div>
-              <div class="price-row">
-                <span class="asset-ticker">BTC</span>
-                <span id="btcPrice" class="price-value">–</span>
-                <span class="price-label-inline">24h %</span>
-                <span id="btcChange" class="price-change-inline">–</span>
-              </div>
-            </div>
-
-            <div class="price-pill" aria-label="AVG BTC">
-              <div class="asset-icon btc-icon"></div>
-              <div class="price-row">
-                <span class="asset-ticker">AVG BTC</span>
-                <span id="avgBtcValue" class="price-value">–</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="prices-pair">
-            <div class="price-pill">
-              <div class="asset-icon eth-icon"></div>
-              <div class="price-row">
-                <span class="asset-ticker">ETH</span>
-                <span id="ethPrice" class="price-value">–</span>
-                <span class="price-label-inline">24h %</span>
-                <span id="ethChange" class="price-change-inline">–</span>
-              </div>
-            </div>
-
-            <div class="price-pill" aria-label="AVG ETH">
-              <div class="asset-icon eth-icon"></div>
-              <div class="price-row">
-                <span class="asset-ticker">AVG ETH</span>
-                <span id="avgEthValue" class="price-value">–</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Indicators right -->
-        <div class="prices-right">
-          <div class="right-indicators">
-            <!-- Fear & Greed -->
-            <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
-              <div class="fg-header">
-                <div class="fg-title">Fear &amp; Greed</div>
-              </div>
-
-              <div class="fg-gauge">
-                <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
-                  <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
-                  <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                    stroke-dasharray="20 80" stroke-dashoffset="0"></path>
-                  <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                    stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
-                  <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                    stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
-                  <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                    stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
-                  <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                    stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
-
-                  <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
-                    <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
-                    <circle cx="110" cy="110" r="6" class="fg-needle-dot"></circle>
-                  </g>
-                </svg>
-
-                <div class="fg-center">
-                  <div id="fgValue" class="fg-value">–</div>
-                  <div id="fgLabel" class="fg-label">Loading…</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Puell -->
-            <div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
-              <div class="cmc-card-title">Puell Multiple</div>
-
-              <div class="cmc-status-row">
-                <span class="cmc-status-label">Status</span>
-                <span id="puellStatus" class="cmc-status-pill">Loading…</span>
-              </div>
-
-              <div class="cmc-value-row">
-                <span class="cmc-value-label">Value</span>
-                <span id="puellValue" class="cmc-value">–</span>
-              </div>
-
-              <div class="cmc-meter">
-                <div class="cmc-meter-track"></div>
-                <div id="puellMarker" class="cmc-meter-marker" style="left: 50%;"></div>
-              </div>
-            </div>
-
-            <!-- Hold/Sell -->
-            <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
-              <div class="hs-top">
-                <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
-                <span class="hs-right"><strong id="hsSellPct">–</strong> Sell</span>
-              </div>
-
-              <div class="hs-bar" role="img" aria-label="Hold vs Sell bar">
-                <div class="hs-bar-segs"></div>
-                <div class="hs-marker" id="hsMarker" style="left: 50%;"></div>
-              </div>
-            </div>
-
-            <!-- Menus (My Assets / DeFi) -->
-            <div class="menus-group">
-              <div class="my-assets-container">
-                <button id="myAssetsButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
-                  My Assets
-                </button>
-                <div id="myAssetsMenu" class="my-assets-menu" role="menu" aria-label="My Assets menu">
-                  <a class="my-assets-item" role="menuitem" target="_blank" rel="noopener noreferrer"
-                    href="https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/edit?gid=553100822#gid=553100822">
-                    Google Sheet
-                  </a>
-                  <a class="my-assets-item" role="menuitem" target="_blank" rel="noopener noreferrer"
-                    href="https://debank.com/profile/0xc474c3723c095758b7655a17248d73da262bd26a">
-                    DeBank
-                  </a>
-                </div>
-              </div>
-
-              <div class="defi-container" id="defiContainer" oncontextmenu="return false;">
-                <button id="defiButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
-                  DeFi
-                </button>
-                <div id="defiMenu" class="my-assets-menu" role="menu" aria-label="DeFi menu"></div>
-
-                <div id="defiContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi context menu">
-                  <button id="defiAddSiteBtn" class="defi-context-btn" type="button">Add site</button>
-                </div>
-
-                <div id="defiItemContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi item context menu">
-                  <button id="defiDeleteSiteBtn" class="defi-context-btn" type="button">Delete site</button>
-                </div>
-              </div>
-            </div>
-            <!-- /menus-group -->
-
-          </div>
-        </div>
+  <main class="page-content">
+    <section class="main-left">
+      <div class="assets-card" aria-label="Total Assets panel">
+        <div class="assets-title">Total Assets</div>
+        <div id="totalAssetsValueCard" class="assets-value">Loading…</div>
       </div>
-      <!-- /prices-row -->
-    </div>
-    <!-- /left-group -->
 
-    <!-- RIGHT SIDE: wallet -->
-    <div class="wallet-container">
-      <button id="connectButton">
-        <span class="wallet-dot"></span>
-        <span id="connectLabel">Connect wallet</span>
-      </button>
-      <div id="walletMenu" class="wallet-menu">
-        <button id="disconnectButton">Disconnect</button>
+      <div class="assets-card" aria-label="DeFi Assets panel">
+        <div class="assets-title">DeFi Assets</div>
+        <div id="defiAssetsValueCard" class="assets-value">Loading…</div>
       </div>
-    </div>
-  </div>
-</header>
- 
- <main class="page-content">
-  <!-- NEW: Left side Total Assets panel (like Total_Assets.jpg, styled to your site) -->
-  <section class="main-left">
-  <!-- Replace the content INSIDE your .assets-card with this simpler version -->
-<div class="assets-card" aria-label="Total Assets panel">
-  <div class="assets-title">Total Assets</div>
-  <div id="totalAssetsValueCard" class="assets-value">Loading…</div>
-</div>
-    <!-- DeFi Assets panel (NEW) -->
-<div class="assets-card" aria-label="DeFi Assets panel">
-  <div class="assets-title">DeFi Assets</div>
-  <div id="defiAssetsValueCard" class="assets-value">Loading…</div>
-</div>
-<div class="assets-card" aria-label="PnL Assets panel">
-  <div class="assets-title">PnL Assets</div>
-  <div id="pnlAssetsValueCard" class="assets-value">Loading…</div>
-</div>
-    <div class="assets-card" aria-label="Percentage Assets panel">
-  <div class="assets-title">Percentage Assets</div>
-  <div id="pctAssetsValueCard" class="assets-value">Loading…</div>
-</div>
 
-         
-          </div>
-  </section>
+      <div class="assets-card" aria-label="PnL Assets panel">
+        <div class="assets-title">PnL Assets</div>
+        <div id="pnlAssetsValueCard" class="assets-value">Loading…</div>
+      </div>
 
-  <!-- Existing content in the center (you can keep or remove) -->
-  <section class="main-center">
-    <!-- Keep your old Total Assets line if you want (can be hidden with CSS) -->
-  
-    <div id="status"></div>
-    <div id="result" class="hidden">
-      <span id="address" style="display:none;"></span>
-    </div>
-  </section>
-</main>
+      <div class="assets-card" aria-label="Percentage Assets panel">
+        <div class="assets-title">Percentage Assets</div>
+        <div id="pctAssetsValueCard" class="assets-value">Loading…</div>
+      </div>
+    </section>
+
+    <section class="main-center">
+      <div id="status"></div>
+      <div id="result" class="hidden">
+        <span id="address" style="display:none;"></span>
+      </div>
+    </section>
+  </main>
 
   <script src="app.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
