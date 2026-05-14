@@ -25,9 +25,6 @@ const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
 const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";  // 8 decimals
 
-// Morpho dashboard wallet
-const MORPHO_ADDRESS = "0xc474C3723C095758b7655A17248d73da262bD26A";
-
 // ================== DOM REFERENCES =================================
 
 const connectButton = document.getElementById("connectButton");
@@ -51,10 +48,6 @@ const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
-// Morpho HF DOM
-const morphoHfValueEl = document.getElementById("morphoHfValue");
-const morphoHfMainRowEl = document.getElementById("morphoHfMainRow");
-
 // Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
@@ -62,6 +55,13 @@ const fgNeedleEl = document.getElementById("fgNeedle");
 
 // Puell proxy
 const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
+
+// Morpho HF proxy
+const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
+
+// Morpho DOM
+const morphoHfValueEl = document.getElementById("morphoHfValue");
+const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
 
 let currentAddress = null;
 
@@ -92,36 +92,47 @@ function setDisconnectedUI() {
   liqEthBottomEl.textContent = "–";
   liqBtcBottomEl.textContent = "–";
   if (morphoHfValueEl) morphoHfValueEl.textContent = "–";
-
-  hfMainRowEl.classList.remove("safe", "warning", "danger");
-  if (morphoHfMainRowEl) morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
-
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
   statusDiv.textContent = "";
   localStorage.removeItem("savedAddress");
-}
 
-function applyHealthFactorClasses(rowEl, hf) {
-  if (!rowEl) return;
-  rowEl.classList.remove("safe", "warning", "danger");
-
-  if (!Number.isFinite(hf)) return;
-  if (hf < 1.0) rowEl.classList.add("danger");
-  else if (hf < 1.5) rowEl.classList.add("warning");
-  else rowEl.classList.add("safe");
+  if (morphoHfMainRowEl) {
+    morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+  }
 }
 
 function setHealthFactorDisplay(hf) {
   hfValueEl.textContent = hf.toFixed(2);
-  applyHealthFactorClasses(hfMainRowEl, hf);
+
+  hfMainRowEl.classList.remove("safe", "warning", "danger");
+
+  if (hf < 1.0) hfMainRowEl.classList.add("danger");
+  else if (hf < 1.5) hfMainRowEl.classList.add("warning");
+  else hfMainRowEl.classList.add("safe");
 }
 
 function setMorphoHealthFactorDisplay(hf) {
   if (!morphoHfValueEl) return;
-  morphoHfValueEl.textContent = Number.isFinite(hf) ? hf.toFixed(2) : "–";
-  applyHealthFactorClasses(morphoHfMainRowEl, hf);
+
+  if (!Number.isFinite(hf)) {
+    morphoHfValueEl.textContent = "–";
+    if (morphoHfMainRowEl) {
+      morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+    }
+    return;
+  }
+
+  morphoHfValueEl.textContent = hf.toFixed(2);
+
+  if (morphoHfMainRowEl) {
+    morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+
+    if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
+    else if (hf < 1.5) morphoHfMainRowEl.classList.add("warning");
+    else morphoHfMainRowEl.classList.add("safe");
+  }
 }
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
@@ -269,14 +280,30 @@ async function loadAaveDataForUser(userAddress, provider) {
   }
 }
 
-// ================== MORPHO HF ===============================
+// ================== MORPHO LOGIC (HF via Cloudflare Worker) =======
 
-async function loadMorphoHealthFactor() {
+async function loadMorphoHealthFactor(userAddress) {
   try {
-    // Public Morpho dashboard pages are available,
-    // but there is no confirmed simple browser JSON endpoint here.
-    // Keep UI stable and avoid fake values.
-    setMorphoHealthFactorDisplay(NaN);
+    if (!MORPHO_HF_PROXY_URL) {
+      setMorphoHealthFactorDisplay(NaN);
+      return;
+    }
+
+    const res = await fetch(
+      `${MORPHO_HF_PROXY_URL}?address=${encodeURIComponent(userAddress)}`,
+      { cache: "no-store" }
+    );
+    const json = await res.json();
+
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+    const hf = Number(json?.healthFactor);
+    if (!Number.isFinite(hf)) {
+      setMorphoHealthFactorDisplay(NaN);
+      return;
+    }
+
+    setMorphoHealthFactorDisplay(hf);
   } catch (e) {
     console.error("Failed to load Morpho health factor", e);
     setMorphoHealthFactorDisplay(NaN);
@@ -317,6 +344,7 @@ async function connectAndLoad() {
 
     statusDiv.textContent = "Reading your Aave account data...";
     await loadAaveDataForUser(userAddress, provider);
+    await loadMorphoHealthFactor(userAddress);
     setConnectedUI(userAddress);
     statusDiv.textContent = "Done.";
   } catch (err) {
@@ -717,9 +745,12 @@ if (myAssetsButton && myAssetsMenu) {
   window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
   window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
 
+  // ✅ Close My Assets menu when a link is activated BUT DO NOT block navigation
+  // The previous pointerdown handler could cancel the default click in some browsers.
   function closeMyAssetsOnLinkClick(e) {
     const a = e.target && e.target.closest ? e.target.closest("a") : null;
     if (!a) return;
+    // close after click so default navigation isn't affected
     setTimeout(closeMyAssetsMenu, 0);
   }
   myAssetsMenu.addEventListener("click", closeMyAssetsOnLinkClick, true);
@@ -911,7 +942,7 @@ if (myAssetsButton && myAssetsMenu) {
     toggleDefiMenu();
   });
 
-  // Close DeFi dropdown on link click AFTER default navigation
+  // ✅ Close DeFi dropdown on link click AFTER default navigation
   function closeDefiOnLinkClick(e) {
     const a = e.target && e.target.closest ? e.target.closest("a") : null;
     if (!a) return;
@@ -1119,7 +1150,6 @@ window.addEventListener("load", () => {
   loadCryptoPrices();
   loadFearGreed();
   loadPuell();
-  loadMorphoHealthFactor();
 
   loadTotalAssets();
   loadDefiAssets();
@@ -1143,6 +1173,7 @@ window.addEventListener("load", () => {
 
       statusDiv.textContent = "Reading your Aave account data...";
       await loadAaveDataForUser(saved, provider);
+      await loadMorphoHealthFactor(saved);
       setConnectedUI(saved);
       statusDiv.textContent = "Loaded from previous connection.";
     } catch (err) {
@@ -1155,4 +1186,6 @@ window.addEventListener("load", () => {
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
 setInterval(loadFearGreed, 30 * 60 * 1000);
 setInterval(loadPuell, 60 * 60 * 1000);
-setInterval(loadMorphoHealthFactor, 10 * 60 * 1000);
+setInterval(() => {
+  if (currentAddress) loadMorphoHealthFactor(currentAddress);
+}, 30 * 60 * 1000);
