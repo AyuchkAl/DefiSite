@@ -84,6 +84,11 @@ function shortenAddress(addr) {
   return addr.slice(0, 6) + "..." + addr.slice(-4);
 }
 
+function shortenNumber(n) {
+  if (!Number.isFinite(n)) return "–";
+  return Math.round(n).toLocaleString("en-US");
+}
+
 function setConnectedUI(addr) {
   currentAddress = addr;
   addressSpan.textContent = addr;
@@ -95,8 +100,8 @@ function setDisconnectedUI() {
   currentAddress = null;
   addressSpan.textContent = "";
   hfValueEl.textContent = "–";
-  liqEthBottomEl.textContent = "–";
-  liqBtcBottomEl.textContent = "–";
+  liqEthBottomEl.textContent = "ETH ~ –";
+  liqBtcBottomEl.textContent = "BTC ~ –";
 
   if (morphoHfValueEl) morphoHfValueEl.textContent = "–";
   if (liqBtcMorphoEl) liqBtcMorphoEl.textContent = "BTC ~ –";
@@ -146,13 +151,22 @@ function setMorphoHealthFactorDisplay(hf) {
 function updateMorphoLiqDisplay() {
   if (!liqBtcMorphoEl) return;
 
-  if (!Number.isFinite(currentMorphoHf) || currentMorphoHf <= 0 || !Number.isFinite(currentBtcPrice) || currentBtcPrice <= 0) {
+  let btcSpot = currentBtcPrice;
+
+  // Fallback: parse currently displayed BTC DOM price, e.g. "$103,245"
+  if (!Number.isFinite(btcSpot) && btcPriceEl) {
+    const raw = String(btcPriceEl.textContent || "").replace(/[^\d.]/g, "");
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) btcSpot = parsed;
+  }
+
+  if (!Number.isFinite(currentMorphoHf) || currentMorphoHf <= 0 || !Number.isFinite(btcSpot) || btcSpot <= 0) {
     liqBtcMorphoEl.textContent = "BTC ~ –";
     return;
   }
 
-  const btcAtHF1 = currentBtcPrice / currentMorphoHf;
-  liqBtcMorphoEl.textContent = "BTC ~ " + btcAtHF1.toFixed(0).toLocaleString("en-US");
+  const btcAtHF1 = btcSpot / currentMorphoHf;
+  liqBtcMorphoEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
 }
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
@@ -254,7 +268,7 @@ async function loadCryptoPrices() {
   }
 }
 
-// ================== AAVE LOGIC (HF + LIQ PRICE ETH) ===============
+// ================== AAVE LOGIC (HF + LIQ PRICE ETH/BTC) ===============
 
 async function loadAaveDataForUser(userAddress, provider) {
   try {
@@ -298,8 +312,8 @@ async function loadAaveDataForUser(userAddress, provider) {
     const ethAtHF1 = ethNow * dropFactor;
     const btcAtHF1 = btcNow * dropFactor;
 
-    liqEthBottomEl.textContent = "ETH ~ " + ethAtHF1.toFixed(0).toLocaleString("en-US");
-    liqBtcBottomEl.textContent = "BTC ~ " + btcAtHF1.toFixed(0).toLocaleString("en-US");
+    liqEthBottomEl.textContent = "ETH ~ " + shortenNumber(ethAtHF1);
+    liqBtcBottomEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
   } catch (e) {
     console.error("Failed to load Aave / liq price", e);
     liqEthBottomEl.textContent = "ETH ~ –";
