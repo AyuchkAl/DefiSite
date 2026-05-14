@@ -52,6 +52,7 @@ const hfMainRowEl = document.querySelector(".hf-main-row");
 const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
 const morphoHfValueEl = document.getElementById("morphoHfValue");
 const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
+const liqBtcMorphoEl = document.getElementById("liqBtcMorpho");
 
 // Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
@@ -68,6 +69,13 @@ let latestFgValue = null;    // 0..100
 let latestBtc24h  = null;    // percent (e.g. -1.25)
 let latestEth24h  = null;    // percent
 let latestPuell   = null;    // number
+
+// Current spot prices
+let currentBtcPrice = null;
+let currentEthPrice = null;
+
+// Current Morpho HF
+let currentMorphoHf = null;
 
 // ================== HELPERS ========================================
 
@@ -89,7 +97,12 @@ function setDisconnectedUI() {
   hfValueEl.textContent = "–";
   liqEthBottomEl.textContent = "–";
   liqBtcBottomEl.textContent = "–";
+
   if (morphoHfValueEl) morphoHfValueEl.textContent = "–";
+  if (liqBtcMorphoEl) liqBtcMorphoEl.textContent = "BTC ~ –";
+
+  currentMorphoHf = null;
+
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
@@ -128,6 +141,18 @@ function setMorphoHealthFactorDisplay(hf) {
   if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
   else if (hf < 1.5) morphoHfMainRowEl.classList.add("warning");
   else morphoHfMainRowEl.classList.add("safe");
+}
+
+function updateMorphoLiqDisplay() {
+  if (!liqBtcMorphoEl) return;
+
+  if (!Number.isFinite(currentMorphoHf) || currentMorphoHf <= 0 || !Number.isFinite(currentBtcPrice) || currentBtcPrice <= 0) {
+    liqBtcMorphoEl.textContent = "BTC ~ –";
+    return;
+  }
+
+  const btcAtHF1 = currentBtcPrice / currentMorphoHf;
+  liqBtcMorphoEl.textContent = "BTC ~ " + btcAtHF1.toFixed(0).toLocaleString("en-US");
 }
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
@@ -184,6 +209,9 @@ async function loadCryptoPrices() {
       ? eth.price_change_percentage_24h
       : null;
 
+    currentBtcPrice = Number.isFinite(btc?.current_price) ? btc.current_price : null;
+    currentEthPrice = Number.isFinite(eth?.current_price) ? eth.current_price : null;
+
     function setCoin(elPrice, elChange, coin) {
       if (!coin) return;
 
@@ -213,11 +241,15 @@ async function loadCryptoPrices() {
     setCoin(btcPriceEl, btcChangeEl, btc);
     setCoin(ethPriceEl, ethChangeEl, eth);
 
+    updateMorphoLiqDisplay();
     updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
     latestBtc24h = null;
     latestEth24h = null;
+    currentBtcPrice = null;
+    currentEthPrice = null;
+    updateMorphoLiqDisplay();
     updateHoldSellPanel();
   }
 }
@@ -289,14 +321,20 @@ async function loadMorphoHealthFactor(userAddress) {
 
     const hf = Number(json.healthFactor);
     if (!Number.isFinite(hf)) {
+      currentMorphoHf = null;
       setMorphoHealthFactorDisplay(NaN);
+      updateMorphoLiqDisplay();
       return;
     }
 
+    currentMorphoHf = hf;
     setMorphoHealthFactorDisplay(hf);
+    updateMorphoLiqDisplay();
   } catch (e) {
     console.error("Failed to load Morpho health factor", e);
+    currentMorphoHf = null;
     setMorphoHealthFactorDisplay(NaN);
+    updateMorphoLiqDisplay();
   }
 }
 
