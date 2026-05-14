@@ -1,958 +1,241 @@
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, #1b2140 0, #050816 60%, #02040a 100%);
-  color: #f5f5f5;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-#status {
-  display: none;
-}
-
-.topbar {
-  padding: 12px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  background: linear-gradient(90deg, rgba(10,10,20,0.95), rgba(8,10,30,0.9));
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.topbar-inner{ flex-wrap: wrap; }
-.left-group{ flex-wrap: wrap; }
-.left-group-spacer{
-  min-width: 12px;
-}
-
-/* Prevent any of the left widgets from shrinking weirdly */
-.hf-block,
-.prices-row,
-.fg-block,
-.my-assets-container,
-.defi-container{
-  flex: 0 0 auto;
-}
-
-/* Keep wallet on the right and never wrap under */
-.wallet-container{
-  margin-left: auto;
-  position: relative;
-  flex: 0 0 auto;
-}
-
-/* Brand */
-.site-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 10px;
-}
-
-.site-logo {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.site-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-/* HF stacked block */
-.hf-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 0 0 auto;
-  justify-content: center;
-}
-
-/* Health factor */
-.hf-block {
-  padding: 8px 12px;
-  border-radius: 16px;
-  background: #11152a;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  display: inline-flex;
-  flex-direction: column;
-  min-width: 220px;
-  box-sizing: border-box;
-}
-
-.hf-main-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.hf-liq-line {
-  margin-top: 4px;
-  font-size: 10px;
-  color: #9aa4d8;
-  white-space: nowrap;
-}
-
-.hf-liq-line span {
-  color: #ffffff;
-  font-weight: 500;
-}
-
-.hf-label {
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #9aa4d8;
-}
-
-.hf-value {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.hf-safe {
-  color: #3dd68c;
-}
-.hf-warning {
-  color: #ffb347;
-}
-.hf-danger {
-  color: #ff5c5c;
-}
-
-/* Color both label and value together based on status */
-.hf-main-row.safe .hf-label,
-.hf-main-row.safe .hf-value {
-  color: #3dd68c;
-}
-
-.hf-main-row.warning .hf-label,
-.hf-main-row.warning .hf-value {
-  color: #ffb347;
-}
-
-.hf-main-row.danger .hf-label,
-.hf-main-row.danger .hf-value {
-  color: #ff5c5c;
-}
-
-/* Morpho HF block */
-.morpho-hf-block {
-  min-width: 220px;
-  justify-content: center;
-}
-
-.morpho-hf-main-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* BTC/ETH prices */
-.prices-row{
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.prices-left{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 0 0 auto;
-  justify-content: center;
-}
-
-.prices-right{
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  flex: 0 0 auto;
-}
-
-.right-indicators{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: nowrap;
-}
-
-.price-pill {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #11152a;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 12px;
-  color: #cfd5ff;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.asset-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background-size: cover;
-  background-position: center;
-}
-
-.btc-icon {
-  background-image: url("btc.png");
-}
-
-.eth-icon {
-  background-image: url("eth.png");
-}
-
-.asset-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
-
-.asset-ticker {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #ffffff;
-}
-
-.price-value {
-  margin-left: 6px;
-  margin-right: 14px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.price-up {
-  color: #16c784;
-}
-.price-down {
-  color: #ea3943;
-}
-.price-flat {
-  color: #ffffff;
-}
-
-.change-column {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-left: 6px;
-}
-
-.price-label-inline {
-  font-size: 10px;
-  font-weight: 500;
-  color: #ffffff;
-  opacity: 0.8;
-}
-
-.price-change-inline {
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-/* Wallet */
-#walletMenu {
-  position: absolute;
-  right: 0;
-  margin-top: 6px;
-  background: #151a30;
-  border-radius: 10px;
-  padding: 10px 12px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  min-width: 140px;
-  font-size: 13px;
-  display: none;
-  z-index: 20;
-}
-
-.wallet-menu.visible {
-  display: block;
-}
-
-#walletMenu button {
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  padding: 6px 10px;
-  font-size: 13px;
-  cursor: pointer;
-  background: rgba(255, 70, 100, 0.15);
-  color: #ff97aa;
-  transition: background 0.1s ease, color 0.1s ease;
-}
-
-#walletMenu button:hover {
-  background: rgba(255, 70, 100, 0.25);
-  color: #ffd0d9;
-}
-
-#connectButton {
-  border: none;
-  border-radius: 999px;
-  padding: 8px 18px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  color: #ffffff;
-  background-image: linear-gradient(90deg, #b6509e, #2ebac6);
-  box-shadow: 0 0 16px rgba(182, 80, 158, 0.45);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
-  max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#connectButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 24px rgba(46, 186, 198, 0.55);
-  opacity: 0.96;
-}
-
-#connectButton:active {
-  transform: translateY(0);
-  box-shadow: 0 0 10px rgba(182, 80, 158, 0.35);
-  opacity: 0.9;
-}
-
-.wallet-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #00ffae;
-  flex-shrink: 0;
-}
-
-/* Center */
-.page-content {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px;
-}
-
-.hidden {
-  display: none;
-}
-
-/* Footer with ETH liq price */
-.liq-footer {
-  width: 100%;
-  padding: 12px 24px 20px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #f5f5f5;
-}
-
-.liq-label {
-  color: #9aa4d8;
-  font-weight: 500;
-}
-
-.liq-value {
-  font-weight: 600;
-  color: #ffffff;
-}
-
-/* Fear & Greed */
-.fg-block {
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: #11152a;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  display: inline-flex;
-  flex-direction: column;
-  min-width: 220px;
-}
-
-.fg-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.fg-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.fg-gauge {
-  margin-top: 6px;
-  position: relative;
-  width: 220px;
-  height: 80px;
-}
-
-.fg-svg {
-  width: 220px;
-  height: 80px;
-  display: block;
-}
-
-.fg-track {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.10);
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.fg-seg {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.fg-seg-1 { stroke: #ff5c5c; }
-.fg-seg-2 { stroke: #ffb347; }
-.fg-seg-3 { stroke: #f5d547; }
-.fg-seg-4 { stroke: #7ad86d; }
-.fg-seg-5 { stroke: #16c784; }
-
-.fg-needle-line {
-  stroke: #ffffff;
-  stroke-width: 2;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
-}
-
-.fg-needle-dot {
-  fill: #ffffff;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
-}
-
-.fg-center {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 42px;
-  text-align: center;
-}
-
-.fg-value {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.fg-label {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #9aa4d8;
-  text-transform: capitalize;
-}
-
-.fg-scale {
-  display: none !important;
-}
-
-/* MAIN LAYOUT */
-.page-content{
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 28px;
-  padding: 26px 24px;
-  justify-items: stretch;
-  align-items: start;
-}
-
-.main-left{
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.assets-card{
-  width: 100%;
-  height: 190px;
-}
-
-.main-center{
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
-
-@media (max-width: 980px){
-  .page-content{
-    flex-direction: column;
-    align-items: center;
-  }
-  .main-left{
-    width: 100%;
-    justify-content: center;
-  }
-  .main-center{
-    width: 100%;
-  }
-}
-
-.assets-card{
-  width: 100%;
-  height: 190px;
-  border-radius: 18px;
-  padding: 18px 18px 16px;
-  box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(17,21,42,0.95), rgba(12,16,35,0.92));
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
-}
-
-.assets-title{
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(245,245,245,0.92);
-  margin-bottom: 10px;
-}
-
-.assets-value{
-  font-size: 42px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #ffffff;
-  line-height: 1.05;
-}
-
-.total-assets{
-  display: none;
-}
-
-.assets-value.pnl-positive{ color: #16c784; }
-.assets-value.pnl-negative{ color: #ea3943; }
-
-.assets-value.pct-positive{ color: #16c784; }
-.assets-value.pct-negative{ color: #ea3943; }
-
-/* My Assets menu */
-.my-assets-container{
-  position: relative;
-  display: inline-block;
-}
-
-.my-assets-button{
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(17,21,42,0.65);
-  backdrop-filter: blur(10px);
-  color: rgba(245,245,245,0.92);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-  transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
-}
-
-.my-assets-button:hover{
-  transform: translateY(-1px);
-  background: rgba(17,21,42,0.78);
-  border-color: rgba(255,255,255,0.18);
-}
-
-.my-assets-menu{
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 10px;
-  background: #151a30;
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  min-width: 190px;
-  display: none;
-  z-index: 30;
-}
-
-.my-assets-menu.visible{
-  display: block;
-}
-
-.my-assets-item{
-  display: block;
-  padding: 9px 10px;
-  border-radius: 10px;
-  text-decoration: none;
-  font-size: 13px;
-  color: #cfd5ff;
-  transition: background 0.1s ease, color 0.1s ease;
-}
-
-.my-assets-item:hover{
-  background: rgba(255,255,255,0.06);
-  color: #ffffff;
-}
-
-/* DeFi menu */
-.defi-container{
-  position: relative;
-  display: inline-block;
-}
-
-.defi-context{
-  position: fixed !important;
-  left: -9999px;
-  top: -9999px;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 9999;
-}
-
-.defi-context-btn{
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: #cfd5ff;
-  text-align: left;
-  padding: 9px 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.defi-context-btn:hover{
-  background: rgba(255,255,255,0.06);
-  color: #ffffff;
-}
-
-.defi-container{
-  margin-left: 0 !important;
-}
-
-#myAssetsButton,
-#defiButton{
-  position: relative;
-  top: 8px;
-}
-
-#myAssetsMenu,
-#defiMenu{
-  margin-top: 18px;
-}
-
-.menus-group{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: 12px;
-  flex: 0 0 auto;
-}
-
-.prices-pair{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.prices-pair .price-pill{
-  white-space: nowrap;
-}
-
-#avgBtcValue,
-#avgEthValue{
-  color: #2ebac6 !important;
-}
-
-.prices-pair:nth-child(2) .price-pill:nth-child(2){
-  margin-left: 6px;
-}
-
-/* Hold/Sell */
-.hs-panel{
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: #11152a;
-  border: 1px solid rgba(255,255,255,0.04);
-  min-width: 230px;
-  flex: 0 0 auto;
-}
-
-.hs-top{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: rgba(245,245,245,0.92);
-  margin-bottom: 6px;
-  white-space: nowrap;
-}
-.hs-top strong{
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.hs-bar{
-  position: relative;
-  height: 10px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
-.hs-bar-segs{
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-    #2ebac6 0%,
-    #4cc9b5 25%,
-    #7ad86d 45%,
-    #ffb347 70%,
-    #ff5c5c 100%
-  );
-  opacity: 0.95;
-}
-
-.hs-marker{
-  position: absolute;
-  top: -3px;
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
-  background: #ffffff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
-  transform: translateX(-1px);
-}
-
-.hs-sub{
-  margin-top: 6px;
-  font-size: 11px;
-  color: #9aa4d8;
-  white-space: nowrap;
-}
-
-.hs-panel--compact{
-  min-width: 0;
-  width: 170px;
-  padding: 6px 10px;
-  border-radius: 12px;
-}
-
-.hs-panel--compact .hs-top{
-  font-size: 11px;
-  margin-bottom: 5px;
-}
-
-.hs-panel--compact .hs-bar{
-  height: 8px;
-}
-
-.hs-panel--compact .hs-marker{
-  height: 14px;
-  top: -3px;
-}
-
-.right-indicators{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* CMC-like card */
-.cmc-card{
-  width: 220px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(17, 21, 42, 0.92);
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.40);
-  color: rgba(245,245,245,0.95);
-}
-
-.cmc-card-title{
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  margin-bottom: 8px;
-}
-
-.cmc-status-row,
-.cmc-value-row{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-  font-size: 11px;
-  color: rgba(207,213,255,0.90);
-}
-
-.cmc-value{
-  font-size: 14px;
-  font-weight: 800;
-  color: #ffffff;
-  font-variant-numeric: tabular-nums;
-}
-
-.cmc-status-pill{
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: #ffffff;
-  text-transform: capitalize;
-}
-
-.cmc-meter{
-  position: relative;
-  margin-top: 6px;
-  height: 10px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
-.cmc-meter-track{
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-    #16c784 0%,
-    #7ad86d 30%,
-    #f5d547 55%,
-    #ffb347 75%,
-    #ff5c5c 100%
-  );
-  opacity: 0.95;
-}
-
-.cmc-meter-marker{
-  position: absolute;
-  top: -3px;
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
-  background: #ffffff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
-  transform: translateX(-1px);
-}
-
-.cmc-status-pill.is-green{ background: rgba(22,199,132,0.18); border-color: rgba(22,199,132,0.35); }
-.cmc-status-pill.is-yellow{ background: rgba(245,213,71,0.16); border-color: rgba(245,213,71,0.35); }
-.cmc-status-pill.is-orange{ background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.35); }
-.cmc-status-pill.is-red{ background: rgba(255,92,92,0.16); border-color: rgba(255,92,92,0.35); }
-
-/* Force top bar to one line, centered like before */
-.topbar-inner{
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: nowrap !important;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.left-group{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap !important;
-  min-width: max-content;
-}
-
-.prices-row{
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  align-items: center;
-  gap: 14px;
-  min-width: max-content;
-}
-
-.right-indicators{
-  flex-wrap: nowrap !important;
-  min-width: max-content;
-}
-
-.hf-block,
-.prices-left,
-.fg-block,
-.cmc-card,
-.hs-panel,
-.menus-group,
-.hf-stack{
-  flex: 0 0 auto !important;
-}
-
-.topbar-inner::-webkit-scrollbar{
-  height: 8px;
-}
-.topbar-inner::-webkit-scrollbar-thumb{
-  background: rgba(255,255,255,0.12);
-  border-radius: 999px;
-}
-
-.topbar{
-  z-index: 10000;
-}
-
-.my-assets-container,
-.defi-container,
-.wallet-container{
-  position: relative;
-  z-index: 10001;
-}
-
-.my-assets-menu,
-.wallet-menu{
-  z-index: 10002;
-}
-
-#defiMenu,
-#defiContextMenu,
-#defiItemContextMenu{
-  z-index: 10002;
-}
-
-#myAssetsMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 20000 !important;
-}
-
-#defiMenu{
-  position: fixed !important;
-  left: 0;
-  top: 0;
-  transform: none !important;
-  margin-top: 0 !important;
-  z-index: 20000 !important;
-}
-
-#defiContextMenu,
-#defiItemContextMenu{
-  z-index: 20001 !important;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DeFi Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="DeFi.png" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <!-- LEFT SIDE: all panels -->
+      <div class="left-group">
+        <!-- Aave + Morpho HF stacked -->
+        <div class="hf-stack">
+          <!-- Aave Health Factor -->
+          <div id="hfBlock" class="hf-block">
+            <div class="hf-main-row">
+              <div class="hf-label">HF Aave</div>
+              <div id="hfValue" class="hf-value">–</div>
+            </div>
+            <div id="hfLiqLine" class="hf-liq-line">
+              HF = 1 at: <span id="liqEthBottom">ETH ~ –</span>
+              &nbsp;&nbsp;
+              <span id="liqBtcBottom">BTC ~ –</span>
+            </div>
+          </div>
+
+          <!-- Morpho Health Factor -->
+          <div id="morphoHfBlock" class="hf-block morpho-hf-block">
+            <div class="hf-main-row morpho-hf-main-row">
+              <div class="hf-label">HF Morpho</div>
+              <div id="morphoHfValue" class="hf-value">–</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prices + Indicators -->
+        <div class="prices-row">
+          <!-- Prices left -->
+          <div class="prices-left">
+            <div class="prices-pair">
+              <div class="price-pill">
+                <div class="asset-icon btc-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">BTC</span>
+                  <span id="btcPrice" class="price-value">–</span>
+                  <span class="price-label-inline">24h %</span>
+                  <span id="btcChange" class="price-change-inline">–</span>
+                </div>
+              </div>
+
+              <div class="price-pill" aria-label="AVG BTC">
+                <div class="asset-icon btc-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">AVG BTC</span>
+                  <span id="avgBtcValue" class="price-value">–</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="prices-pair">
+              <div class="price-pill">
+                <div class="asset-icon eth-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">ETH</span>
+                  <span id="ethPrice" class="price-value">–</span>
+                  <span class="price-label-inline">24h %</span>
+                  <span id="ethChange" class="price-change-inline">–</span>
+                </div>
+              </div>
+
+              <div class="price-pill" aria-label="AVG ETH">
+                <div class="asset-icon eth-icon"></div>
+                <div class="price-row">
+                  <span class="asset-ticker">AVG ETH</span>
+                  <span id="avgEthValue" class="price-value">–</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Indicators right -->
+          <div class="prices-right">
+            <div class="right-indicators">
+              <!-- Fear & Greed -->
+              <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
+                <div class="fg-header">
+                  <div class="fg-title">Fear &amp; Greed</div>
+                </div>
+
+                <div class="fg-gauge">
+                  <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
+                    <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
+                    <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="0"></path>
+                    <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
+                    <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
+                    <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
+                    <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
+                      stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
+
+                    <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
+                      <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
+                      <circle cx="110" cy="110" r="6" class="fg-needle-dot"></circle>
+                    </g>
+                  </svg>
+
+                  <div class="fg-center">
+                    <div id="fgValue" class="fg-value">–</div>
+                    <div id="fgLabel" class="fg-label">Loading…</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Puell -->
+              <div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
+                <div class="cmc-card-title">Puell Multiple</div>
+
+                <div class="cmc-status-row">
+                  <span class="cmc-status-label">Status</span>
+                  <span id="puellStatus" class="cmc-status-pill">Loading…</span>
+                </div>
+
+                <div class="cmc-value-row">
+                  <span class="cmc-value-label">Value</span>
+                  <span id="puellValue" class="cmc-value">–</span>
+                </div>
+
+                <div class="cmc-meter">
+                  <div class="cmc-meter-track"></div>
+                  <div id="puellMarker" class="cmc-meter-marker" style="left: 50%;"></div>
+                </div>
+              </div>
+
+              <!-- Hold/Sell -->
+              <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
+                <div class="hs-top">
+                  <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
+                  <span class="hs-right"><strong id="hsSellPct">–</strong> Sell</span>
+                </div>
+
+                <div class="hs-bar" role="img" aria-label="Hold vs Sell bar">
+                  <div class="hs-bar-segs"></div>
+                  <div class="hs-marker" id="hsMarker" style="left: 50%;"></div>
+                </div>
+              </div>
+
+              <!-- Menus (My Assets / DeFi) -->
+              <div class="menus-group">
+                <div class="my-assets-container">
+                  <button id="myAssetsButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
+                    My Assets
+                  </button>
+                  <div id="myAssetsMenu" class="my-assets-menu" role="menu" aria-label="My Assets menu">
+                    <a class="my-assets-item" role="menuitem" target="_blank" rel="noopener noreferrer"
+                      href="https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/edit?gid=553100822#gid=553100822">
+                      Google Sheet
+                    </a>
+                    <a class="my-assets-item" role="menuitem" target="_blank" rel="noopener noreferrer"
+                      href="https://debank.com/profile/0xc474c3723c095758b7655a17248d73da262bd26a">
+                      DeBank
+                    </a>
+                  </div>
+                </div>
+
+                <div class="defi-container" id="defiContainer" oncontextmenu="return false;">
+                  <button id="defiButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
+                    DeFi
+                  </button>
+                  <div id="defiMenu" class="my-assets-menu" role="menu" aria-label="DeFi menu"></div>
+
+                  <div id="defiContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi context menu">
+                    <button id="defiAddSiteBtn" class="defi-context-btn" type="button">Add site</button>
+                  </div>
+
+                  <div id="defiItemContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="DeFi item context menu">
+                    <button id="defiDeleteSiteBtn" class="defi-context-btn" type="button">Delete site</button>
+                  </div>
+                </div>
+              </div>
+              <!-- /menus-group -->
+            </div>
+          </div>
+        </div>
+        <!-- /prices-row -->
+      </div>
+      <!-- /left-group -->
+
+      <!-- RIGHT SIDE: wallet -->
+      <div class="wallet-container">
+        <button id="connectButton">
+          <span class="wallet-dot"></span>
+          <span id="connectLabel">Connect wallet</span>
+        </button>
+        <div id="walletMenu" class="wallet-menu">
+          <button id="disconnectButton">Disconnect</button>
+        </div>
+      </div>
+    </div>
+  </header>
+ 
+  <main class="page-content">
+    <section class="main-left">
+      <div class="assets-card" aria-label="Total Assets panel">
+        <div class="assets-title">Total Assets</div>
+        <div id="totalAssetsValueCard" class="assets-value">Loading…</div>
+      </div>
+
+      <div class="assets-card" aria-label="DeFi Assets panel">
+        <div class="assets-title">DeFi Assets</div>
+        <div id="defiAssetsValueCard" class="assets-value">Loading…</div>
+      </div>
+
+      <div class="assets-card" aria-label="PnL Assets panel">
+        <div class="assets-title">PnL Assets</div>
+        <div id="pnlAssetsValueCard" class="assets-value">Loading…</div>
+      </div>
+
+      <div class="assets-card" aria-label="Percentage Assets panel">
+        <div class="assets-title">Percentage Assets</div>
+        <div id="pctAssetsValueCard" class="assets-value">Loading…</div>
+      </div>
+    </section>
+
+    <section class="main-center">
+      <div id="status"></div>
+      <div id="result" class="hidden">
+        <span id="address" style="display:none;"></span>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
