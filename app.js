@@ -18,12 +18,20 @@ const ORACLE_ABI = [
 
 // Aave V3 contracts on Arbitrum One
 const POOL_ADDRESS          = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
-const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b"; // lower-case form
+const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b";
 const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 
 // WETH underlying on Arbitrum
-const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
-const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";  // 8 decimals
+const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
+const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
+
+// Morpho
+const MORPHO_ADDRESS = "0xc474C3723C095758b7655A17248d73da262bD26A";
+const MORPHO_API_CANDIDATES = [
+  `https://app.morpho.org/_next/data/production/en/dashboard/${MORPHO_ADDRESS}.json`,
+  `https://app.morpho.org/api/dashboard/${MORPHO_ADDRESS}`,
+  `https://app.morpho.org/api/users/${MORPHO_ADDRESS}`,
+];
 
 // ================== DOM REFERENCES =================================
 
@@ -48,6 +56,10 @@ const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
+// Morpho HF DOM
+const morphoHfValueEl = document.getElementById("morphoHfValue");
+const morphoHfMainRowEl = document.getElementById("morphoHfMainRow");
+
 // Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
@@ -59,10 +71,10 @@ const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puel
 let currentAddress = null;
 
 // ================== Hold/Sell (CoinGlass-like peak signals) state ==================
-let latestFgValue = null;    // 0..100
-let latestBtc24h  = null;    // percent (e.g. -1.25)
-let latestEth24h  = null;    // percent
-let latestPuell   = null;    // number
+let latestFgValue = null;
+let latestBtc24h  = null;
+let latestEth24h  = null;
+let latestPuell   = null;
 
 // ================== HELPERS ========================================
 
@@ -84,6 +96,11 @@ function setDisconnectedUI() {
   hfValueEl.textContent = "–";
   liqEthBottomEl.textContent = "–";
   liqBtcBottomEl.textContent = "–";
+  if (morphoHfValueEl) morphoHfValueEl.textContent = "–";
+
+  hfMainRowEl.classList.remove("safe", "warning", "danger");
+  if (morphoHfMainRowEl) morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
@@ -91,17 +108,56 @@ function setDisconnectedUI() {
   localStorage.removeItem("savedAddress");
 }
 
-function setHealthFactorDisplay(hf) {
-  hfValueEl.textContent = hf.toFixed(2);
+function applyHealthFactorClasses(rowEl, hf) {
+  if (!rowEl) return;
+  rowEl.classList.remove("safe", "warning", "danger");
 
-  hfMainRowEl.classList.remove("safe", "warning", "danger");
-
-  if (hf < 1.0) hfMainRowEl.classList.add("danger");
-  else if (hf < 1.5) hfMainRowEl.classList.add("warning");
-  else hfMainRowEl.classList.add("safe");
+  if (hf < 1.0) rowEl.classList.add("danger");
+  else if (hf < 1.5) rowEl.classList.add("warning");
+  else rowEl.classList.add("safe");
 }
 
-// ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
+function setHealthFactorDisplay(hf) {
+  hfValueEl.textContent = hf.toFixed(2);
+  applyHealthFactorClasses(hfMainRowEl, hf);
+}
+
+function setMorphoHealthFactorDisplay(hf) {
+  if (!morphoHfValueEl) return;
+  morphoHfValueEl.textContent = Number.isFinite(hf) ? hf.toFixed(2) : "–";
+  applyHealthFactorClasses(morphoHfMainRowEl, hf);
+}
+
+function deepFindHealthFactor(obj) {
+  if (!obj || typeof obj !== "object") return null;
+
+  const preferredKeys = [
+    "healthFactor",
+    "health_factor",
+    "borrowerHealthFactor",
+    "borrower_health_factor",
+    "maxLoanToValueHealthFactor",
+    "max_loan_to_value_health_factor",
+    "hf"
+  ];
+
+  for (const key of preferredKeys) {
+    const v = obj[key];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && Number.isFinite(Number(v))) return Number(v);
+  }
+
+  for (const value of Object.values(obj)) {
+    if (value && typeof value === "object") {
+      const nested = deepFindHealthFactor(value);
+      if (nested !== null) return nested;
+    }
+  }
+
+  return null;
+}
+
+// ================== FEAR & GREED ==================
 
 const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
 
@@ -112,7 +168,7 @@ async function loadFearGreed() {
 
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-    const value = Number(json.value); // 0..100
+    const value = Number(json.value);
     latestFgValue = Number.isFinite(value) ? value : null;
 
     const label = String(json.label || "").toLowerCase();
@@ -120,7 +176,6 @@ async function loadFearGreed() {
     if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
     if (fgLabelEl) fgLabelEl.textContent = label ? label : "–";
 
-    // Needle: map 0..100 => -90..+90 degrees
     if (fgNeedleEl && Number.isFinite(value)) {
       const deg = -90 + (value / 100) * 180;
       fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
@@ -136,7 +191,7 @@ async function loadFearGreed() {
   }
 }
 
-// ================== MARKET PRICES (COINGECKO) ======================
+// ================== MARKET PRICES ======================
 
 async function loadCryptoPrices() {
   try {
@@ -193,23 +248,21 @@ async function loadCryptoPrices() {
   }
 }
 
-// ================== AAVE LOGIC (HF + LIQ PRICE ETH) ===============
+// ================== AAVE LOGIC ===============================
 
 async function loadAaveDataForUser(userAddress, provider) {
   try {
     const pool   = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
     const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, provider);
 
-    // Global account data (base ≈ USD, 8 decimals)
     const ud = await pool.getUserAccountData(userAddress);
-    const totalCollateralBase = Number(ethers.formatUnits(ud.totalCollateralBase, 8)); // USD
-    const totalDebtBase       = Number(ethers.formatUnits(ud.totalDebtBase, 8));       // USD
-    const hlThreshold         = Number(ud.currentLiquidationThreshold) / 10000;        // 0..1
+    const totalCollateralBase = Number(ethers.formatUnits(ud.totalCollateralBase, 8));
+    const totalDebtBase       = Number(ethers.formatUnits(ud.totalDebtBase, 8));
+    const hlThreshold         = Number(ud.currentLiquidationThreshold) / 10000;
     const healthFactor        = Number(ethers.formatUnits(ud.healthFactor, 18));
 
     setHealthFactorDisplay(healthFactor);
 
-    // If no debt, no liquidation price
     if (totalDebtBase === 0 || totalCollateralBase === 0) {
       liqEthBottomEl.textContent = "ETH ~ –";
       liqBtcBottomEl.textContent = "BTC ~ –";
@@ -224,16 +277,14 @@ async function loadAaveDataForUser(userAddress, provider) {
       return;
     }
 
-    // Get current ETH/BTC prices from the Aave oracle (8 decimals)
     const [ethPriceRaw, btcPriceRaw] = await Promise.all([
       oracle.getAssetPrice(WETH_ADDRESS),
       oracle.getAssetPrice(WBTC_ADDRESS),
     ]);
 
-    const ethNow = Number(ethers.formatUnits(ethPriceRaw, 8)); // USD
-    const btcNow = Number(ethers.formatUnits(btcPriceRaw, 8)); // USD
+    const ethNow = Number(ethers.formatUnits(ethPriceRaw, 8));
+    const btcNow = Number(ethers.formatUnits(btcPriceRaw, 8));
 
-    // At HF=1 the whole market is scaled by dropFactor
     const ethAtHF1 = ethNow * dropFactor;
     const btcAtHF1 = btcNow * dropFactor;
 
@@ -246,6 +297,37 @@ async function loadAaveDataForUser(userAddress, provider) {
   }
 }
 
+// ================== MORPHO HF ===============================
+
+async function loadMorphoHealthFactor() {
+  try {
+    let hf = null;
+
+    for (const url of MORPHO_API_CANDIDATES) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) continue;
+        const json = await res.json();
+        const found = deepFindHealthFactor(json);
+        if (Number.isFinite(found)) {
+          hf = found;
+          break;
+        }
+      } catch (_) {}
+    }
+
+    if (!Number.isFinite(hf)) {
+      setMorphoHealthFactorDisplay(NaN);
+      return;
+    }
+
+    setMorphoHealthFactorDisplay(hf);
+  } catch (e) {
+    console.error("Failed to load Morpho health factor", e);
+    setMorphoHealthFactorDisplay(NaN);
+  }
+}
+
 // ================== WALLET CONNECTION / INIT ======================
 
 async function connectAndLoad() {
@@ -255,7 +337,6 @@ async function connectAndLoad() {
       return;
     }
 
-    // If already connected, just toggle menu
     if (currentAddress) {
       walletMenu.classList.toggle("visible");
       return;
@@ -299,7 +380,7 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
 
-// ================== TOTAL ASSETS (Google Sheet cell T2) ==================
+// ================== TOTAL ASSETS ==================
 
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
@@ -342,7 +423,7 @@ async function loadTotalAssets() {
 
 setInterval(loadTotalAssets, 10 * 60 * 1000);
 
-// ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
+// ================== DEFI ASSETS ==================
 
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
@@ -415,7 +496,7 @@ async function loadDefiAssets() {
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
 
-// ================== AVG BTC / AVG ETH (Google Sheet DEFI_invest!S2 / L2) ==================
+// ================== AVG BTC / AVG ETH ==================
 
 const AVG_BTC_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
@@ -484,7 +565,7 @@ async function loadAvgEth() {
 setInterval(loadAvgBtc, 10 * 60 * 1000);
 setInterval(loadAvgEth, 10 * 60 * 1000);
 
-// ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
+// ================== PnL ASSETS ==================
 
 const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
 
@@ -550,7 +631,7 @@ async function loadPnlAssets() {
 
 setInterval(loadPnlAssets, 10 * 60 * 1000);
 
-// ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
+// ================== PERCENTAGE ASSETS ==================
 
 const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
 
@@ -623,7 +704,7 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== MY ASSETS MENU (fixed-position dropdown + close on link click) ==================
+// ================== MY ASSETS MENU ==================
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -655,7 +736,6 @@ if (myAssetsButton && myAssetsMenu) {
     e.stopPropagation();
     const willOpen = !myAssetsMenu.classList.contains("visible");
 
-    // close wallet menu if open
     walletMenu.classList.remove("visible");
 
     if (!willOpen) {
@@ -680,18 +760,15 @@ if (myAssetsButton && myAssetsMenu) {
   window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
   window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
 
-  // ✅ Close My Assets menu when a link is activated BUT DO NOT block navigation
-  // The previous pointerdown handler could cancel the default click in some browsers.
   function closeMyAssetsOnLinkClick(e) {
     const a = e.target && e.target.closest ? e.target.closest("a") : null;
     if (!a) return;
-    // close after click so default navigation isn't affected
     setTimeout(closeMyAssetsMenu, 0);
   }
   myAssetsMenu.addEventListener("click", closeMyAssetsOnLinkClick, true);
 }
 
-// ================== DeFi MENU (fixed-position dropdown + close on link click) ==================
+// ================== DeFi MENU ==================
 (function initDefiMenu() {
   const defiContainer = document.getElementById("defiContainer");
   const defiButton = document.getElementById("defiButton");
@@ -866,7 +943,6 @@ if (myAssetsButton && myAssetsMenu) {
     hideDeleteContextMenu();
   }
 
-  // LEFT CLICK => open dropdown
   defiButton.addEventListener("click", (e) => {
     e.stopPropagation();
     hideAllDefiContextMenus();
@@ -877,7 +953,6 @@ if (myAssetsButton && myAssetsMenu) {
     toggleDefiMenu();
   });
 
-  // ✅ Close DeFi dropdown on link click AFTER default navigation
   function closeDefiOnLinkClick(e) {
     const a = e.target && e.target.closest ? e.target.closest("a") : null;
     if (!a) return;
@@ -885,7 +960,6 @@ if (myAssetsButton && myAssetsMenu) {
   }
   defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
 
-  // RIGHT CLICK on DeFi button => Add site context menu
   function onDefiContextMenu(e) {
     const item = e.target?.closest?.("#defiMenu a[data-url]");
     if (item) return;
@@ -906,7 +980,6 @@ if (myAssetsButton && myAssetsMenu) {
 
   defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
 
-  // RIGHT CLICK on DeFi menu item => Delete site context menu
   function onDefiItemContextMenu(e) {
     const item = e.target?.closest?.("#defiMenu a[data-url]");
     if (!item) return;
@@ -995,7 +1068,7 @@ if (myAssetsButton && myAssetsMenu) {
   renderDefiMenu();
 })();
 
-// ================== Hold/Sell (CoinGlass-like peak signals) ==================
+// ================== Hold/Sell ==================
 
 function computePeakSignals({ fg, puell, btc24h, eth24h }) {
   return [
@@ -1042,7 +1115,7 @@ function updateHoldSellPanel() {
   markerEl.style.left = `${sellPct}%`;
 }
 
-// ================== PUELL MULTIPLE ==================
+// ================== PUELL ==================
 
 async function loadPuell() {
   const statusEl = document.getElementById("puellStatus");
@@ -1085,6 +1158,7 @@ window.addEventListener("load", () => {
   loadCryptoPrices();
   loadFearGreed();
   loadPuell();
+  loadMorphoHealthFactor();
 
   loadTotalAssets();
   loadDefiAssets();
@@ -1120,3 +1194,4 @@ window.addEventListener("load", () => {
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
 setInterval(loadFearGreed, 30 * 60 * 1000);
 setInterval(loadPuell, 60 * 60 * 1000);
+setInterval(loadMorphoHealthFactor, 10 * 60 * 1000);
