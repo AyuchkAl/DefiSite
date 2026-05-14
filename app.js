@@ -710,7 +710,6 @@ if (myAssetsButton && myAssetsMenu) {
     e.stopPropagation();
     const willOpen = !myAssetsMenu.classList.contains("visible");
 
-    // close wallet menu if open
     walletMenu.classList.remove("visible");
 
     if (!willOpen) {
