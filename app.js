@@ -18,12 +18,12 @@ const ORACLE_ABI = [
 
 // Aave V3 contracts on Arbitrum One
 const POOL_ADDRESS          = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
-const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b"; // lower-case form
+const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b";
 const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 
 // WETH underlying on Arbitrum
-const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
-const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";  // 8 decimals
+const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
+const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
 
 // ================== DOM REFERENCES =================================
 
@@ -64,11 +64,11 @@ const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puel
 
 let currentAddress = null;
 
-// ================== Hold/Sell (CoinGlass-like peak signals) state ==================
-let latestFgValue = null;    // 0..100
-let latestBtc24h  = null;    // percent (e.g. -1.25)
-let latestEth24h  = null;    // percent
-let latestPuell   = null;    // number
+// ================== Hold/Sell state ==================
+let latestFgValue = null;
+let latestBtc24h  = null;
+let latestEth24h  = null;
+let latestPuell   = null;
 
 // Current spot prices
 let currentBtcPrice = null;
@@ -122,7 +122,6 @@ function setDisconnectedUI() {
 
 function setHealthFactorDisplay(hf) {
   hfValueEl.textContent = hf.toFixed(2);
-
   hfMainRowEl.classList.remove("safe", "warning", "danger");
 
   if (hf < 1.0) hfMainRowEl.classList.add("danger");
@@ -140,7 +139,6 @@ function setMorphoHealthFactorDisplay(hf) {
   }
 
   morphoHfValueEl.textContent = hf.toFixed(2);
-
   morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
 
   if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
@@ -168,7 +166,7 @@ function updateMorphoLiqDisplay() {
   liqBtcMorphoEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
 }
 
-// ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
+// ================== FEAR & GREED ==================
 
 const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
 
@@ -202,7 +200,7 @@ async function loadFearGreed() {
   }
 }
 
-// ================== MARKET PRICES (COINGECKO) ======================
+// ================== MARKET PRICES ======================
 
 async function loadCryptoPrices() {
   try {
@@ -266,7 +264,7 @@ async function loadCryptoPrices() {
   }
 }
 
-// ================== AAVE LOGIC (HF + LIQ PRICE ETH/BTC) ===============
+// ================== AAVE LOGIC ===============================
 
 async function loadAaveDataForUser(userAddress, provider) {
   try {
@@ -399,7 +397,7 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
 
-// ================== TOTAL ASSETS (Google Sheet cell T2) ==================
+// ================== TOTAL ASSETS ==================
 
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
@@ -442,7 +440,7 @@ async function loadTotalAssets() {
 
 setInterval(loadTotalAssets, 10 * 60 * 1000);
 
-// ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
+// ================== DEFI ASSETS ==================
 
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
@@ -515,7 +513,7 @@ async function loadDefiAssets() {
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
 
-// ================== AVG BTC / AVG ETH (Google Sheet DEFI_invest!S2 / L2) ==================
+// ================== AVG BTC / AVG ETH ==================
 
 const AVG_BTC_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
@@ -584,7 +582,7 @@ async function loadAvgEth() {
 setInterval(loadAvgBtc, 10 * 60 * 1000);
 setInterval(loadAvgEth, 10 * 60 * 1000);
 
-// ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
+// ================== PnL ASSETS ==================
 
 const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
 
@@ -650,7 +648,7 @@ async function loadPnlAssets() {
 
 setInterval(loadPnlAssets, 10 * 60 * 1000);
 
-// ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
+// ================== PERCENTAGE ASSETS ==================
 
 const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
 
@@ -723,7 +721,7 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== MY ASSETS MENU (fixed-position dropdown + close on link click) ==================
+// ================== MY ASSETS MENU ==================
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -787,7 +785,7 @@ if (myAssetsButton && myAssetsMenu) {
   myAssetsMenu.addEventListener("click", closeMyAssetsOnLinkClick, true);
 }
 
-// ================== DeFi MENU (fixed-position dropdown + close on link click) ==================
+// ================== DeFi MENU ==================
 (function initDefiMenu() {
   const defiContainer = document.getElementById("defiContainer");
   const defiButton = document.getElementById("defiButton");
@@ -1087,7 +1085,7 @@ if (myAssetsButton && myAssetsMenu) {
   renderDefiMenu();
 })();
 
-// ================== Hold/Sell (CoinGlass-like peak signals) ==================
+// ================== Hold/Sell ==================
 
 function computePeakSignals({ fg, puell, btc24h, eth24h }) {
   return [
@@ -1178,44 +1176,40 @@ function normalizePuellPayload(json) {
 
   if (statusColor != null) statusColor = String(statusColor).toLowerCase();
 
-  let markerPctCandidates = [
+  let markerPct = [
     json?.markerPct,
     json?.marker,
     json?.markerPercent,
     json?.data?.markerPct,
     json?.data?.marker,
     json?.data?.markerPercent,
-  ];
-
-  let markerPct = null;
-  for (const candidate of markerPctCandidates) {
-    const num = Number(candidate);
-    if (Number.isFinite(num)) {
-      markerPct = num;
-      break;
-    }
-  }
+  ]
+    .map(Number)
+    .find(Number.isFinite);
 
   if (!Number.isFinite(markerPct) && Number.isFinite(puell)) {
     markerPct = Math.max(0, Math.min(100, (puell / 4) * 100));
   }
 
-  if (!status && Number.isFinite(puell)) {
-    if (puell < 0.8) status = "green";
-    else if (puell < 1.4) status = "yellow";
-    else if (puell < 2.0) status = "orange";
-    else status = "red";
-  }
-
-  if (!statusColor && status) {
-    const s = status.toLowerCase();
-    if (s.includes("green") || s.includes("low") || s.includes("buy")) statusColor = "green";
-    else if (s.includes("yellow") || s.includes("neutral")) statusColor = "yellow";
-    else if (s.includes("orange") || s.includes("elevated")) statusColor = "orange";
-    else if (s.includes("red") || s.includes("high") || s.includes("sell")) statusColor = "red";
-  }
-
   return { puell, status, statusColor, markerPct };
+}
+
+async function fetchJsonStrict(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 160)}`);
+  }
+
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid JSON from ${url}: ${text.slice(0, 160)}`);
+  }
+
+  return json;
 }
 
 async function loadPuell() {
@@ -1224,49 +1218,42 @@ async function loadPuell() {
   const markerEl = document.getElementById("puellMarker");
 
   try {
-    const res = await fetch(PUELL_PROXY_URL, { cache: "no-store" });
+    const json = await fetchJsonStrict(PUELL_PROXY_URL);
+    const result = normalizePuellPayload(json);
 
-    const text = await res.text();
-    let json;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      throw new Error("Proxy did not return valid JSON");
+    if (!Number.isFinite(result.puell)) {
+      throw new Error("Proxy JSON does not contain a numeric puell value");
     }
 
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-
-    const { puell, status, statusColor, markerPct } = normalizePuellPayload(json);
-
-    latestPuell = Number.isFinite(puell) ? puell : null;
-
-    if (!Number.isFinite(puell)) {
-      throw new Error("Puell value missing in proxy response");
-    }
+    const puell = Number(result.puell);
+    latestPuell = puell;
 
     if (valueEl) valueEl.textContent = puell.toFixed(2);
 
     if (statusEl) {
-      statusEl.textContent = status || "Available";
+      statusEl.textContent = result.status || "Available";
       statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
-      if (statusColor && ["green", "yellow", "orange", "red"].includes(statusColor)) {
-        statusEl.classList.add(`is-${statusColor}`);
+      if (result.statusColor && ["green", "yellow", "orange", "red"].includes(result.statusColor)) {
+        statusEl.classList.add(`is-${result.statusColor}`);
       }
     }
 
-    if (markerEl && Number.isFinite(markerPct)) {
-      markerEl.style.left = `${Math.max(0, Math.min(100, markerPct))}%`;
+    if (markerEl && Number.isFinite(result.markerPct)) {
+      markerEl.style.left = `${Math.max(0, Math.min(100, result.markerPct))}%`;
     }
 
     updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load Puell", e);
     latestPuell = null;
+
     if (statusEl) {
       statusEl.textContent = "Unavailable";
       statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
     }
     if (valueEl) valueEl.textContent = "–";
+    if (markerEl) markerEl.style.left = "50%";
+
     updateHoldSellPanel();
   }
 }
@@ -1309,7 +1296,6 @@ window.addEventListener("load", () => {
   })();
 });
 
-// Refresh intervals
 setInterval(loadCryptoPrices, 5 * 60 * 1000);
 setInterval(loadFearGreed, 30 * 60 * 1000);
 setInterval(loadPuell, 60 * 60 * 1000);
