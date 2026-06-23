@@ -52,6 +52,7 @@ const hfMainRowEl = document.querySelector(".hf-main-row");
 const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
 const morphoHfValueEl = document.getElementById("morphoHfValue");
 const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
+const liqBtcMorphoEl = document.getElementById("liqBtcMorpho");
 
 // Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
@@ -69,11 +70,23 @@ let latestBtc24h  = null;    // percent (e.g. -1.25)
 let latestEth24h  = null;    // percent
 let latestPuell   = null;    // number
 
+// Current spot prices
+let currentBtcPrice = null;
+let currentEthPrice = null;
+
+// Current Morpho HF
+let currentMorphoHf = null;
+
 // ================== HELPERS ========================================
 
 function shortenAddress(addr) {
   if (!addr) return "";
   return addr.slice(0, 6) + "..." + addr.slice(-4);
+}
+
+function shortenNumber(n) {
+  if (!Number.isFinite(n)) return "–";
+  return Math.round(n).toLocaleString("en-US");
 }
 
 function setConnectedUI(addr) {
@@ -87,9 +100,14 @@ function setDisconnectedUI() {
   currentAddress = null;
   addressSpan.textContent = "";
   hfValueEl.textContent = "–";
-  liqEthBottomEl.textContent = "–";
-  liqBtcBottomEl.textContent = "–";
+  liqEthBottomEl.textContent = "ETH ~ –";
+  liqBtcBottomEl.textContent = "BTC ~ –";
+
   if (morphoHfValueEl) morphoHfValueEl.textContent = "–";
+  if (liqBtcMorphoEl) liqBtcMorphoEl.textContent = "BTC ~ –";
+
+  currentMorphoHf = null;
+
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
@@ -128,6 +146,27 @@ function setMorphoHealthFactorDisplay(hf) {
   if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
   else if (hf < 1.5) morphoHfMainRowEl.classList.add("warning");
   else morphoHfMainRowEl.classList.add("safe");
+}
+
+function updateMorphoLiqDisplay() {
+  if (!liqBtcMorphoEl) return;
+
+  let btcSpot = currentBtcPrice;
+
+  // Fallback: parse currently displayed BTC DOM price, e.g. "$103,245"
+  if (!Number.isFinite(btcSpot) && btcPriceEl) {
+    const raw = String(btcPriceEl.textContent || "").replace(/[^\d.]/g, "");
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) btcSpot = parsed;
+  }
+
+  if (!Number.isFinite(currentMorphoHf) || currentMorphoHf <= 0 || !Number.isFinite(btcSpot) || btcSpot <= 0) {
+    liqBtcMorphoEl.textContent = "BTC ~ –";
+    return;
+  }
+
+  const btcAtHF1 = btcSpot / currentMorphoHf;
+  liqBtcMorphoEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
 }
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
@@ -184,6 +223,9 @@ async function loadCryptoPrices() {
       ? eth.price_change_percentage_24h
       : null;
 
+    currentBtcPrice = Number.isFinite(btc?.current_price) ? btc.current_price : null;
+    currentEthPrice = Number.isFinite(eth?.current_price) ? eth.current_price : null;
+
     function setCoin(elPrice, elChange, coin) {
       if (!coin) return;
 
@@ -213,16 +255,20 @@ async function loadCryptoPrices() {
     setCoin(btcPriceEl, btcChangeEl, btc);
     setCoin(ethPriceEl, ethChangeEl, eth);
 
+    updateMorphoLiqDisplay();
     updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
     latestBtc24h = null;
     latestEth24h = null;
+    currentBtcPrice = null;
+    currentEthPrice = null;
+    updateMorphoLiqDisplay();
     updateHoldSellPanel();
   }
 }
 
-// ================== AAVE LOGIC (HF + LIQ PRICE ETH) ===============
+// ================== AAVE LOGIC (HF + LIQ PRICE ETH/BTC) ===============
 
 async function loadAaveDataForUser(userAddress, provider) {
   try {
@@ -266,8 +312,8 @@ async function loadAaveDataForUser(userAddress, provider) {
     const ethAtHF1 = ethNow * dropFactor;
     const btcAtHF1 = btcNow * dropFactor;
 
-    liqEthBottomEl.textContent = "ETH ~ " + ethAtHF1.toFixed(0).toLocaleString("en-US");
-    liqBtcBottomEl.textContent = "BTC ~ " + btcAtHF1.toFixed(0).toLocaleString("en-US");
+    liqEthBottomEl.textContent = "ETH ~ " + shortenNumber(ethAtHF1);
+    liqBtcBottomEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
   } catch (e) {
     console.error("Failed to load Aave / liq price", e);
     liqEthBottomEl.textContent = "ETH ~ –";
@@ -289,14 +335,20 @@ async function loadMorphoHealthFactor(userAddress) {
 
     const hf = Number(json.healthFactor);
     if (!Number.isFinite(hf)) {
+      currentMorphoHf = null;
       setMorphoHealthFactorDisplay(NaN);
+      updateMorphoLiqDisplay();
       return;
     }
 
+    currentMorphoHf = hf;
     setMorphoHealthFactorDisplay(hf);
+    updateMorphoLiqDisplay();
   } catch (e) {
     console.error("Failed to load Morpho health factor", e);
+    currentMorphoHf = null;
     setMorphoHealthFactorDisplay(NaN);
+    updateMorphoLiqDisplay();
   }
 }
 
