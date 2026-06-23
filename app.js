@@ -406,6 +406,83 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
 
+  // Close menu when a menu link is clicked
+  myAssetsMenu.addEventListener("click", (e) => {
+    const link = e.target.closest("a");
+    if (!link) return;
+
+      // Close DeFi menu when a link is clicked (normal left click)
+  defiMenu.addEventListener("click", (e) => {
+    const link = e.target.closest("a");
+    if (!link) return;
+    closeDefiMenu();
+  });
+
+    closeMyAssetsMenu();
+    // allow navigation to continue
+  });
+
+// Auto‑restore + initial prices + Fear&Greed
+window.addEventListener("load", () => {
+  loadCryptoPrices();
+  loadFearGreed();
+  loadTotalAssets(
+    async function loadTotalAssets() {
+  try {
+    if (!totalAssetsValueEl) return;
+
+    console.log("Loading Total Assets from:", TOTAL_ASSETS_CELL_CSV_URL);
+
+    const res = await fetch(TOTAL_ASSETS_CELL_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    let text = (await res.text()).trim();
+    console.log("Total Assets raw CSV:", text);
+
+    text = text.replace(/^"+|"+$/g, "");
+    text = text.replace(/\s/g, "");
+    text = text.replace(/,/g, "");
+
+    const value = Number(text);
+    if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
+
+    totalAssetsValueEl.textContent = formatUsd(value);
+  } catch (err) {
+    console.error("Failed to load Total Assets", err);
+    totalAssetsValueEl.textContent = "Unavailable";
+  }
+}
+  );
+
+  if (!window.ethereum) return;
+  const saved = localStorage.getItem("savedAddress");
+  if (!saved) return;
+
+  (async () => {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (!accounts.includes(saved)) return;
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network  = await provider.getNetwork();
+      if (Number(network.chainId) !== 42161) return;
+
+      statusDiv.textContent = "Reading your Aave account data...";
+      await loadAaveDataForUser(saved, provider);
+      setConnectedUI(saved);
+      statusDiv.textContent = "Loaded from previous connection.";
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+});
+
+// Refresh BTC / ETH prices every 5 minutes
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
+
+// Refresh Fear & Greed every 30 minutes (daily data anyway; this keeps it fresh)
+setInterval(loadFearGreed, 30 * 60 * 1000);
+
 // ================== TOTAL ASSETS (Google Sheet cell T2) ==================
 
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
