@@ -41,23 +41,52 @@ const btcPriceEl  = document.getElementById("btcPrice");
 const ethPriceEl  = document.getElementById("ethPrice");
 const btcChangeEl = document.getElementById("btcChange");
 const ethChangeEl = document.getElementById("ethChange");
+const avgBtcValueEl = document.getElementById("avgBtcValue");
+const avgEthValueEl = document.getElementById("avgEthValue");
 
 const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
-// Fear & Greed (new)
+// Morpho HF
+const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
+const morphoHfValueEl = document.getElementById("morphoHfValue");
+const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
+const liqBtcMorphoEl = document.getElementById("liqBtcMorpho");
+
+// Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
 
+// Puell proxy
+const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
+
 let currentAddress = null;
+
+// ================== Hold/Sell (CoinGlass-like peak signals) state ==================
+let latestFgValue = null;    // 0..100
+let latestBtc24h  = null;    // percent (e.g. -1.25)
+let latestEth24h  = null;    // percent
+let latestPuell   = null;    // number
+
+// Current spot prices
+let currentBtcPrice = null;
+let currentEthPrice = null;
+
+// Current Morpho HF
+let currentMorphoHf = null;
 
 // ================== HELPERS ========================================
 
 function shortenAddress(addr) {
   if (!addr) return "";
   return addr.slice(0, 6) + "..." + addr.slice(-4);
+}
+
+function shortenNumber(n) {
+  if (!Number.isFinite(n)) return "–";
+  return Math.round(n).toLocaleString("en-US");
 }
 
 function setConnectedUI(addr) {
@@ -71,14 +100,24 @@ function setDisconnectedUI() {
   currentAddress = null;
   addressSpan.textContent = "";
   hfValueEl.textContent = "–";
-  liqEthBottomEl.textContent = "–";
-  liqBtcBottomEl.textContent = "–";
-  hfValueEl.classList.remove("hf-safe", "hf-warning", "hf-danger");
+  liqEthBottomEl.textContent = "ETH ~ –";
+  liqBtcBottomEl.textContent = "BTC ~ –";
+
+  if (morphoHfValueEl) morphoHfValueEl.textContent = "–";
+  if (liqBtcMorphoEl) liqBtcMorphoEl.textContent = "BTC ~ –";
+
+  currentMorphoHf = null;
+
   connectLabel.textContent = "Connect wallet";
   resultDiv.classList.add("hidden");
   walletMenu.classList.remove("visible");
   statusDiv.textContent = "";
   localStorage.removeItem("savedAddress");
+
+  hfMainRowEl.classList.remove("safe", "warning", "danger");
+  if (morphoHfMainRowEl) {
+    morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+  }
 }
 
 function setHealthFactorDisplay(hf) {
@@ -86,16 +125,49 @@ function setHealthFactorDisplay(hf) {
 
   hfMainRowEl.classList.remove("safe", "warning", "danger");
 
-  if (hf < 1.0) {
-    hfMainRowEl.classList.add("danger");
-  } else if (hf < 1.5) {
-    hfMainRowEl.classList.add("warning");
-  } else {
-    hfMainRowEl.classList.add("safe");
-  }
+  if (hf < 1.0) hfMainRowEl.classList.add("danger");
+  else if (hf < 1.5) hfMainRowEl.classList.add("warning");
+  else hfMainRowEl.classList.add("safe");
 }
 
-// ================== FEAR & GREED (new) =============================
+function setMorphoHealthFactorDisplay(hf) {
+  if (!morphoHfValueEl || !morphoHfMainRowEl) return;
+
+  if (!Number.isFinite(hf)) {
+    morphoHfValueEl.textContent = "–";
+    morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+    return;
+  }
+
+  morphoHfValueEl.textContent = hf.toFixed(2);
+
+  morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
+
+  if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
+  else if (hf < 1.5) morphoHfMainRowEl.classList.add("warning");
+  else morphoHfMainRowEl.classList.add("safe");
+}
+
+function updateMorphoLiqDisplay() {
+  if (!liqBtcMorphoEl) return;
+
+  let btcSpot = currentBtcPrice;
+
+  // Fallback: parse currently displayed BTC DOM price, e.g. "$103,245"
+  if (!Number.isFinite(btcSpot) && btcPriceEl) {
+    const raw = String(btcPriceEl.textContent || "").replace(/[^\d.]/g, "");
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) btcSpot = parsed;
+  }
+
+  if (!Number.isFinite(currentMorphoHf) || currentMorphoHf <= 0 || !Number.isFinite(btcSpot) || btcSpot <= 0) {
+    liqBtcMorphoEl.textContent = "BTC ~ –";
+    return;
+  }
+
+  const btcAtHF1 = btcSpot / currentMorphoHf;
+  liqBtcMorphoEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
+}
 
 // ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
 
@@ -109,6 +181,8 @@ async function loadFearGreed() {
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
     const value = Number(json.value); // 0..100
+    latestFgValue = Number.isFinite(value) ? value : null;
+
     const label = String(json.label || "").toLowerCase();
 
     if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
@@ -119,36 +193,15 @@ async function loadFearGreed() {
       const deg = -90 + (value / 100) * 180;
       fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
     }
+
+    updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load Fear & Greed (CMC proxy)", e);
+    latestFgValue = null;
     if (fgValueEl) fgValueEl.textContent = "–";
     if (fgLabelEl) fgLabelEl.textContent = "Unavailable";
+    updateHoldSellPanel();
   }
-}
-
-// liquidationThreshold from config struct (not bitmask)
-function getLiquidationThresholdFromConfig(cfg) {
-  return Number(cfg.liquidationThreshold) / 10000; // 0..1
-}
-
-// Approx ETH liquidation price (USD) assuming only ETH moves
-function computeEthLiqPrice({
-  totalDebtUsd,
-  totalCollateralBaseUsd,
-  hlThreshold,
-  ethCollateralAmount,
-  ethLtv,
-  ethPriceNow,
-}) {
-  if (ethCollateralAmount <= 0 || ethLtv <= 0) return null;
-
-  const totalCollAtLT  = totalCollateralBaseUsd * hlThreshold;
-  const ethCollAtLTNow = ethCollateralAmount * ethPriceNow * ethLtv;
-  const otherCollAtLT  = Math.max(totalCollAtLT - ethCollAtLTNow, 0);
-  const numerator      = totalDebtUsd - otherCollAtLT;
-  if (numerator <= 0) return null;
-
-  return numerator / (ethCollateralAmount * ethLtv);
 }
 
 // ================== MARKET PRICES (COINGECKO) ======================
@@ -161,6 +214,17 @@ async function loadCryptoPrices() {
     const data = await res.json();
     const btc = data.find((c) => c.id === "bitcoin");
     const eth = data.find((c) => c.id === "ethereum");
+
+    latestBtc24h = Number.isFinite(btc?.price_change_percentage_24h)
+      ? btc.price_change_percentage_24h
+      : null;
+
+    latestEth24h = Number.isFinite(eth?.price_change_percentage_24h)
+      ? eth.price_change_percentage_24h
+      : null;
+
+    currentBtcPrice = Number.isFinite(btc?.current_price) ? btc.current_price : null;
+    currentEthPrice = Number.isFinite(eth?.current_price) ? eth.current_price : null;
 
     function setCoin(elPrice, elChange, coin) {
       if (!coin) return;
@@ -190,12 +254,21 @@ async function loadCryptoPrices() {
 
     setCoin(btcPriceEl, btcChangeEl, btc);
     setCoin(ethPriceEl, ethChangeEl, eth);
+
+    updateMorphoLiqDisplay();
+    updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
+    latestBtc24h = null;
+    latestEth24h = null;
+    currentBtcPrice = null;
+    currentEthPrice = null;
+    updateMorphoLiqDisplay();
+    updateHoldSellPanel();
   }
 }
 
-// ================== AAVE LOGIC (HF + LIQ PRICE ETH) ===============
+// ================== AAVE LOGIC (HF + LIQ PRICE ETH/BTC) ===============
 
 async function loadAaveDataForUser(userAddress, provider) {
   try {
@@ -239,8 +312,8 @@ async function loadAaveDataForUser(userAddress, provider) {
     const ethAtHF1 = ethNow * dropFactor;
     const btcAtHF1 = btcNow * dropFactor;
 
-    liqEthBottomEl.textContent = "ETH ~ " + ethAtHF1.toFixed(0).toLocaleString("en-US");
-    liqBtcBottomEl.textContent = "BTC ~ " + btcAtHF1.toFixed(0).toLocaleString("en-US");
+    liqEthBottomEl.textContent = "ETH ~ " + shortenNumber(ethAtHF1);
+    liqBtcBottomEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
   } catch (e) {
     console.error("Failed to load Aave / liq price", e);
     liqEthBottomEl.textContent = "ETH ~ –";
@@ -248,11 +321,41 @@ async function loadAaveDataForUser(userAddress, provider) {
   }
 }
 
+// ================== MORPHO LOGIC ==================================
+
+async function loadMorphoHealthFactor(userAddress) {
+  try {
+    const res = await fetch(
+      `${MORPHO_HF_PROXY_URL}?address=${encodeURIComponent(userAddress)}`,
+      { cache: "no-store" }
+    );
+    const json = await res.json();
+
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+    const hf = Number(json.healthFactor);
+    if (!Number.isFinite(hf)) {
+      currentMorphoHf = null;
+      setMorphoHealthFactorDisplay(NaN);
+      updateMorphoLiqDisplay();
+      return;
+    }
+
+    currentMorphoHf = hf;
+    setMorphoHealthFactorDisplay(hf);
+    updateMorphoLiqDisplay();
+  } catch (e) {
+    console.error("Failed to load Morpho health factor", e);
+    currentMorphoHf = null;
+    setMorphoHealthFactorDisplay(NaN);
+    updateMorphoLiqDisplay();
+  }
+}
+
 // ================== WALLET CONNECTION / INIT ======================
 
 async function connectAndLoad() {
   try {
-    console.log("CONNECT CLICK");
     if (!window.ethereum) {
       statusDiv.textContent = "No browser wallet detected (MetaMask / Rabby).";
       return;
@@ -266,7 +369,6 @@ async function connectAndLoad() {
 
     statusDiv.textContent = "Connecting wallet...";
     const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    console.log("ACCOUNTS", accounts);
     if (!accounts || accounts.length === 0) {
       statusDiv.textContent = "No account returned from wallet.";
       return;
@@ -277,7 +379,6 @@ async function connectAndLoad() {
 
     const provider = new ethers.BrowserProvider(window.ethereum);
     const network  = await provider.getNetwork();
-    console.log("NETWORK", network);
     if (Number(network.chainId) !== 42161) {
       statusDiv.textContent = "Please switch wallet to the Arbitrum One network and try again.";
       return;
@@ -285,6 +386,7 @@ async function connectAndLoad() {
 
     statusDiv.textContent = "Reading your Aave account data...";
     await loadAaveDataForUser(userAddress, provider);
+    await loadMorphoHealthFactor(userAddress);
     setConnectedUI(userAddress);
     statusDiv.textContent = "Done.";
   } catch (err) {
@@ -301,9 +403,7 @@ disconnectBtn.addEventListener("click", () => {
 
 document.addEventListener("click", (e) => {
   if (!walletMenu.classList.contains("visible")) return;
-  if (!e.target.closest(".wallet-container")) {
-    walletMenu.classList.remove("visible");
-  }
+  if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
 
   // Close menu when a menu link is clicked
@@ -385,18 +485,12 @@ setInterval(loadFearGreed, 30 * 60 * 1000);
 
 // ================== TOTAL ASSETS (Google Sheet cell T2) ==================
 
-// Your original spreadsheet ID (from the older link you shared)
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
-
-// From your published link: gid=0
 const TOTAL_ASSETS_GID = "0";
 
-// Direct CSV export of just T2
 const TOTAL_ASSETS_CELL_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
-
-//const totalAssetsValueEl = document.getElementById("totalAssetsValue");
 
 function formatUsd(amount) {
   return (
@@ -407,7 +501,6 @@ function formatUsd(amount) {
     })
   );
 }
-// ✅ Then update loadTotalAssets() to set BOTH elements safely:
 
 async function loadTotalAssets() {
   try {
@@ -433,16 +526,10 @@ async function loadTotalAssets() {
 
 setInterval(loadTotalAssets, 10 * 60 * 1000);
 
-// DeFi Assets (Google Sheet: DEFI_invest!W2)
 // ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
 
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
-const DEFI_SHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
-const DEFI_GID = "553100822"; // DEFI_invest
-const DEFI_RANGE = "W2";
-
-// GVIZ returns JS-like response, but with structured data
 const DEFI_ASSETS_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
   "?sheet=DEFI_invest" +
@@ -450,7 +537,6 @@ const DEFI_ASSETS_GVIZ_URL =
   "&tqx=out:json";
 
 function parseGvizJson(text) {
-  // Response looks like: google.visualization.Query.setResponse({...});
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
@@ -458,53 +544,35 @@ function parseGvizJson(text) {
 }
 
 function parseCurrencyLoose(rawValue) {
-  // Accepts: 7900, "7900", "$7.900", "7,900", "7 900", "$7,900.25", "7.900,25"
   if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
 
   let s = String(rawValue ?? "").trim();
   if (!s) return NaN;
 
-  // Remove currency symbols/letters, keep digits and separators
   s = s.replace(/[^\d.,-]/g, "");
 
-  // If both separators exist, decide decimal by last separator position
   const lastDot = s.lastIndexOf(".");
   const lastComma = s.lastIndexOf(",");
 
   if (lastDot !== -1 && lastComma !== -1) {
-    // Example: "1.234,56" => dot thousands, comma decimal
-    // Example: "1,234.56" => comma thousands, dot decimal
     if (lastComma > lastDot) {
-      // comma decimal
-      s = s.replace(/\./g, "");     // remove thousands dots
-      s = s.replace(/,/g, ".");     // decimal comma -> dot
+      s = s.replace(/\./g, "");
+      s = s.replace(/,/g, ".");
     } else {
-      // dot decimal
-      s = s.replace(/,/g, "");      // remove thousands commas
-      // keep dot as decimal
+      s = s.replace(/,/g, "");
     }
   } else if (lastDot !== -1) {
-    // Only dot present: could be thousands ("7.900") or decimal ("7.90")
     const fracLen = s.length - lastDot - 1;
-    if (fracLen === 3) {
-      // treat as thousands separator
-      s = s.replace(/\./g, "");
-    }
-    // else treat as decimal dot (leave it)
+    if (fracLen === 3) s = s.replace(/\./g, "");
   } else if (lastComma !== -1) {
-    // Only comma present: could be thousands or decimal
     const fracLen = s.length - lastComma - 1;
-    if (fracLen === 3) {
-      // "7,900" thousands
-      s = s.replace(/,/g, "");
-    } else {
-      // "7,90" decimal
-      s = s.replace(/,/g, ".");
-    }
+    if (fracLen === 3) s = s.replace(/,/g, "");
+    else s = s.replace(/,/g, ".");
   }
 
   return Number(s);
 }
+
 async function loadDefiAssets() {
   try {
     if (!defiAssetsValueCardEl) return;
@@ -516,15 +584,11 @@ async function loadDefiAssets() {
     const data = parseGvizJson(raw);
 
     const cell = data?.table?.rows?.[0]?.c?.[0];
-    const v = cell?.v; // raw value
-    const f = cell?.f; // formatted
+    const v = cell?.v;
+    const f = cell?.f;
 
-    // Prefer raw numeric if available, else parse formatted string
     const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
-
-    if (!Number.isFinite(num)) {
-      throw new Error("Not a number. v=" + String(v) + " f=" + String(f));
-    }
+    if (!Number.isFinite(num)) throw new Error("Not a number. v=" + String(v) + " f=" + String(f));
 
     defiAssetsValueCardEl.textContent = formatUsd(num);
   } catch (err) {
@@ -532,23 +596,86 @@ async function loadDefiAssets() {
     defiAssetsValueCardEl.textContent = "Unavailable";
   }
 }
-window.addEventListener("load", () => {
-  loadDefiAssets();
-});
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
+
+// ================== AVG BTC / AVG ETH (Google Sheet DEFI_invest!S2 / L2) ==================
+
+const AVG_BTC_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  "&range=S2" +
+  "&tqx=out:json";
+
+const AVG_ETH_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?sheet=DEFI_invest" +
+  "&range=L2" +
+  "&tqx=out:json";
+
+function formatUsd0(num) {
+  return "$" + Math.round(Number(num)).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+async function loadAvgBtc() {
+  try {
+    if (!avgBtcValueEl) return;
+
+    const res = await fetch(AVG_BTC_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const data = parseGvizJson(raw);
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
+    if (!Number.isFinite(num)) throw new Error("AVG BTC not a number");
+
+    avgBtcValueEl.textContent = formatUsd0(num);
+  } catch (err) {
+    console.error("Failed to load AVG BTC", err);
+    if (avgBtcValueEl) avgBtcValueEl.textContent = "–";
+  }
+}
+
+async function loadAvgEth() {
+  try {
+    if (!avgEthValueEl) return;
+
+    const res = await fetch(AVG_ETH_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const data = parseGvizJson(raw);
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    const v = cell?.v;
+    const f = cell?.f;
+
+    const num = (typeof v === "number" && Number.isFinite(v)) ? v : parseCurrencyLoose(f ?? v);
+    if (!Number.isFinite(num)) throw new Error("AVG ETH not a number");
+
+    avgEthValueEl.textContent = formatUsd0(num);
+  } catch (err) {
+    console.error("Failed to load AVG ETH", err);
+    if (avgEthValueEl) avgEthValueEl.textContent = "–";
+  }
+}
+
+setInterval(loadAvgBtc, 10 * 60 * 1000);
+setInterval(loadAvgEth, 10 * 60 * 1000);
 
 // ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
 
 const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
 
-// Same sheet as DeFi Assets; just a different cell.
-const PNL_RANGE = "X2";
-
 const PNL_ASSETS_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
   "?sheet=DEFI_invest" +
-  `&range=${encodeURIComponent(PNL_RANGE)}` +
+  "&range=X2" +
   "&tqx=out:json";
 
 async function loadPnlAssets() {
@@ -567,24 +694,18 @@ async function loadPnlAssets() {
     const v = cell?.v;
     const f = cell?.f;
 
-    // Prefer raw numeric if present
     let num = (typeof v === "number" && Number.isFinite(v)) ? v : NaN;
 
-    // Fallback: parse formatted string like "-$2.120"
     if (!Number.isFinite(num)) {
       let s = String(f ?? v ?? "").trim();
-      s = s.replace(/[^\d.,-]/g, ""); // keep digits/separators/sign
+      s = s.replace(/[^\d.,-]/g, "");
 
-      // Treat "2.120" as thousands when 3 digits after dot
       const lastDot = s.lastIndexOf(".");
       const lastComma = s.lastIndexOf(",");
 
       if (lastDot !== -1 && lastComma !== -1) {
-        if (lastComma > lastDot) {
-          s = s.replace(/\./g, "").replace(/,/g, ".");
-        } else {
-          s = s.replace(/,/g, "");
-        }
+        if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+        else s = s.replace(/,/g, "");
       } else if (lastDot !== -1) {
         const fracLen = s.length - lastDot - 1;
         if (fracLen === 3) s = s.replace(/\./g, "");
@@ -598,16 +719,11 @@ async function loadPnlAssets() {
     }
 
     pnlAssetsValueCardEl.classList.remove("pnl-positive", "pnl-negative");
+    if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
+    if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
 
-if (num > 0) pnlAssetsValueCardEl.classList.add("pnl-positive");
-if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
+    if (!Number.isFinite(num)) throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
 
-    if (!Number.isFinite(num)) {
-      throw new Error("PnL cell is not a number. v=" + String(v) + " f=" + String(f));
-    }
-
-    // Show negative with minus sign like "-$2.120"
-    // (formatUsd currently rounds and uses de-DE grouping; we keep consistent)
     const formatted = (num < 0 ? "-" : "") + formatUsd(Math.abs(num));
     pnlAssetsValueCardEl.textContent = formatted;
   } catch (err) {
@@ -615,62 +731,44 @@ if (num < 0) pnlAssetsValueCardEl.classList.add("pnl-negative");
     pnlAssetsValueCardEl.textContent = "Unavailable";
   }
 }
-// Call on load (add inside your existing load handler OR add a new one)
-window.addEventListener("load", () => {
-  loadPnlAssets();
-});
 
-// Refresh occasionally (optional)
 setInterval(loadPnlAssets, 10 * 60 * 1000);
 
 // ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
 
 const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
 
-const PCT_RANGE = "Y2";
-
 const PCT_ASSETS_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
   "?sheet=DEFI_invest" +
-  `&range=${encodeURIComponent(PCT_RANGE)}` +
+  "&range=Y2" +
   "&tqx=out:json";
 
 function parsePercentLoose(rawValue) {
-  // Accepts: -0.2062, -20.62, "-20.62%", "+20,62%", "0.1" etc.
   if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
 
   let s = String(rawValue ?? "").trim();
   if (!s) return NaN;
 
-  // Keep digits, sign, separators, percent
   s = s.replace(/[^\d.,%\-\+]/g, "");
-
   const hasPercent = s.includes("%");
-  s = s.replace(/[^\d.,%\-\+]/g, "");
- s = s.replace(/[^\d.,%\-\+]/g, ""); // Number() handles leading +, but safe
 
-  // Normalize separators (treat comma as decimal when it's the only separator)
   const lastDot = s.lastIndexOf(".");
   const lastComma = s.lastIndexOf(",");
 
   if (lastDot !== -1 && lastComma !== -1) {
-    // Decide decimal by last separator
-    if (lastComma > lastDot) {
-      s = s.replace(/\./g, "").replace(/,/g, ".");
-    } else {
-      s = s.replace(/[^\d.,%\-\+]/g, "");
-    }
+    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
   } else if (lastComma !== -1 && lastDot === -1) {
-   s = s.replace(/[^\d.,%\-\+]/g, "");
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen !== 3) s = s.replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
   }
 
-  let num = Number(s);
+  let num = Number(s.replace("%", ""));
   if (!Number.isFinite(num)) return NaN;
 
-  // If sheet returns 0.2062 and formatted as %, convert to 20.62 for display
-  // Only do this when it clearly looks like a ratio.
   if (hasPercent && Math.abs(num) <= 1) num = num * 100;
-
   return num;
 }
 
@@ -691,43 +789,514 @@ async function loadPercentageAssets() {
     const f = cell?.f;
 
     let num = (typeof v === "number" && Number.isFinite(v)) ? v : parsePercentLoose(f ?? v);
+    if (Number.isFinite(num) && Math.abs(num) <= 1) num = num * 100;
 
-    // If the sheet gives a ratio without %, convert to percent for display when it looks like ratio
-    if (Number.isFinite(num) && Math.abs(num) <= 1) {
-      num = num * 100;
-    }
+    if (!Number.isFinite(num)) throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
 
-    if (!Number.isFinite(num)) {
-      throw new Error("Percentage cell is not a number. v=" + String(v) + " f=" + String(f));
-    }
-
-    // Color
     pctAssetsValueCardEl.classList.remove("pct-positive", "pct-negative");
     if (num > 0) pctAssetsValueCardEl.classList.add("pct-positive");
     if (num < 0) pctAssetsValueCardEl.classList.add("pct-negative");
 
-    // Format like +20.62% / -20.62%
     const sign = num < 0 ? "-" : "+";
-    const formatted = `${sign}${Math.abs(num).toFixed(2)}%`;
-
-    pctAssetsValueCardEl.textContent = formatted;
+    pctAssetsValueCardEl.textContent = `${sign}${Math.abs(num).toFixed(2)}%`;
   } catch (err) {
     console.error("Failed to load Percentage Assets", err);
     pctAssetsValueCardEl.textContent = "Unavailable";
   }
 }
-// Call on load + refresh (add alongside your other loaders)
-window.addEventListener("load", () => {
-  loadPercentageAssets();
-});
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
+// ================== MY ASSETS MENU (fixed-position dropdown + close on link click) ==================
+const myAssetsButton = document.getElementById("myAssetsButton");
+const myAssetsMenu = document.getElementById("myAssetsMenu");
 
+function closeMyAssetsMenu() {
+  if (!myAssetsMenu) return;
+  myAssetsMenu.classList.remove("visible");
+  myAssetsMenu.style.left = "";
+  myAssetsMenu.style.top = "";
+  if (myAssetsButton) myAssetsButton.setAttribute("aria-expanded", "false");
+}
 
+function repositionMyAssetsMenuIfOpen() {
+  if (!myAssetsMenu || !myAssetsButton) return;
+  if (!myAssetsMenu.classList.contains("visible")) return;
 
+  const r = myAssetsButton.getBoundingClientRect();
+  const menuW = myAssetsMenu.offsetWidth || 190;
 
+  let left = r.left + (r.width / 2) - (menuW / 2);
+  left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+  const top = r.bottom + 10;
 
+  myAssetsMenu.style.left = `${Math.round(left)}px`;
+  myAssetsMenu.style.top  = `${Math.round(top)}px`;
+}
 
+if (myAssetsButton && myAssetsMenu) {
+  myAssetsButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = !myAssetsMenu.classList.contains("visible");
 
+    walletMenu.classList.remove("visible");
 
+    if (!willOpen) {
+      closeMyAssetsMenu();
+      return;
+    }
+
+    myAssetsMenu.classList.add("visible");
+    myAssetsButton.setAttribute("aria-expanded", "true");
+    repositionMyAssetsMenuIfOpen();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!myAssetsMenu.classList.contains("visible")) return;
+    if (!e.target.closest(".my-assets-container")) closeMyAssetsMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMyAssetsMenu();
+  });
+
+  window.addEventListener("scroll", repositionMyAssetsMenuIfOpen, true);
+  window.addEventListener("resize", repositionMyAssetsMenuIfOpen);
+
+  function closeMyAssetsOnLinkClick(e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (!a) return;
+    setTimeout(closeMyAssetsMenu, 0);
+  }
+  myAssetsMenu.addEventListener("click", closeMyAssetsOnLinkClick, true);
+}
+
+// ================== DeFi MENU (fixed-position dropdown + close on link click) ==================
+(function initDefiMenu() {
+  const defiContainer = document.getElementById("defiContainer");
+  const defiButton = document.getElementById("defiButton");
+  const defiMenu = document.getElementById("defiMenu");
+  const defiContextMenu = document.getElementById("defiContextMenu");
+  const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
+
+  const defiItemContextMenu = document.getElementById("defiItemContextMenu");
+  const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
+
+  if (
+    !defiContainer ||
+    !defiButton ||
+    !defiMenu ||
+    !defiContextMenu ||
+    !defiAddSiteBtn ||
+    !defiItemContextMenu ||
+    !defiDeleteSiteBtn
+  ) return;
+
+  const DEFI_LINKS_KEY = "defiLinks_v1";
+  let pendingDeleteUrl = null;
+
+  function loadDefiLinks() {
+    try {
+      const raw = localStorage.getItem(DEFI_LINKS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(x => x && typeof x.url === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveDefiLinks(links) {
+    localStorage.setItem(DEFI_LINKS_KEY, JSON.stringify(links));
+  }
+
+  function isValidHttpUrl(s) {
+    try {
+      const u = new URL(s);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  function edgeStyleFromDomain(hostname) {
+    let h = String(hostname || "").replace(/^www\./i, "");
+    if (!h) return "Site";
+
+    const parts = h.split(".");
+    let base = parts.length >= 2 ? parts[0] : h;
+
+    base = base
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/defi/ig, "DeFi")
+      .replace(/devops/ig, "DevOps")
+      .replace(/tracker/ig, "Tracker")
+      .replace(/[-_]+/g, " ")
+      .trim();
+
+    base = base.replace(/DeFi([A-Za-z]+)/, "DeFi $1").trim();
+
+    base = base
+      .split(/\s+/)
+      .map(w => (w === "DeFi" || w === "DevOps") ? w : (w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+      .join(" ")
+      .trim();
+
+    return base || h;
+  }
+
+  function makeEdgeLikeLabel(url) {
+    try {
+      const u = new URL(url);
+      const name = edgeStyleFromDomain(u.hostname);
+      const max = 22;
+      return name.length > max ? name.slice(0, max - 1) + "…" : name;
+    } catch {
+      return "Site";
+    }
+  }
+
+  function renderDefiMenu() {
+    const links = loadDefiLinks();
+    defiMenu.innerHTML = "";
+
+    if (links.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.padding = "9px 10px";
+      empty.style.color = "rgba(245,245,245,0.70)";
+      empty.style.fontSize = "13px";
+      empty.textContent = "No sites yet";
+      defiMenu.appendChild(empty);
+      return;
+    }
+
+    for (const link of links) {
+      const a = document.createElement("a");
+      a.className = "my-assets-item";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.href = link.url;
+      a.textContent = link.label || makeEdgeLikeLabel(link.url);
+      a.dataset.url = link.url;
+      defiMenu.appendChild(a);
+    }
+  }
+
+  function closeDefiMenu() {
+    defiMenu.classList.remove("visible");
+    defiMenu.style.left = "";
+    defiMenu.style.top = "";
+    defiButton.setAttribute("aria-expanded", "false");
+  }
+
+  function repositionDefiMenuIfOpen() {
+    if (!defiMenu.classList.contains("visible")) return;
+
+    const r = defiButton.getBoundingClientRect();
+    const menuW = defiMenu.offsetWidth || 190;
+
+    let left = r.left + (r.width / 2) - (menuW / 2);
+    left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+    const top = r.bottom + 10;
+
+    defiMenu.style.left = `${Math.round(left)}px`;
+    defiMenu.style.top  = `${Math.round(top)}px`;
+  }
+
+  function openDefiMenu() {
+    renderDefiMenu();
+    defiMenu.classList.add("visible");
+    defiButton.setAttribute("aria-expanded", "true");
+    repositionDefiMenuIfOpen();
+  }
+
+  function toggleDefiMenu() {
+    if (defiMenu.classList.contains("visible")) closeDefiMenu();
+    else openDefiMenu();
+  }
+
+  function hideAddContextMenu() {
+    defiContextMenu.classList.remove("visible");
+    defiContextMenu.style.left = "-9999px";
+    defiContextMenu.style.top = "-9999px";
+  }
+
+  function showAddContextMenu(x, y) {
+    defiContextMenu.style.left = `${x}px`;
+    defiContextMenu.style.top = `${y}px`;
+    defiContextMenu.classList.add("visible");
+  }
+
+  function hideDeleteContextMenu() {
+    defiItemContextMenu.classList.remove("visible");
+    defiItemContextMenu.style.left = "-9999px";
+    defiItemContextMenu.style.top = "-9999px";
+    pendingDeleteUrl = null;
+  }
+
+  function showDeleteContextMenu(x, y, urlToDelete) {
+    pendingDeleteUrl = urlToDelete;
+    defiItemContextMenu.style.left = `${x}px`;
+    defiItemContextMenu.style.top = `${y}px`;
+    defiItemContextMenu.classList.add("visible");
+  }
+
+  function hideAllDefiContextMenus() {
+    hideAddContextMenu();
+    hideDeleteContextMenu();
+  }
+
+  defiButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    hideAllDefiContextMenus();
+
+    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+    if (walletMenu) walletMenu.classList.remove("visible");
+
+    toggleDefiMenu();
+  });
+
+  function closeDefiOnLinkClick(e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (!a) return;
+    setTimeout(closeDefiMenu, 0);
+  }
+  defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
+
+  function onDefiContextMenu(e) {
+    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    if (item) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    closeDefiMenu();
+    hideDeleteContextMenu();
+
+    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+    if (walletMenu) walletMenu.classList.remove("visible");
+
+    showAddContextMenu(e.clientX, e.clientY);
+    return false;
+  }
+
+  defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
+
+  function onDefiItemContextMenu(e) {
+    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    if (!item) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    hideAddContextMenu();
+    showDeleteContextMenu(e.clientX, e.clientY, item.dataset.url);
+    return false;
+  }
+
+  defiMenu.addEventListener("contextmenu", onDefiItemContextMenu, true);
+
+  defiAddSiteBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAddContextMenu();
+
+    const url = prompt("Enter site URL (https://...):");
+    if (!url) return;
+
+    const trimmedUrl = url.trim();
+    if (!isValidHttpUrl(trimmedUrl)) {
+      alert("Invalid URL. Please enter a full URL starting with https://");
+      return;
+    }
+
+    const label = (prompt("Enter label:") || "").trim();
+    if (!label) return;
+
+    const links = loadDefiLinks();
+    links.push({ url: trimmedUrl, label });
+    saveDefiLinks(links);
+
+    openDefiMenu();
+  });
+
+  defiDeleteSiteBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!pendingDeleteUrl) {
+      hideDeleteContextMenu();
+      return;
+    }
+
+    const links = loadDefiLinks();
+    const next = links.filter((l) => l.url !== pendingDeleteUrl);
+    saveDefiLinks(next);
+
+    hideDeleteContextMenu();
+    openDefiMenu();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
+      closeDefiMenu();
+    }
+    if (defiContextMenu.classList.contains("visible") && !e.target.closest("#defiContextMenu")) {
+      hideAddContextMenu();
+    }
+    if (defiItemContextMenu.classList.contains("visible") && !e.target.closest("#defiItemContextMenu")) {
+      hideDeleteContextMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeDefiMenu();
+      hideAllDefiContextMenus();
+    }
+  });
+
+  window.addEventListener("scroll", () => {
+    hideAllDefiContextMenus();
+    repositionDefiMenuIfOpen();
+  }, true);
+
+  window.addEventListener("resize", () => {
+    hideAllDefiContextMenus();
+    repositionDefiMenuIfOpen();
+  });
+
+  renderDefiMenu();
+})();
+
+// ================== Hold/Sell (CoinGlass-like peak signals) ==================
+
+function computePeakSignals({ fg, puell, btc24h, eth24h }) {
+  return [
+    { name: "FearGreed >= 80", on: Number.isFinite(fg) && fg >= 80 },
+    { name: "Puell >= 2.0", on: Number.isFinite(puell) && puell >= 2.0 },
+    { name: "BTC 24h >= +8%", on: Number.isFinite(btc24h) && btc24h >= 8 },
+    { name: "ETH 24h >= +10%", on: Number.isFinite(eth24h) && eth24h >= 10 },
+  ];
+}
+
+function updateHoldSellPanel() {
+  const holdEl   = document.getElementById("hsHoldPct");
+  const sellEl   = document.getElementById("hsSellPct");
+  const markerEl = document.getElementById("hsMarker");
+  if (!holdEl || !sellEl || !markerEl) return;
+
+  const anyKnown =
+    Number.isFinite(latestFgValue) ||
+    Number.isFinite(latestPuell) ||
+    Number.isFinite(latestBtc24h) ||
+    Number.isFinite(latestEth24h);
+
+  if (!anyKnown) {
+    holdEl.textContent = "–";
+    sellEl.textContent = "–";
+    return;
+  }
+
+  const signals = computePeakSignals({
+    fg: latestFgValue,
+    puell: latestPuell,
+    btc24h: latestBtc24h,
+    eth24h: latestEth24h,
+  });
+
+  const total = signals.length || 1;
+  const onCount = signals.filter(s => s.on).length;
+
+  const sellPct = Math.round((onCount / total) * 100);
+  const holdPct = 100 - sellPct;
+
+  holdEl.textContent = `${holdPct}%`;
+  sellEl.textContent = `${sellPct}%`;
+  markerEl.style.left = `${sellPct}%`;
+}
+
+// ================== PUELL MULTIPLE ==================
+
+async function loadPuell() {
+  const statusEl = document.getElementById("puellStatus");
+  const valueEl  = document.getElementById("puellValue");
+  const markerEl = document.getElementById("puellMarker");
+
+  try {
+    const res = await fetch(PUELL_PROXY_URL, { cache: "no-store" });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+    const puell = Number(json.puell);
+    latestPuell = Number.isFinite(puell) ? puell : null;
+
+    if (valueEl) valueEl.textContent = Number.isFinite(puell) ? puell.toFixed(2) : "–";
+
+    if (statusEl) {
+      statusEl.textContent = json.status || "–";
+      statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
+      if (json.statusColor) statusEl.classList.add(`is-${json.statusColor}`);
+    }
+
+    if (markerEl && Number.isFinite(json.markerPct)) {
+      markerEl.style.left = `${Math.max(0, Math.min(100, json.markerPct))}%`;
+    }
+
+    updateHoldSellPanel();
+  } catch (e) {
+    console.error("Failed to load Puell", e);
+    latestPuell = null;
+    if (statusEl) statusEl.textContent = "Unavailable";
+    if (valueEl) valueEl.textContent = "–";
+    updateHoldSellPanel();
+  }
+}
+
+// ================== INITIAL LOADS / REFRESH ==================
+
+window.addEventListener("load", () => {
+  loadCryptoPrices();
+  loadFearGreed();
+  loadPuell();
+
+  loadTotalAssets();
+  loadDefiAssets();
+  loadAvgBtc();
+  loadAvgEth();
+  loadPnlAssets();
+  loadPercentageAssets();
+
+  if (!window.ethereum) return;
+  const saved = localStorage.getItem("savedAddress");
+  if (!saved) return;
+
+  (async () => {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (!accounts.includes(saved)) return;
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network  = await provider.getNetwork();
+      if (Number(network.chainId) !== 42161) return;
+
+      statusDiv.textContent = "Reading your Aave account data...";
+      await loadAaveDataForUser(saved, provider);
+      await loadMorphoHealthFactor(saved);
+      setConnectedUI(saved);
+      statusDiv.textContent = "Loaded from previous connection.";
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+});
+
+// Refresh intervals
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
+setInterval(loadFearGreed, 30 * 60 * 1000);
+setInterval(loadPuell, 60 * 60 * 1000);
+setInterval(() => {
+  if (currentAddress) loadMorphoHealthFactor(currentAddress);
+}, 30 * 60 * 1000);
