@@ -18,12 +18,12 @@ const ORACLE_ABI = [
 
 // Aave V3 contracts on Arbitrum One
 const POOL_ADDRESS          = "0x794a61358D6845594F94dc1DB02A252b5b4814aD";
-const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b"; // lower-case form
+const DATA_PROVIDER_ADDRESS = "0x243Aa95cAC2a25651eda86e80bEe66114413c43b";
 const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 
 // WETH underlying on Arbitrum
-const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"; // 18 decimals
-const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";  // 8 decimals
+const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
+const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
 
 // ================== DOM REFERENCES =================================
 
@@ -65,10 +65,10 @@ const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puel
 let currentAddress = null;
 
 // ================== Hold/Sell (CoinGlass-like peak signals) state ==================
-let latestFgValue = null;    // 0..100
-let latestBtc24h  = null;    // percent (e.g. -1.25)
-let latestEth24h  = null;    // percent
-let latestPuell   = null;    // number
+let latestFgValue = null;
+let latestBtc24h  = null;
+let latestEth24h  = null;
+let latestPuell   = null;
 
 // Current spot prices
 let currentBtcPrice = null;
@@ -153,7 +153,6 @@ function updateMorphoLiqDisplay() {
 
   let btcSpot = currentBtcPrice;
 
-  // Fallback: parse currently displayed BTC DOM price, e.g. "$103,245"
   if (!Number.isFinite(btcSpot) && btcPriceEl) {
     const raw = String(btcPriceEl.textContent || "").replace(/[^\d.]/g, "");
     const parsed = Number(raw);
@@ -180,7 +179,7 @@ async function loadFearGreed() {
 
     if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-    const value = Number(json.value); // 0..100
+    const value = Number(json.value);
     latestFgValue = Number.isFinite(value) ? value : null;
 
     const label = String(json.label || "").toLowerCase();
@@ -188,7 +187,6 @@ async function loadFearGreed() {
     if (fgValueEl) fgValueEl.textContent = Number.isFinite(value) ? String(value) : "–";
     if (fgLabelEl) fgLabelEl.textContent = label ? label : "–";
 
-    // Needle: map 0..100 => -90..+90 degrees
     if (fgNeedleEl && Number.isFinite(value)) {
       const deg = -90 + (value / 100) * 180;
       fgNeedleEl.setAttribute("transform", `rotate(${deg} 110 110)`);
@@ -275,16 +273,14 @@ async function loadAaveDataForUser(userAddress, provider) {
     const pool   = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
     const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, provider);
 
-    // Global account data (base ≈ USD, 8 decimals)
     const ud = await pool.getUserAccountData(userAddress);
-    const totalCollateralBase = Number(ethers.formatUnits(ud.totalCollateralBase, 8)); // USD
-    const totalDebtBase       = Number(ethers.formatUnits(ud.totalDebtBase, 8));       // USD
-    const hlThreshold         = Number(ud.currentLiquidationThreshold) / 10000;        // 0..1
+    const totalCollateralBase = Number(ethers.formatUnits(ud.totalCollateralBase, 8));
+    const totalDebtBase       = Number(ethers.formatUnits(ud.totalDebtBase, 8));
+    const hlThreshold         = Number(ud.currentLiquidationThreshold) / 10000;
     const healthFactor        = Number(ethers.formatUnits(ud.healthFactor, 18));
 
     setHealthFactorDisplay(healthFactor);
 
-    // If no debt, no liquidation price
     if (totalDebtBase === 0 || totalCollateralBase === 0) {
       liqEthBottomEl.textContent = "ETH ~ –";
       liqBtcBottomEl.textContent = "BTC ~ –";
@@ -299,16 +295,14 @@ async function loadAaveDataForUser(userAddress, provider) {
       return;
     }
 
-    // Get current ETH/BTC prices from the Aave oracle (8 decimals)
     const [ethPriceRaw, btcPriceRaw] = await Promise.all([
       oracle.getAssetPrice(WETH_ADDRESS),
       oracle.getAssetPrice(WBTC_ADDRESS),
     ]);
 
-    const ethNow = Number(ethers.formatUnits(ethPriceRaw, 8)); // USD
-    const btcNow = Number(ethers.formatUnits(btcPriceRaw, 8)); // USD
+    const ethNow = Number(ethers.formatUnits(ethPriceRaw, 8));
+    const btcNow = Number(ethers.formatUnits(btcPriceRaw, 8));
 
-    // At HF=1 the whole market is scaled by dropFactor
     const ethAtHF1 = ethNow * dropFactor;
     const btcAtHF1 = btcNow * dropFactor;
 
@@ -361,7 +355,6 @@ async function connectAndLoad() {
       return;
     }
 
-    // If already connected, just toggle menu
     if (currentAddress) {
       walletMenu.classList.toggle("visible");
       return;
@@ -730,7 +723,7 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== MY ASSETS MENU (fixed-position dropdown + close on link click) ==================
+// ================== MY ASSETS MENU ==================
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -794,7 +787,7 @@ if (myAssetsButton && myAssetsMenu) {
   myAssetsMenu.addEventListener("click", closeMyAssetsOnLinkClick, true);
 }
 
-// ================== DeFi MENU (fixed-position dropdown + close on link click) ==================
+// ================== DeFi MENU ==================
 (function initDefiMenu() {
   const defiContainer = document.getElementById("defiContainer");
   const defiButton = document.getElementById("defiButton");
@@ -1120,6 +1113,7 @@ function updateHoldSellPanel() {
   if (!anyKnown) {
     holdEl.textContent = "–";
     sellEl.textContent = "–";
+    markerEl.style.left = "50%";
     return;
   }
 
@@ -1143,37 +1137,133 @@ function updateHoldSellPanel() {
 
 // ================== PUELL MULTIPLE ==================
 
+function normalizePuellPayload(json) {
+  const candidates = [
+    json?.puell,
+    json?.value,
+    json?.puellMultiple,
+    json?.puell_multiple,
+    json?.data?.puell,
+    json?.data?.value,
+    json?.data?.puellMultiple,
+    json?.data?.puell_multiple,
+  ];
+
+  let puell = null;
+  for (const candidate of candidates) {
+    const num = Number(candidate);
+    if (Number.isFinite(num)) {
+      puell = num;
+      break;
+    }
+  }
+
+  let status =
+    json?.status ??
+    json?.label ??
+    json?.state ??
+    json?.data?.status ??
+    json?.data?.label ??
+    null;
+
+  if (status != null) status = String(status);
+
+  let statusColor =
+    json?.statusColor ??
+    json?.color ??
+    json?.status_color ??
+    json?.data?.statusColor ??
+    json?.data?.color ??
+    json?.data?.status_color ??
+    null;
+
+  if (statusColor != null) statusColor = String(statusColor).toLowerCase();
+
+  let markerPct = [
+    json?.markerPct,
+    json?.marker,
+    json?.markerPercent,
+    json?.data?.markerPct,
+    json?.data?.marker,
+    json?.data?.markerPercent,
+  ]
+    .map(Number)
+    .find(Number.isFinite);
+
+  if (!Number.isFinite(markerPct) && Number.isFinite(puell)) {
+    markerPct = Math.max(0, Math.min(100, (puell / 4) * 100));
+  }
+
+  return {
+    puell,
+    status,
+    statusColor,
+    markerPct,
+    source: json?.source ?? json?.data?.source ?? null,
+    updatedAt: json?.updatedAt ?? json?.data?.updatedAt ?? null,
+  };
+}
+
+async function fetchJsonStrict(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  const text = await res.text();
+
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid JSON from ${url}: ${text.slice(0, 200)}`);
+  }
+
+  if (!res.ok) {
+    throw new Error(json?.details || json?.error || `HTTP ${res.status}`);
+  }
+
+  return json;
+}
+
 async function loadPuell() {
   const statusEl = document.getElementById("puellStatus");
   const valueEl  = document.getElementById("puellValue");
   const markerEl = document.getElementById("puellMarker");
 
   try {
-    const res = await fetch(PUELL_PROXY_URL, { cache: "no-store" });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+    const json = await fetchJsonStrict(`${PUELL_PROXY_URL}?refresh=1`);
+    const result = normalizePuellPayload(json);
 
-    const puell = Number(json.puell);
-    latestPuell = Number.isFinite(puell) ? puell : null;
-
-    if (valueEl) valueEl.textContent = Number.isFinite(puell) ? puell.toFixed(2) : "–";
-
-    if (statusEl) {
-      statusEl.textContent = json.status || "–";
-      statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
-      if (json.statusColor) statusEl.classList.add(`is-${json.statusColor}`);
+    if (!Number.isFinite(result.puell)) {
+      throw new Error("Proxy JSON does not contain a numeric puell value");
     }
 
-    if (markerEl && Number.isFinite(json.markerPct)) {
-      markerEl.style.left = `${Math.max(0, Math.min(100, json.markerPct))}%`;
+    const puell = Number(result.puell);
+    latestPuell = puell;
+
+    if (valueEl) valueEl.textContent = puell.toFixed(2);
+
+    if (statusEl) {
+      statusEl.textContent = result.status || "Available";
+      statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
+      if (result.statusColor && ["green", "yellow", "orange", "red"].includes(result.statusColor)) {
+        statusEl.classList.add(`is-${result.statusColor}`);
+      }
+    }
+
+    if (markerEl && Number.isFinite(result.markerPct)) {
+      markerEl.style.left = `${Math.max(0, Math.min(100, result.markerPct))}%`;
     }
 
     updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load Puell", e);
     latestPuell = null;
-    if (statusEl) statusEl.textContent = "Unavailable";
+
+    if (statusEl) {
+      statusEl.textContent = "Unavailable";
+      statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
+    }
     if (valueEl) valueEl.textContent = "–";
+    if (markerEl) markerEl.style.left = "50%";
+
     updateHoldSellPanel();
   }
 }
