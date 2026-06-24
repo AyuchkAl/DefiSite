@@ -1222,13 +1222,30 @@ async function fetchJsonStrict(url) {
   return json;
 }
 
+async function fetchPuellWithFallback() {
+  try {
+    return await fetchJsonStrict(PUELL_PROXY_URL);
+  } catch (cachedErr) {
+    console.warn("Cached Puell fetch failed, trying refresh=1", cachedErr);
+    return await fetchJsonStrict(`${PUELL_PROXY_URL}?refresh=1`);
+  }
+}
+
 async function loadPuell() {
   const statusEl = document.getElementById("puellStatus");
   const valueEl  = document.getElementById("puellValue");
   const markerEl = document.getElementById("puellMarker");
 
+  const previousPuell = latestPuell;
+  const previousValueText = valueEl ? valueEl.textContent : "";
+  const previousStatusText = statusEl ? statusEl.textContent : "";
+  const previousMarkerLeft = markerEl ? markerEl.style.left : "";
+  const previousStatusClasses = statusEl
+    ? ["is-green", "is-yellow", "is-orange", "is-red"].filter(cls => statusEl.classList.contains(cls))
+    : [];
+
   try {
-    const json = await fetchJsonStrict(`${PUELL_PROXY_URL}?refresh=1`);
+    const json = await fetchPuellWithFallback();
     const result = normalizePuellPayload(json);
 
     if (!Number.isFinite(result.puell)) {
@@ -1255,14 +1272,32 @@ async function loadPuell() {
     updateHoldSellPanel();
   } catch (e) {
     console.error("Failed to load Puell", e);
-    latestPuell = null;
 
-    if (statusEl) {
-      statusEl.textContent = "Unavailable";
-      statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
+    if (Number.isFinite(previousPuell)) {
+      latestPuell = previousPuell;
+
+      if (valueEl) valueEl.textContent = previousValueText || previousPuell.toFixed(2);
+
+      if (statusEl) {
+        statusEl.textContent = previousStatusText || "Temporary issue";
+        statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
+        previousStatusClasses.forEach(cls => statusEl.classList.add(cls));
+      }
+
+      if (markerEl && previousMarkerLeft) {
+        markerEl.style.left = previousMarkerLeft;
+      }
+    } else {
+      latestPuell = null;
+
+      if (statusEl) {
+        statusEl.textContent = "Unavailable";
+        statusEl.classList.remove("is-green", "is-yellow", "is-orange", "is-red");
+      }
+
+      if (valueEl) valueEl.textContent = "–";
+      if (markerEl) markerEl.style.left = "50%";
     }
-    if (valueEl) valueEl.textContent = "–";
-    if (markerEl) markerEl.style.left = "50%";
 
     updateHoldSellPanel();
   }
