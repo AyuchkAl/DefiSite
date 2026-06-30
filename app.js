@@ -1698,14 +1698,6 @@ function setLoadStatus(text, mode = "") {
   if (mode) loadTaDataStatus.classList.add(mode);
 }
 
-function showSavedThenHide() {
-  setLoadStatus("Saved", "ok");
-  clearLoadStatusTimer();
-  loadStatusTimer = setTimeout(() => {
-    setLoadStatus("");
-  }, 5000);
-}
-
 async function triggerQuickProcessor() {
   if (!loadTaDataBtn) return;
 
@@ -1731,7 +1723,14 @@ async function triggerQuickProcessor() {
       throw new Error(msg);
     }
 
-    showSavedThenHide();
+    // ONLY show "Saved"
+    setLoadStatus("Saved", "ok");
+
+    // Hide after 5 seconds
+    loadStatusTimer = setTimeout(() => {
+      setLoadStatus("");
+    }, 5000);
+
   } catch (e) {
     console.error("quick-processor failed", e);
     clearLoadStatusTimer();
@@ -1742,5 +1741,7 @@ async function triggerQuickProcessor() {
 }
 
 if (loadTaDataBtn) {
+  // prevent duplicate handlers if script reloaded
+  loadTaDataBtn.onclick = null;
   loadTaDataBtn.addEventListener("click", triggerQuickProcessor);
 }
