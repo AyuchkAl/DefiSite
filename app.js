@@ -1676,12 +1676,20 @@ setInterval(() => {
 const loadTaDataBtn = document.getElementById("loadTaDataBtn");
 const loadTaDataStatus = document.getElementById("loadTaDataStatus");
 
-// Your deployed Edge Function
 const QUICK_PROCESSOR_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
 
-// IMPORTANT: put your real publishable key here (sb_publishable_...)
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_oqNJ8LGAg_vKt5RzrFTPeQ_qOtS7-bX";
+// IMPORTANT: replace with your real key
+const SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE";
+
+let loadStatusTimer = null;
+
+function clearLoadStatusTimer() {
+  if (loadStatusTimer) {
+    clearTimeout(loadStatusTimer);
+    loadStatusTimer = null;
+  }
+}
 
 function setLoadStatus(text, mode = "") {
   if (!loadTaDataStatus) return;
@@ -1690,12 +1698,21 @@ function setLoadStatus(text, mode = "") {
   if (mode) loadTaDataStatus.classList.add(mode);
 }
 
+function showSavedThenHide() {
+  setLoadStatus("Saved", "ok");
+  clearLoadStatusTimer();
+  loadStatusTimer = setTimeout(() => {
+    setLoadStatus("");
+  }, 5000);
+}
+
 async function triggerQuickProcessor() {
   if (!loadTaDataBtn) return;
 
   try {
+    clearLoadStatusTimer();
     loadTaDataBtn.disabled = true;
-    setLoadStatus("Loading...");
+    setLoadStatus("Loading");
 
     const res = await fetch(QUICK_PROCESSOR_URL, {
       method: "POST",
@@ -1714,18 +1731,10 @@ async function triggerQuickProcessor() {
       throw new Error(msg);
     }
 
-    if (json?.inserted?.id != null) {
-      setLoadStatus(
-        `Saved ✔ id=${json.inserted.id}, value=${json.inserted.value}, at=${json.inserted.created_at}`,
-        "ok"
-      );
-    } else if (json?.ok) {
-      setLoadStatus("Saved ✔ Data loaded to Supabase.", "ok");
-    } else {
-      setLoadStatus("Done ✔", "ok");
-    }
+    showSavedThenHide();
   } catch (e) {
     console.error("quick-processor failed", e);
+    clearLoadStatusTimer();
     setLoadStatus(`Error: ${e?.message || e}`, "err");
   } finally {
     loadTaDataBtn.disabled = false;
