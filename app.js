@@ -1087,6 +1087,329 @@ if (myAssetsButton && myAssetsMenu) {
   renderDefiMenu();
 })();
 
+// ================== Strategy MENU (upload/open/delete SVG/TXT) ==================
+(function initStrategyMenu() {
+  const strategyContainer = document.getElementById("strategyContainer");
+  const strategyButton = document.getElementById("strategyButton");
+  const strategyMenu = document.getElementById("strategyMenu");
+  const strategyItemContextMenu = document.getElementById("strategyItemContextMenu");
+  const strategyDeleteFileBtn = document.getElementById("strategyDeleteFileBtn");
+
+  if (!strategyContainer || !strategyButton || !strategyMenu || !strategyItemContextMenu || !strategyDeleteFileBtn) return;
+
+  const STRATEGY_FILES_KEY = "strategyFiles_v1";
+  let pendingDeleteId = null;
+
+  function loadStrategyFiles() {
+    try {
+      const raw = localStorage.getItem(STRATEGY_FILES_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr)
+        ? arr.filter(x =>
+            x &&
+            typeof x.id === "string" &&
+            typeof x.name === "string" &&
+            typeof x.content === "string" &&
+            typeof x.kind === "string"
+          )
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveStrategyFiles(files) {
+    localStorage.setItem(STRATEGY_FILES_KEY, JSON.stringify(files));
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function fileKindFromNameAndType(name, mime) {
+    const lower = String(name || "").toLowerCase().trim();
+    const type = String(mime || "").toLowerCase().trim();
+
+    if (lower.endsWith(".svg") || type === "image/svg+xml") return "svg";
+    if (lower.endsWith(".txt") || type === "text/plain") return "txt";
+    return null;
+  }
+
+  function renderStrategyMenu() {
+    const files = loadStrategyFiles();
+    strategyMenu.innerHTML = "";
+
+    if (files.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.padding = "9px 10px";
+      empty.style.color = "rgba(245,245,245,0.70)";
+      empty.style.fontSize = "13px";
+      empty.textContent = "No SVG/TXT files yet";
+      strategyMenu.appendChild(empty);
+      return;
+    }
+
+    for (const f of files) {
+      const a = document.createElement("a");
+      a.className = "my-assets-item";
+      a.href = "#";
+      a.textContent = f.name;
+      a.dataset.fileId = f.id;
+      strategyMenu.appendChild(a);
+    }
+  }
+
+  function closeStrategyMenu() {
+    strategyMenu.classList.remove("visible");
+    strategyMenu.style.left = "";
+    strategyMenu.style.top = "";
+    strategyButton.setAttribute("aria-expanded", "false");
+  }
+
+  function repositionStrategyMenuIfOpen() {
+    if (!strategyMenu.classList.contains("visible")) return;
+
+    const r = strategyButton.getBoundingClientRect();
+    const menuW = strategyMenu.offsetWidth || 190;
+
+    let left = r.left + (r.width / 2) - (menuW / 2);
+    left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+    const top = r.bottom + 10;
+
+    strategyMenu.style.left = `${Math.round(left)}px`;
+    strategyMenu.style.top  = `${Math.round(top)}px`;
+  }
+
+  function openStrategyMenu() {
+    renderStrategyMenu();
+    strategyMenu.classList.add("visible");
+    strategyButton.setAttribute("aria-expanded", "true");
+    repositionStrategyMenuIfOpen();
+  }
+
+  function toggleStrategyMenu() {
+    if (strategyMenu.classList.contains("visible")) closeStrategyMenu();
+    else openStrategyMenu();
+  }
+
+  function hideStrategyItemContextMenu() {
+    strategyItemContextMenu.classList.remove("visible");
+    strategyItemContextMenu.style.left = "-9999px";
+    strategyItemContextMenu.style.top = "-9999px";
+    pendingDeleteId = null;
+  }
+
+  function showStrategyItemContextMenu(x, y, fileId) {
+    pendingDeleteId = fileId;
+    strategyItemContextMenu.style.left = `${x}px`;
+    strategyItemContextMenu.style.top = `${y}px`;
+    strategyItemContextMenu.classList.add("visible");
+  }
+
+  function pickAndUploadFile() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".svg,.txt,image/svg+xml,text/plain";
+    input.style.display = "none";
+
+    input.addEventListener("change", async () => {
+      try {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const kind = fileKindFromNameAndType(file.name, file.type);
+        if (!kind) {
+          alert("Please select an SVG (*.svg) or TXT (*.txt) file.");
+          return;
+        }
+
+        const content = await file.text();
+
+        if (kind === "svg" && !/<svg[\s>]/i.test(content)) {
+          alert("Selected SVG file does not look valid.");
+          return;
+        }
+
+        const files = loadStrategyFiles();
+        const id = (crypto.randomUUID ? crypto.randomUUID() : `file_${Date.now()}_${Math.random().toString(16).slice(2)}`);
+
+        files.push({
+          id,
+          name: file.name,
+          kind,
+          content,
+          uploadedAt: Date.now()
+        });
+
+        saveStrategyFiles(files);
+        openStrategyMenu();
+      } catch (e) {
+        console.error("Failed to upload file", e);
+        alert("Failed to upload file.");
+      } finally {
+        input.remove();
+      }
+    });
+
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  function openStoredFileById(fileId) {
+    const files = loadStrategyFiles();
+    const f = files.find(x => x.id === fileId);
+    if (!f) return;
+
+    let html = "";
+
+    if (f.kind === "svg") {
+      html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(f.name)}</title>
+</head>
+<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+${f.content}
+</body>
+</html>`;
+    } else {
+      html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(f.name)}</title>
+</head>
+<body style="margin:0;background:#0b1020;color:#e9eeff;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">
+<pre style="margin:0;padding:20px;white-space:pre-wrap;word-break:break-word;">${escapeHtml(f.content)}</pre>
+</body>
+</html>`;
+    }
+
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
+  // LMB on Strategy button => open list
+  strategyButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+
+    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+    if (walletMenu) walletMenu.classList.remove("visible");
+
+    const defiMenu = document.getElementById("defiMenu");
+    if (defiMenu) defiMenu.classList.remove("visible");
+
+    const defiContextMenu = document.getElementById("defiContextMenu");
+    if (defiContextMenu) {
+      defiContextMenu.classList.remove("visible");
+      defiContextMenu.style.left = "-9999px";
+      defiContextMenu.style.top = "-9999px";
+    }
+
+    const defiItemContextMenu = document.getElementById("defiItemContextMenu");
+    if (defiItemContextMenu) {
+      defiItemContextMenu.classList.remove("visible");
+      defiItemContextMenu.style.left = "-9999px";
+      defiItemContextMenu.style.top = "-9999px";
+    }
+
+    hideStrategyItemContextMenu();
+    toggleStrategyMenu();
+  });
+
+  // RMB on Strategy button => upload file
+  strategyButton.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    closeStrategyMenu();
+    hideStrategyItemContextMenu();
+
+    pickAndUploadFile();
+    return false;
+  }, true);
+
+  // LMB on item => open
+  strategyMenu.addEventListener("click", (e) => {
+    const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
+    if (!item) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    openStoredFileById(item.dataset.fileId);
+    setTimeout(closeStrategyMenu, 0);
+  }, true);
+
+  // RMB on item => delete menu
+  strategyMenu.addEventListener("contextmenu", (e) => {
+    const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
+    if (!item) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    showStrategyItemContextMenu(e.clientX, e.clientY, item.dataset.fileId);
+    return false;
+  }, true);
+
+  strategyDeleteFileBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!pendingDeleteId) {
+      hideStrategyItemContextMenu();
+      return;
+    }
+
+    const files = loadStrategyFiles();
+    const next = files.filter(f => f.id !== pendingDeleteId);
+    saveStrategyFiles(next);
+
+    hideStrategyItemContextMenu();
+    openStrategyMenu();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (strategyMenu.classList.contains("visible") && !e.target.closest("#strategyContainer")) {
+      closeStrategyMenu();
+    }
+    if (strategyItemContextMenu.classList.contains("visible") && !e.target.closest("#strategyItemContextMenu")) {
+      hideStrategyItemContextMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeStrategyMenu();
+      hideStrategyItemContextMenu();
+    }
+  });
+
+  window.addEventListener("scroll", () => {
+    hideStrategyItemContextMenu();
+    repositionStrategyMenuIfOpen();
+  }, true);
+
+  window.addEventListener("resize", () => {
+    hideStrategyItemContextMenu();
+    repositionStrategyMenuIfOpen();
+  });
+
+  renderStrategyMenu();
+})();
+
 // ================== Hold/Sell (CoinGlass-like peak signals) ==================
 
 function computePeakSignals({ fg, puell, btc24h, eth24h }) {
