@@ -1678,23 +1678,22 @@ const loadTaDataStatus = document.getElementById("loadTaDataStatus");
 
 const QUICK_PROCESSOR_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
-
 const SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE";
 
 let loadStatusTimer = null;
-
-function clearLoadStatusTimer() {
-  if (loadStatusTimer) {
-    clearTimeout(loadStatusTimer);
-    loadStatusTimer = null;
-  }
-}
 
 function setLoadStatus(text, mode = "") {
   if (!loadTaDataStatus) return;
   loadTaDataStatus.textContent = text;
   loadTaDataStatus.classList.remove("ok", "err");
   if (mode) loadTaDataStatus.classList.add(mode);
+}
+
+function clearLoadStatusTimer() {
+  if (loadStatusTimer) {
+    clearTimeout(loadStatusTimer);
+    loadStatusTimer = null;
+  }
 }
 
 async function triggerQuickProcessor() {
@@ -1712,36 +1711,26 @@ async function triggerQuickProcessor() {
         "apikey": SUPABASE_PUBLISHABLE_KEY,
         "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
       },
-      body: JSON.stringify({ trigger: "manual_load_click" })
+      body: JSON.stringify({})
     });
 
-    // We don't display payload details at all
-    if (!res.ok) {
-      let msg = `HTTP ${res.status}`;
-      try {
-        const j = await res.json();
-        msg = j?.message || j?.error || msg;
-      } catch (_) {}
-      throw new Error(msg);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // EXACT behavior requested:
-    setLoadStatus("Saved", "ok");
+    // only one word
+    setLoadStatus("Saved", "✔");
+
+    // disappear after 5 sec
     loadStatusTimer = setTimeout(() => {
       setLoadStatus("");
     }, 5000);
 
   } catch (e) {
-    clearLoadStatusTimer();
     setLoadStatus(`Error: ${e?.message || e}`, "err");
   } finally {
     loadTaDataBtn.disabled = false;
   }
 }
 
-// Prevent old + new handlers together
 if (loadTaDataBtn) {
-  const newBtn = loadTaDataBtn.cloneNode(true);
-  loadTaDataBtn.parentNode.replaceChild(newBtn, loadTaDataBtn);
-  newBtn.addEventListener("click", triggerQuickProcessor);
+  loadTaDataBtn.onclick = triggerQuickProcessor; // override old handler
 }
