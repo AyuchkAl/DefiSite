@@ -965,3 +965,46 @@ body {
 #strategyItemContextMenu{
   z-index: 20001 !important;
 }
+/* ================== Load TA button/status ================== */
+.load-btn{
+  margin-top: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(46,186,198,0.16);
+  color: #dffbff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .12s ease, transform .08s ease;
+}
+
+.load-btn:hover{
+  background: rgba(46,186,198,0.26);
+  transform: translateY(-1px);
+}
+
+.load-btn:active{
+  transform: translateY(0);
+}
+
+.load-btn:disabled{
+  opacity: .65;
+  cursor: not-allowed;
+}
+
+.load-status{
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9aa4d8;
+  min-height: 16px;
+  word-break: break-word;
+}
+
+.load-status.ok{
+  color: #16c784;
+}
+
+.load-status.err{
+  color: #ea3943;
+}
