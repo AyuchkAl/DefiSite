@@ -1679,7 +1679,6 @@ const loadTaDataStatus = document.getElementById("loadTaDataStatus");
 const QUICK_PROCESSOR_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
 
-// IMPORTANT: replace with your real key
 const SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE";
 
 let loadStatusTimer = null;
@@ -1716,23 +1715,23 @@ async function triggerQuickProcessor() {
       body: JSON.stringify({ trigger: "manual_load_click" })
     });
 
-    const json = await res.json().catch(() => ({}));
-
+    // We don't display payload details at all
     if (!res.ok) {
-      const msg = json?.message || json?.error || `HTTP ${res.status}`;
+      let msg = `HTTP ${res.status}`;
+      try {
+        const j = await res.json();
+        msg = j?.message || j?.error || msg;
+      } catch (_) {}
       throw new Error(msg);
     }
 
-    // ONLY show "Saved"
+    // EXACT behavior requested:
     setLoadStatus("Saved", "ok");
-
-    // Hide after 5 seconds
     loadStatusTimer = setTimeout(() => {
       setLoadStatus("");
     }, 5000);
 
   } catch (e) {
-    console.error("quick-processor failed", e);
     clearLoadStatusTimer();
     setLoadStatus(`Error: ${e?.message || e}`, "err");
   } finally {
@@ -1740,8 +1739,9 @@ async function triggerQuickProcessor() {
   }
 }
 
+// Prevent old + new handlers together
 if (loadTaDataBtn) {
-  // prevent duplicate handlers if script reloaded
-  loadTaDataBtn.onclick = null;
-  loadTaDataBtn.addEventListener("click", triggerQuickProcessor);
+  const newBtn = loadTaDataBtn.cloneNode(true);
+  loadTaDataBtn.parentNode.replaceChild(newBtn, loadTaDataBtn);
+  newBtn.addEventListener("click", triggerQuickProcessor);
 }
