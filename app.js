@@ -1671,3 +1671,67 @@ setInterval(loadPuell, 60 * 60 * 1000);
 setInterval(() => {
   if (currentAddress) loadMorphoHealthFactor(currentAddress);
 }, 30 * 60 * 1000);
+
+// ================== LOAD TA DATA TO SUPABASE (quick-processor) ==================
+const loadTaDataBtn = document.getElementById("loadTaDataBtn");
+const loadTaDataStatus = document.getElementById("loadTaDataStatus");
+
+// Your deployed Edge Function
+const QUICK_PROCESSOR_URL =
+  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
+
+// IMPORTANT: put your real publishable key here (sb_publishable_...)
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_oqNJ8LGAg_vKt5RzrFTPeQ_qOtS7-bX";
+
+function setLoadStatus(text, mode = "") {
+  if (!loadTaDataStatus) return;
+  loadTaDataStatus.textContent = text;
+  loadTaDataStatus.classList.remove("ok", "err");
+  if (mode) loadTaDataStatus.classList.add(mode);
+}
+
+async function triggerQuickProcessor() {
+  if (!loadTaDataBtn) return;
+
+  try {
+    loadTaDataBtn.disabled = true;
+    setLoadStatus("Loading...");
+
+    const res = await fetch(QUICK_PROCESSOR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+      },
+      body: JSON.stringify({ trigger: "manual_load_click" })
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = json?.message || json?.error || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+
+    if (json?.inserted?.id != null) {
+      setLoadStatus(
+        `Saved ✔ id=${json.inserted.id}, value=${json.inserted.value}, at=${json.inserted.created_at}`,
+        "ok"
+      );
+    } else if (json?.ok) {
+      setLoadStatus("Saved ✔ Data loaded to Supabase.", "ok");
+    } else {
+      setLoadStatus("Done ✔", "ok");
+    }
+  } catch (e) {
+    console.error("quick-processor failed", e);
+    setLoadStatus(`Error: ${e?.message || e}`, "err");
+  } finally {
+    loadTaDataBtn.disabled = false;
+  }
+}
+
+if (loadTaDataBtn) {
+  loadTaDataBtn.addEventListener("click", triggerQuickProcessor);
+}
