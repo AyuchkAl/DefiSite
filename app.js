@@ -1678,7 +1678,7 @@ const loadTaDataStatus = document.getElementById("loadTaDataStatus");
 
 const QUICK_PROCESSOR_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
-const SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_oqNJ8LGAg_vKt5RzrFTPeQ_qOtS7-bX";
 
 let loadStatusTimer = null;
 
