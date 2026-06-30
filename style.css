@@ -1001,8 +1001,9 @@ body {
   word-break: break-word;
 }
 
-.load-status.ok{
-  color: #16c784;
+.load-status.ok {
+  color: #16c784; /* green */
+  font-weight: 700;
 }
 
 .load-status.err{
