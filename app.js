@@ -1672,13 +1672,12 @@ setInterval(() => {
   if (currentAddress) loadMorphoHealthFactor(currentAddress);
 }, 30 * 60 * 1000);
 
-// ================== LOAD TA DATA TO SUPABASE (quick-processor) ==================
+// ================== LOAD TA DATA TO SUPABASE (quick-processor, JWT OFF) ==================
 const loadTaDataBtn = document.getElementById("loadTaDataBtn");
 const loadTaDataStatus = document.getElementById("loadTaDataStatus");
 
 const QUICK_PROCESSOR_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_oqNJ8LGAg_vKt5RzrFTPeQ_qOtS7-bX";
 
 let loadStatusTimer = null;
 
@@ -1707,19 +1706,17 @@ async function triggerQuickProcessor() {
     const res = await fetch(QUICK_PROCESSOR_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_PUBLISHABLE_KEY,
-        "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({})
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // only one word
-    setLoadStatus("Saved", "✔");
+    // show ONLY "Saved"
+    setLoadStatus("Saved", "ok");
 
-    // disappear after 5 sec
+    // hide after 5 seconds
     loadStatusTimer = setTimeout(() => {
       setLoadStatus("");
     }, 5000);
@@ -1732,5 +1729,5 @@ async function triggerQuickProcessor() {
 }
 
 if (loadTaDataBtn) {
-  loadTaDataBtn.onclick = triggerQuickProcessor; // override old handler
+  loadTaDataBtn.onclick = triggerQuickProcessor; // overwrite any old handler
 }
