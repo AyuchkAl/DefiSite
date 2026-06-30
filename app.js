@@ -1714,7 +1714,7 @@ async function triggerQuickProcessor() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     // show ONLY "Saved"
-    setLoadStatus("Saved", "✔");
+    setLoadStatus("Saved ✔", "ok");
 
     // hide after 5 seconds
     loadStatusTimer = setTimeout(() => {
