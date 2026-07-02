@@ -245,6 +245,22 @@
       </div>
     </section>
 
+    <!-- ADD-ONLY: TA DATA GRAPH -->
+    <section class="ta-chart-section">
+      <div class="ta-chart-card" aria-label="TA Data graph panel">
+        <div class="ta-chart-header">
+          <div class="ta-chart-title">TA Data Graph</div>
+          <button id="reloadTaChartBtn" class="ta-chart-reload-btn" type="button">Reload</button>
+        </div>
+
+        <div id="taChartStatus" class="ta-chart-status">Loading…</div>
+
+        <div class="ta-chart-wrap">
+          <canvas id="taDataChart" width="1200" height="420"></canvas>
+        </div>
+      </div>
+    </section>
+
     <section class="main-center">
       <div id="status"></div>
       <div id="result" class="hidden">
