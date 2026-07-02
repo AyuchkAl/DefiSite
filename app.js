@@ -1850,8 +1850,8 @@ function drawTaDataChart(rows) {
     }
 
     // When there are only a few points, don't spread them edge-to-edge.
-    let innerLeft = plotX + plotW * 0.23;
-    let innerRight = plotX + plotW * 0.77;
+    let innerLeft = plotX + plotW * 0.30;
+    let innerRight = plotX + plotW * 0.60;
 
     if (points.length >= 5) {
       innerLeft = plotX + plotW * 0.08;
