@@ -1974,8 +1974,10 @@ async function loadTaDataGraph() {
     }
 
     const rows = Array.isArray(json?.data) ? json.data : [];
-    drawTaDataChart(rows);
-    setTaChartStatus(`Loaded ${rows.length} point(s)`);
+const filteredRows = rows.filter((row) => Number(row?.id) >= 13);
+
+drawTaDataChart(filteredRows);
+setTaChartStatus("");
   } catch (e) {
     console.error("Failed to load TA chart", e);
     setTaChartStatus(`Error: ${e?.message || e}`);
