@@ -1298,7 +1298,6 @@ ${f.content}
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
-  // LMB on Strategy button => open list
   strategyButton.addEventListener("click", (e) => {
     e.stopPropagation();
 
@@ -1326,7 +1325,6 @@ ${f.content}
     toggleStrategyMenu();
   });
 
-  // RMB on Strategy button => upload file
   strategyButton.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1339,7 +1337,6 @@ ${f.content}
     return false;
   }, true);
 
-  // LMB on item => open
   strategyMenu.addEventListener("click", (e) => {
     const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
     if (!item) return;
@@ -1351,7 +1348,6 @@ ${f.content}
     setTimeout(closeStrategyMenu, 0);
   }, true);
 
-  // RMB on item => delete menu
   strategyMenu.addEventListener("contextmenu", (e) => {
     const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
     if (!item) return;
@@ -1626,52 +1622,6 @@ async function loadPuell() {
   }
 }
 
-// ================== INITIAL LOADS / REFRESH ==================
-
-window.addEventListener("load", () => {
-  loadCryptoPrices();
-  loadFearGreed();
-  loadPuell();
-
-  loadTotalAssets();
-  loadDefiAssets();
-  loadAvgBtc();
-  loadAvgEth();
-  loadPnlAssets();
-  loadPercentageAssets();
-
-  if (!window.ethereum) return;
-  const saved = localStorage.getItem("savedAddress");
-  if (!saved) return;
-
-  (async () => {
-    try {
-      const accounts = await window.ethereum.request({ method: "eth_accounts" });
-      if (!accounts.includes(saved)) return;
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const network  = await provider.getNetwork();
-      if (Number(network.chainId) !== 42161) return;
-
-      statusDiv.textContent = "Reading your Aave account data...";
-      await loadAaveDataForUser(saved, provider);
-      await loadMorphoHealthFactor(saved);
-      setConnectedUI(saved);
-      statusDiv.textContent = "Loaded from previous connection.";
-    } catch (err) {
-      console.error(err);
-    }
-  })();
-});
-
-// Refresh intervals
-setInterval(loadCryptoPrices, 5 * 60 * 1000);
-setInterval(loadFearGreed, 30 * 60 * 1000);
-setInterval(loadPuell, 60 * 60 * 1000);
-setInterval(() => {
-  if (currentAddress) loadMorphoHealthFactor(currentAddress);
-}, 30 * 60 * 1000);
-
 // ================== LOAD TA DATA TO SUPABASE (quick-processor, JWT OFF) ==================
 const loadTaDataBtn = document.getElementById("loadTaDataBtn");
 const loadTaDataStatus = document.getElementById("loadTaDataStatus");
@@ -1713,14 +1663,13 @@ async function triggerQuickProcessor() {
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // show ONLY "Saved"
     setLoadStatus("Saved ✔", "ok");
 
-    // hide after 5 seconds
     loadStatusTimer = setTimeout(() => {
       setLoadStatus("");
     }, 5000);
 
+    await loadTaDataGraph();
   } catch (e) {
     setLoadStatus(`Error: ${e?.message || e}`, "err");
   } finally {
@@ -1729,19 +1678,24 @@ async function triggerQuickProcessor() {
 }
 
 if (loadTaDataBtn) {
-  loadTaDataBtn.onclick = triggerQuickProcessor; // overwrite any old handler
+  loadTaDataBtn.onclick = triggerQuickProcessor;
 }
-// ================== TA DATA GRAPH (ADD-ONLY, DOES NOT CHANGE PREVIOUS CODE) ==================
+
+// ================== TA DATA GRAPH ==================
 
 const TA_DATA_READONLY_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
 
-const SUPABASE_ANON_KEY =
-  "YOUR_SUPABASE_ANON_KEY_HERE";
+// Replace with your real Supabase anon key if your function still requires JWT.
+// If ta-data-readonly was redeployed with JWT OFF, this can stay unused.
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
 
 const taChartCanvas = document.getElementById("taDataChart");
 const taChartStatus = document.getElementById("taChartStatus");
 const reloadTaChartBtn = document.getElementById("reloadTaChartBtn");
+const taChartTooltip = document.getElementById("taChartTooltip");
+
+let taChartHoverPoints = [];
 
 function setTaChartStatus(text) {
   if (taChartStatus) taChartStatus.textContent = text;
@@ -1759,6 +1713,7 @@ function parseTaNumericValue(v) {
 
 function niceStep(range) {
   if (!Number.isFinite(range) || range <= 0) return 1;
+
   const rough = range / 6;
   const pow = Math.pow(10, Math.floor(Math.log10(rough)));
   const norm = rough / pow;
@@ -1774,6 +1729,7 @@ function niceStep(range) {
 
 function computeSymmetricBounds(values) {
   let maxAbs = 1;
+
   for (const v of values) {
     const av = Math.abs(v);
     if (Number.isFinite(av) && av > maxAbs) maxAbs = av;
@@ -1782,7 +1738,11 @@ function computeSymmetricBounds(values) {
   const step = niceStep(maxAbs * 2);
   const roundedMax = Math.ceil(maxAbs / step) * step;
 
-  return { min: -roundedMax, max: roundedMax, step };
+  return {
+    min: -roundedMax,
+    max: roundedMax,
+    step
+  };
 }
 
 function drawLineSegment(ctx, x1, y1, x2, y2, color, width) {
@@ -1801,10 +1761,27 @@ function drawCircle(ctx, x, y, r, fill) {
   ctx.fill();
 }
 
+function hideTaChartTooltip() {
+  if (!taChartTooltip) return;
+  taChartTooltip.hidden = true;
+}
+
+function showTaChartTooltip(x, y, text) {
+  if (!taChartTooltip) return;
+  taChartTooltip.textContent = text;
+  taChartTooltip.style.left = `${x}px`;
+  taChartTooltip.style.top = `${y}px`;
+  taChartTooltip.hidden = false;
+}
+
 function drawTaDataChart(rows) {
   if (!taChartCanvas) return;
+
   const ctx = taChartCanvas.getContext("2d");
   if (!ctx) return;
+
+  taChartHoverPoints = [];
+  hideTaChartTooltip();
 
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = taChartCanvas.clientWidth || 1200;
@@ -1813,6 +1790,7 @@ function drawTaDataChart(rows) {
   taChartCanvas.width = Math.floor(cssWidth * dpr);
   taChartCanvas.height = Math.floor(cssHeight * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
   const bg = "#0b1020";
@@ -1841,7 +1819,9 @@ function drawTaDataChart(rows) {
 
   const points = rows
     .map((row) => ({
+      id: Number(row?.id),
       xLabel: formatTaDateLabel(row.created_at_minsk),
+      rawValue: row.value,
       y: parseTaNumericValue(row.value)
     }))
     .filter((p) => Number.isFinite(p.y));
@@ -1940,7 +1920,18 @@ function drawTaDataChart(rows) {
 
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
-    drawCircle(ctx, xToPx(i), yToPx(p.y), 4, p.y >= 0 ? green : red);
+    const xx = xToPx(i);
+    const yy = yToPx(p.y);
+
+    taChartHoverPoints.push({
+      x: xx,
+      y: yy,
+      radius: 10,
+      valueText: String(p.rawValue),
+      dateText: p.xLabel
+    });
+
+    drawCircle(ctx, xx, yy, 4, p.y >= 0 ? green : red);
   }
 }
 
@@ -1950,34 +1941,39 @@ async function loadTaDataGraph() {
   try {
     setTaChartStatus("Loading…");
 
+    const headers = {
+      "Content-Type": "application/json"
+    };
+
+    if (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE") {
+      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
+      headers["apikey"] = SUPABASE_ANON_KEY;
+    }
+
     const res = await fetch(TA_DATA_READONLY_URL, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-        "apikey": SUPABASE_ANON_KEY
-      },
+      headers,
       cache: "no-store"
     });
 
-    const text = await res.text();
+    const rawText = await res.text();
 
     let json;
     try {
-      json = JSON.parse(text);
+      json = JSON.parse(rawText);
     } catch {
       throw new Error("Invalid JSON returned by ta-data-readonly");
     }
 
     if (!res.ok) {
-      throw new Error(json?.error || `HTTP ${res.status}`);
+      throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
     }
 
     const rows = Array.isArray(json?.data) ? json.data : [];
-const filteredRows = rows.filter((row) => Number(row?.id) >= 13);
+    const filteredRows = rows.filter((row) => Number(row?.id) >= 13);
 
-drawTaDataChart(filteredRows);
-setTaChartStatus("");
+    drawTaDataChart(filteredRows);
+    setTaChartStatus("");
   } catch (e) {
     console.error("Failed to load TA chart", e);
     setTaChartStatus(`Error: ${e?.message || e}`);
@@ -1989,11 +1985,86 @@ if (reloadTaChartBtn) {
   reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
 }
 
+if (taChartCanvas) {
+  taChartCanvas.addEventListener("mouseleave", () => {
+    hideTaChartTooltip();
+  });
+
+  taChartCanvas.addEventListener("mousemove", (e) => {
+    const rect = taChartCanvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    let hit = null;
+    let bestDist = Infinity;
+
+    for (const p of taChartHoverPoints) {
+      const dx = mouseX - p.x;
+      const dy = mouseY - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= p.radius && dist < bestDist) {
+        bestDist = dist;
+        hit = p;
+      }
+    }
+
+    if (!hit) {
+      hideTaChartTooltip();
+      return;
+    }
+
+    showTaChartTooltip(
+      hit.x,
+      hit.y,
+      `${hit.dateText}: ${hit.valueText}`
+    );
+  });
+}
+
+// ================== INITIAL LOADS / REFRESH ==================
+
 window.addEventListener("load", () => {
+  loadCryptoPrices();
+  loadFearGreed();
+  loadPuell();
+
+  loadTotalAssets();
+  loadDefiAssets();
+  loadAvgBtc();
+  loadAvgEth();
+  loadPnlAssets();
+  loadPercentageAssets();
   loadTaDataGraph();
+
+  if (!window.ethereum) return;
+  const saved = localStorage.getItem("savedAddress");
+  if (!saved) return;
+
+  (async () => {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (!accounts.includes(saved)) return;
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network  = await provider.getNetwork();
+      if (Number(network.chainId) !== 42161) return;
+
+      statusDiv.textContent = "Reading your Aave account data...";
+      await loadAaveDataForUser(saved, provider);
+      await loadMorphoHealthFactor(saved);
+      setConnectedUI(saved);
+      statusDiv.textContent = "Loaded from previous connection.";
+    } catch (err) {
+      console.error(err);
+    }
+  })();
 });
 
-window.addEventListener("resize", () => {
-  if (!taChartCanvas) return;
-  loadTaDataGraph();
-});
+// Refresh intervals
+setInterval(loadCryptoPrices, 5 * 60 * 1000);
+setInterval(loadFearGreed, 30 * 60 * 1000);
+setInterval(loadPuell, 60 * 60 * 1000);
+setInterval(() => {
+  if (currentAddress) loadMorphoHealthFactor(currentAddress);
+}, 30 * 60 * 1000);
