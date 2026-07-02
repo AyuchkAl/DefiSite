@@ -1731,3 +1731,267 @@ async function triggerQuickProcessor() {
 if (loadTaDataBtn) {
   loadTaDataBtn.onclick = triggerQuickProcessor; // overwrite any old handler
 }
+// ================== TA DATA GRAPH (ADD-ONLY, DOES NOT CHANGE PREVIOUS CODE) ==================
+
+const TA_DATA_READONLY_URL =
+  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
+
+const SUPABASE_ANON_KEY =
+  "YOUR_SUPABASE_ANON_KEY_HERE";
+
+const taChartCanvas = document.getElementById("taDataChart");
+const taChartStatus = document.getElementById("taChartStatus");
+const reloadTaChartBtn = document.getElementById("reloadTaChartBtn");
+
+function setTaChartStatus(text) {
+  if (taChartStatus) taChartStatus.textContent = text;
+}
+
+function formatTaDateLabel(value) {
+  if (!value) return "";
+  return String(value).trim().slice(0, 10);
+}
+
+function parseTaNumericValue(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function niceStep(range) {
+  if (!Number.isFinite(range) || range <= 0) return 1;
+  const rough = range / 6;
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / pow;
+
+  let step;
+  if (norm <= 1) step = 1;
+  else if (norm <= 2) step = 2;
+  else if (norm <= 5) step = 5;
+  else step = 10;
+
+  return step * pow;
+}
+
+function computeSymmetricBounds(values) {
+  let maxAbs = 1;
+  for (const v of values) {
+    const av = Math.abs(v);
+    if (Number.isFinite(av) && av > maxAbs) maxAbs = av;
+  }
+
+  const step = niceStep(maxAbs * 2);
+  const roundedMax = Math.ceil(maxAbs / step) * step;
+
+  return { min: -roundedMax, max: roundedMax, step };
+}
+
+function drawLineSegment(ctx, x1, y1, x2, y2, color, width) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+function drawCircle(ctx, x, y, r, fill) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+function drawTaDataChart(rows) {
+  if (!taChartCanvas) return;
+  const ctx = taChartCanvas.getContext("2d");
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = taChartCanvas.clientWidth || 1200;
+  const cssHeight = 420;
+
+  taChartCanvas.width = Math.floor(cssWidth * dpr);
+  taChartCanvas.height = Math.floor(cssHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const bg = "#0b1020";
+  const grid = "rgba(255,255,255,0.10)";
+  const axis = "rgba(255,255,255,0.28)";
+  const text = "#cfd5ff";
+  const zeroAxis = "rgba(255,255,255,0.45)";
+  const green = "#16c784";
+  const red = "#ea3943";
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+  const margin = { top: 20, right: 20, bottom: 60, left: 70 };
+  const plotX = margin.left;
+  const plotY = margin.top;
+  const plotW = cssWidth - margin.left - margin.right;
+  const plotH = cssHeight - margin.top - margin.bottom;
+
+  if (!rows.length) {
+    ctx.fillStyle = text;
+    ctx.font = "14px system-ui, sans-serif";
+    ctx.fillText("No data", plotX, plotY + 24);
+    return;
+  }
+
+  const points = rows
+    .map((row) => ({
+      xLabel: formatTaDateLabel(row.created_at_minsk),
+      y: parseTaNumericValue(row.value)
+    }))
+    .filter((p) => Number.isFinite(p.y));
+
+  if (!points.length) {
+    ctx.fillStyle = text;
+    ctx.font = "14px system-ui, sans-serif";
+    ctx.fillText("No numeric data", plotX, plotY + 24);
+    return;
+  }
+
+  const bounds = computeSymmetricBounds(points.map((p) => p.y));
+  const yMin = bounds.min;
+  const yMax = bounds.max;
+  const yStep = bounds.step;
+
+  function yToPx(v) {
+    const ratio = (v - yMin) / (yMax - yMin);
+    return plotY + plotH - ratio * plotH;
+  }
+
+  function xToPx(i) {
+    if (points.length === 1) return plotX + plotW / 2;
+    return plotX + (i / (points.length - 1)) * plotW;
+  }
+
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+
+  for (let v = yMin; v <= yMax + yStep / 2; v += yStep) {
+    const yy = yToPx(v);
+
+    ctx.beginPath();
+    ctx.moveTo(plotX, yy);
+    ctx.lineTo(plotX + plotW, yy);
+    ctx.strokeStyle = Math.abs(v) < 1e-9 ? zeroAxis : grid;
+    ctx.lineWidth = Math.abs(v) < 1e-9 ? 1.5 : 1;
+    ctx.stroke();
+
+    ctx.fillStyle = text;
+    ctx.fillText(v.toFixed(2), plotX - 10, yy);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(plotX, plotY);
+  ctx.lineTo(plotX, plotY + plotH);
+  ctx.lineTo(plotX + plotW, plotY + plotH);
+  ctx.strokeStyle = axis;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  for (let i = 0; i < points.length; i += labelStep) {
+    const xx = xToPx(i);
+    const lbl = points[i].xLabel;
+
+    ctx.beginPath();
+    ctx.moveTo(xx, plotY + plotH);
+    ctx.lineTo(xx, plotY + plotH + 6);
+    ctx.strokeStyle = axis;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(xx, plotY + plotH + 10);
+    ctx.rotate(-Math.PI / 5);
+    ctx.fillStyle = text;
+    ctx.fillText(lbl, 0, 0);
+    ctx.restore();
+  }
+
+  for (let i = 1; i < points.length; i++) {
+    const p1 = points[i - 1];
+    const p2 = points[i];
+
+    const x1 = xToPx(i - 1);
+    const y1 = yToPx(p1.y);
+    const x2 = xToPx(i);
+    const y2 = yToPx(p2.y);
+
+    if ((p1.y >= 0 && p2.y >= 0) || (p1.y <= 0 && p2.y <= 0)) {
+      drawLineSegment(ctx, x1, y1, x2, y2, p2.y >= 0 ? green : red, 3);
+    } else {
+      const t = (0 - p1.y) / (p2.y - p1.y);
+      const xZero = x1 + (x2 - x1) * t;
+      const yZero = yToPx(0);
+
+      drawLineSegment(ctx, x1, y1, xZero, yZero, p1.y >= 0 ? green : red, 3);
+      drawLineSegment(ctx, xZero, yZero, x2, y2, p2.y >= 0 ? green : red, 3);
+    }
+  }
+
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    drawCircle(ctx, xToPx(i), yToPx(p.y), 4, p.y >= 0 ? green : red);
+  }
+}
+
+async function loadTaDataGraph() {
+  if (!taChartCanvas) return;
+
+  try {
+    setTaChartStatus("Loading…");
+
+    const res = await fetch(TA_DATA_READONLY_URL, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": SUPABASE_ANON_KEY
+      },
+      cache: "no-store"
+    });
+
+    const text = await res.text();
+
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON returned by ta-data-readonly");
+    }
+
+    if (!res.ok) {
+      throw new Error(json?.error || `HTTP ${res.status}`);
+    }
+
+    const rows = Array.isArray(json?.data) ? json.data : [];
+    drawTaDataChart(rows);
+    setTaChartStatus(`Loaded ${rows.length} point(s)`);
+  } catch (e) {
+    console.error("Failed to load TA chart", e);
+    setTaChartStatus(`Error: ${e?.message || e}`);
+    drawTaDataChart([]);
+  }
+}
+
+if (reloadTaChartBtn) {
+  reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
+}
+
+window.addEventListener("load", () => {
+  loadTaDataGraph();
+});
+
+window.addEventListener("resize", () => {
+  if (!taChartCanvas) return;
+  loadTaDataGraph();
+});
