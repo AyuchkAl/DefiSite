@@ -1773,7 +1773,8 @@ function showTaChartTooltip(x, y, valueText, isPositive) {
   taChartTooltip.textContent = valueText;
   taChartTooltip.style.left = `${x}px`;
   taChartTooltip.style.top = `${y}px`;
-  taChartTooltip.style.color = isPositive ? "#16c784" : "#ea3943";
+  taChartTooltip.classList.remove("positive", "negative");
+  taChartTooltip.classList.add(isPositive ? "positive" : "negative");
   taChartTooltip.hidden = false;
 }
 
@@ -1784,7 +1785,11 @@ function drawTaDataChart(rows) {
   if (!ctx) return;
 
   taChartHoverPoints = [];
-  hideTaChartTooltip();
+ function hideTaChartTooltip() {
+  if (!taChartTooltip) return;
+  taChartTooltip.hidden = true;
+  taChartTooltip.classList.remove("positive", "negative");
+}
 
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = taChartCanvas.clientWidth || 1200;
