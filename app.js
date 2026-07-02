@@ -1845,27 +1845,36 @@ function drawTaDataChart(rows) {
 
   // Make small number of points visually closer together
   function xToPx(i) {
-    if (points.length === 1) {
-      return plotX + plotW / 2;
-    }
-
-    // When there are only a few points, don't spread them edge-to-edge.
-    let innerLeft = plotX + plotW * 0.30;
-    let innerRight = plotX + plotW * 0.60;
-
-    if (points.length >= 5) {
-      innerLeft = plotX + plotW * 0.08;
-      innerRight = plotX + plotW * 0.92;
-    } else if (points.length === 4) {
-      innerLeft = plotX + plotW * 0.14;
-      innerRight = plotX + plotW * 0.86;
-    } else if (points.length === 3) {
-      innerLeft = plotX + plotW * 0.18;
-      innerRight = plotX + plotW * 0.82;
-    }
-
-    return innerLeft + (i / (points.length - 1)) * (innerRight - innerLeft);
+  if (points.length === 1) {
+    return plotX + plotW * 0.08;
   }
+
+  // Force very tight spacing for exactly 2 points
+  if (points.length === 2) {
+    const start = plotX + plotW * 0.00;
+    const gap = plotW * 0.03; // second dot only 3% to the right
+    return start + i * gap;
+  }
+
+  // Tight spacing for exactly 3 points
+  if (points.length === 3) {
+    const start = plotX + plotW * 0.00;
+    const gap = plotW * 0.04;
+    return start + i * gap;
+  }
+
+  // Slightly wider for 4 points
+  if (points.length === 4) {
+    const start = plotX + plotW * 0.00;
+    const gap = plotW * 0.06;
+    return start + i * gap;
+  }
+
+  // Normal behavior for many points
+  const innerLeft = plotX + plotW * 0.05;
+  const innerRight = plotX + plotW * 0.95;
+  return innerLeft + (i / (points.length - 1)) * (innerRight - innerLeft);
+}
 
   ctx.font = "12px system-ui, sans-serif";
   ctx.textAlign = "right";
