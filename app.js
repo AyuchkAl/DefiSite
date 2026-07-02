@@ -1767,11 +1767,13 @@ function hideTaChartTooltip() {
   taChartTooltip.hidden = true;
 }
 
-function showTaChartTooltip(x, y, text) {
+function showTaChartTooltip(x, y, valueText, isPositive) {
   if (!taChartTooltip) return;
-  taChartTooltip.textContent = text;
+
+  taChartTooltip.textContent = valueText;
   taChartTooltip.style.left = `${x}px`;
   taChartTooltip.style.top = `${y}px`;
+  taChartTooltip.style.color = isPositive ? "#16c784" : "#ea3943";
   taChartTooltip.hidden = false;
 }
 
@@ -1947,13 +1949,13 @@ function drawTaDataChart(rows) {
     const xx = xToPx(i);
     const yy = yToPx(p.y);
 
-    taChartHoverPoints.push({
-      x: xx,
-      y: yy,
-      radius: 14,
-      valueText: String(p.rawValue),
-      dateText: p.xLabel
-    });
+   taChartHoverPoints.push({
+  x: xx,
+  y: yy,
+  radius: 14,
+  valueText: String(p.rawValue),
+  isPositive: Number(p.y) >= 0
+});
 
     drawCircle(ctx, xx, yy, 4, p.y >= 0 ? green : red);
   }
@@ -2039,10 +2041,11 @@ if (taChartCanvas) {
     }
 
     showTaChartTooltip(
-      hit.x,
-      hit.y,
-      `${hit.valueText}`
-    );
+  hit.x,
+  hit.y,
+  `${hit.valueText}`,
+  hit.isPositive
+);
   });
 }
 
