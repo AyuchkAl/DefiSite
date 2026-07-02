@@ -1009,3 +1009,78 @@ body {
 .load-status.err{
   color: #ea3943;
 }
+/* ================== TA DATA GRAPH ================== */
+.ta-chart-section{
+  width: 100%;
+}
+
+.ta-chart-card{
+  width: 100%;
+  margin-top: 18px;
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(17,21,42,0.95), rgba(12,16,35,0.92));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+}
+
+.ta-chart-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ta-chart-title{
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(245,245,245,0.92);
+}
+
+.ta-chart-reload-btn{
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(46,186,198,0.16);
+  color: #dffbff;
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .12s ease, transform .08s ease;
+}
+
+.ta-chart-reload-btn:hover{
+  background: rgba(46,186,198,0.26);
+  transform: translateY(-1px);
+}
+
+.ta-chart-reload-btn:active{
+  transform: translateY(0);
+}
+
+.ta-chart-status{
+  font-size: 12px;
+  color: #9aa4d8;
+  min-height: 16px;
+  margin-bottom: 10px;
+}
+
+.ta-chart-wrap{
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 14px;
+  background: rgba(5,8,22,0.55);
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+#taDataChart{
+  display: block;
+  width: 100%;
+  min-height: 420px;
+  border-radius: 12px;
+}
