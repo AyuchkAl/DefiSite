@@ -1843,9 +1843,28 @@ function drawTaDataChart(rows) {
     return plotY + plotH - ratio * plotH;
   }
 
+  // Make small number of points visually closer together
   function xToPx(i) {
-    if (points.length === 1) return plotX + plotW / 2;
-    return plotX + (i / (points.length - 1)) * plotW;
+    if (points.length === 1) {
+      return plotX + plotW / 2;
+    }
+
+    // When there are only a few points, don't spread them edge-to-edge.
+    let innerLeft = plotX + plotW * 0.23;
+    let innerRight = plotX + plotW * 0.77;
+
+    if (points.length >= 5) {
+      innerLeft = plotX + plotW * 0.08;
+      innerRight = plotX + plotW * 0.92;
+    } else if (points.length === 4) {
+      innerLeft = plotX + plotW * 0.14;
+      innerRight = plotX + plotW * 0.86;
+    } else if (points.length === 3) {
+      innerLeft = plotX + plotW * 0.18;
+      innerRight = plotX + plotW * 0.82;
+    }
+
+    return innerLeft + (i / (points.length - 1)) * (innerRight - innerLeft);
   }
 
   ctx.font = "12px system-ui, sans-serif";
@@ -1926,63 +1945,13 @@ function drawTaDataChart(rows) {
     taChartHoverPoints.push({
       x: xx,
       y: yy,
-      radius: 10,
+      radius: 14,
       valueText: String(p.rawValue),
       dateText: p.xLabel
     });
 
     drawCircle(ctx, xx, yy, 4, p.y >= 0 ? green : red);
   }
-}
-
-async function loadTaDataGraph() {
-  if (!taChartCanvas) return;
-
-  try {
-    setTaChartStatus("Loading…");
-
-    const headers = {
-      "Content-Type": "application/json"
-    };
-
-    if (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE") {
-      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
-      headers["apikey"] = SUPABASE_ANON_KEY;
-    }
-
-    const res = await fetch(TA_DATA_READONLY_URL, {
-      method: "GET",
-      headers,
-      cache: "no-store"
-    });
-
-    const rawText = await res.text();
-
-    let json;
-    try {
-      json = JSON.parse(rawText);
-    } catch {
-      throw new Error("Invalid JSON returned by ta-data-readonly");
-    }
-
-    if (!res.ok) {
-      throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
-    }
-
-    const rows = Array.isArray(json?.data) ? json.data : [];
-    const filteredRows = rows.filter((row) => Number(row?.id) >= 13);
-
-    drawTaDataChart(filteredRows);
-    setTaChartStatus("");
-  } catch (e) {
-    console.error("Failed to load TA chart", e);
-    setTaChartStatus(`Error: ${e?.message || e}`);
-    drawTaDataChart([]);
-  }
-}
-
-if (reloadTaChartBtn) {
-  reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
 }
 
 if (taChartCanvas) {
@@ -2017,7 +1986,7 @@ if (taChartCanvas) {
     showTaChartTooltip(
       hit.x,
       hit.y,
-      `${hit.dateText}: ${hit.valueText}`
+      `${hit.valueText}`
     );
   });
 }
