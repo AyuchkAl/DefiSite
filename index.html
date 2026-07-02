@@ -154,7 +154,7 @@
                 </div>
               </div>
 
-              <!-- Menus (My Assets / DeFi) -->
+              <!-- Menus (My Assets / DeFi / Strategy) -->
               <div class="menus-group">
                 <div class="my-assets-container">
                   <button id="myAssetsButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
@@ -186,6 +186,18 @@
                     <button id="defiDeleteSiteBtn" class="defi-context-btn" type="button">Delete site</button>
                   </div>
                 </div>
+
+                <div class="strategy-container" id="strategyContainer" oncontextmenu="return false;">
+                  <button id="strategyButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
+                    Strategy
+                  </button>
+
+                  <div id="strategyMenu" class="my-assets-menu" role="menu" aria-label="Strategy menu"></div>
+
+                  <div id="strategyItemContextMenu" class="my-assets-menu defi-context" role="menu" aria-label="Strategy item context menu">
+                    <button id="strategyDeleteFileBtn" class="defi-context-btn" type="button">Delete file</button>
+                  </div>
+                </div>
               </div>
               <!-- /menus-group -->
             </div>
@@ -213,6 +225,8 @@
       <div class="assets-card" aria-label="Total Assets panel">
         <div class="assets-title">Total Assets</div>
         <div id="totalAssetsValueCard" class="assets-value">Loading…</div>
+        <button id="loadTaDataBtn" class="load-btn" type="button">Load</button>
+        <div id="loadTaDataStatus" class="load-status"></div>
       </div>
 
       <div class="assets-card" aria-label="DeFi Assets panel">
@@ -228,6 +242,22 @@
       <div class="assets-card" aria-label="Percentage Assets panel">
         <div class="assets-title">Percentage Assets</div>
         <div id="pctAssetsValueCard" class="assets-value">Loading…</div>
+      </div>
+    </section>
+
+    <section class="ta-chart-section">
+      <div class="ta-chart-card" aria-label="TA graph panel">
+        <div class="ta-chart-header">
+          <div class="ta-chart-title"></div>
+          <button id="reloadTaChartBtn" class="ta-chart-reload-btn" type="button">Reload</button>
+        </div>
+
+        <div id="taChartStatus" class="ta-chart-status"></div>
+
+        <div class="ta-chart-wrap">
+          <canvas id="taDataChart" width="1200" height="420"></canvas>
+          <div id="taChartTooltip" class="ta-chart-tooltip" hidden></div>
+        </div>
       </div>
     </section>
 
