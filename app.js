@@ -1298,7 +1298,6 @@ ${f.content}
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
-  // LMB on Strategy button => open list
   strategyButton.addEventListener("click", (e) => {
     e.stopPropagation();
 
@@ -1326,7 +1325,6 @@ ${f.content}
     toggleStrategyMenu();
   });
 
-  // RMB on Strategy button => upload file
   strategyButton.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1339,7 +1337,6 @@ ${f.content}
     return false;
   }, true);
 
-  // LMB on item => open
   strategyMenu.addEventListener("click", (e) => {
     const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
     if (!item) return;
@@ -1351,7 +1348,6 @@ ${f.content}
     setTimeout(closeStrategyMenu, 0);
   }, true);
 
-  // RMB on item => delete menu
   strategyMenu.addEventListener("contextmenu", (e) => {
     const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
     if (!item) return;
@@ -1690,8 +1686,8 @@ if (loadTaDataBtn) {
 const TA_DATA_READONLY_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
 
-// Replace with your real Supabase anon key if your function still requires JWT.
-// If ta-data-readonly was redeployed with JWT OFF, this can stay unused.
+// If your ta-data-readonly function requires auth, replace this with your real anon key.
+// If your function is public, you can leave this as-is.
 const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
 
 const taChartCanvas = document.getElementById("taDataChart");
@@ -1702,7 +1698,8 @@ const taChartTooltip = document.getElementById("taChartTooltip");
 let taChartHoverPoints = [];
 
 function setTaChartStatus(text) {
-  if (taChartStatus) taChartStatus.textContent = text;
+  if (!taChartStatus) return;
+  taChartStatus.textContent = text;
 }
 
 function formatTaDateLabel(value) {
@@ -1770,11 +1767,14 @@ function hideTaChartTooltip() {
   taChartTooltip.hidden = true;
 }
 
-function showTaChartTooltip(x, y, text) {
+function showTaChartTooltip(x, y, valueText, isPositive) {
   if (!taChartTooltip) return;
-  taChartTooltip.textContent = text;
+
+  taChartTooltip.textContent = valueText;
   taChartTooltip.style.left = `${x}px`;
   taChartTooltip.style.top = `${y}px`;
+  taChartTooltip.classList.remove("positive", "negative");
+  taChartTooltip.classList.add(isPositive ? "positive" : "negative");
   taChartTooltip.hidden = false;
 }
 
@@ -1785,7 +1785,11 @@ function drawTaDataChart(rows) {
   if (!ctx) return;
 
   taChartHoverPoints = [];
-  hideTaChartTooltip();
+ function hideTaChartTooltip() {
+  if (!taChartTooltip) return;
+  taChartTooltip.hidden = true;
+  taChartTooltip.classList.remove("positive", "negative");
+}
 
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = taChartCanvas.clientWidth || 1200;
@@ -1848,8 +1852,31 @@ function drawTaDataChart(rows) {
   }
 
   function xToPx(i) {
-    if (points.length === 1) return plotX + plotW / 2;
-    return plotX + (i / (points.length - 1)) * plotW;
+    if (points.length === 1) {
+      return plotX + plotW * 0.02;
+    }
+
+    if (points.length === 2) {
+      const start = plotX + plotW * 0.00;
+      const gap = plotW * 0.03;
+      return start + i * gap;
+    }
+
+    if (points.length === 3) {
+      const start = plotX + plotW * 0.00;
+      const gap = plotW * 0.04;
+      return start + i * gap;
+    }
+
+    if (points.length === 4) {
+      const start = plotX + plotW * 0.00;
+      const gap = plotW * 0.06;
+      return start + i * gap;
+    }
+
+    const innerLeft = plotX + plotW * 0.05;
+    const innerRight = plotX + plotW * 0.95;
+    return innerLeft + (i / (points.length - 1)) * (innerRight - innerLeft);
   }
 
   ctx.font = "12px system-ui, sans-serif";
@@ -1927,13 +1954,13 @@ function drawTaDataChart(rows) {
     const xx = xToPx(i);
     const yy = yToPx(p.y);
 
-    taChartHoverPoints.push({
-      x: xx,
-      y: yy,
-      radius: 10,
-      valueText: String(p.rawValue),
-      dateText: p.xLabel
-    });
+   taChartHoverPoints.push({
+  x: xx,
+  y: yy,
+  radius: 14,
+  valueText: String(p.rawValue),
+  isPositive: Number(p.y) >= 0
+});
 
     drawCircle(ctx, xx, yy, 4, p.y >= 0 ? green : red);
   }
@@ -2019,10 +2046,11 @@ if (taChartCanvas) {
     }
 
     showTaChartTooltip(
-      hit.x,
-      hit.y,
-      `${hit.dateText}: ${hit.valueText}`
-    );
+  hit.x,
+  hit.y,
+  `${hit.valueText}`,
+  hit.isPositive
+);
   });
 }
 
@@ -2072,63 +2100,3 @@ setInterval(loadPuell, 60 * 60 * 1000);
 setInterval(() => {
   if (currentAddress) loadMorphoHealthFactor(currentAddress);
 }, 30 * 60 * 1000);
-
-// ================== LOAD TA DATA TO SUPABASE (quick-processor, JWT OFF) ==================
-const loadTaDataBtn = document.getElementById("loadTaDataBtn");
-const loadTaDataStatus = document.getElementById("loadTaDataStatus");
-
-const QUICK_PROCESSOR_URL =
-  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
-
-let loadStatusTimer = null;
-
-function setLoadStatus(text, mode = "") {
-  if (!loadTaDataStatus) return;
-  loadTaDataStatus.textContent = text;
-  loadTaDataStatus.classList.remove("ok", "err");
-  if (mode) loadTaDataStatus.classList.add(mode);
-}
-
-function clearLoadStatusTimer() {
-  if (loadStatusTimer) {
-    clearTimeout(loadStatusTimer);
-    loadStatusTimer = null;
-  }
-}
-
-async function triggerQuickProcessor() {
-  if (!loadTaDataBtn) return;
-
-  try {
-    clearLoadStatusTimer();
-    loadTaDataBtn.disabled = true;
-    setLoadStatus("Loading");
-
-    const res = await fetch(QUICK_PROCESSOR_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({})
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    // show ONLY "Saved"
-    setLoadStatus("Saved ✔", "ok");
-
-    // hide after 5 seconds
-    loadStatusTimer = setTimeout(() => {
-      setLoadStatus("");
-    }, 5000);
-
-  } catch (e) {
-    setLoadStatus(`Error: ${e?.message || e}`, "err");
-  } finally {
-    loadTaDataBtn.disabled = false;
-  }
-}
-
-if (loadTaDataBtn) {
-  loadTaDataBtn.onclick = triggerQuickProcessor; // overwrite any old handler
-}
