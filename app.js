@@ -1626,6 +1626,406 @@ async function loadPuell() {
   }
 }
 
+// ================== LOAD TA DATA TO SUPABASE (quick-processor, JWT OFF) ==================
+const loadTaDataBtn = document.getElementById("loadTaDataBtn");
+const loadTaDataStatus = document.getElementById("loadTaDataStatus");
+
+const QUICK_PROCESSOR_URL =
+  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
+
+let loadStatusTimer = null;
+
+function setLoadStatus(text, mode = "") {
+  if (!loadTaDataStatus) return;
+  loadTaDataStatus.textContent = text;
+  loadTaDataStatus.classList.remove("ok", "err");
+  if (mode) loadTaDataStatus.classList.add(mode);
+}
+
+function clearLoadStatusTimer() {
+  if (loadStatusTimer) {
+    clearTimeout(loadStatusTimer);
+    loadStatusTimer = null;
+  }
+}
+
+async function triggerQuickProcessor() {
+  if (!loadTaDataBtn) return;
+
+  try {
+    clearLoadStatusTimer();
+    loadTaDataBtn.disabled = true;
+    setLoadStatus("Loading");
+
+    const res = await fetch(QUICK_PROCESSOR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    setLoadStatus("Saved ✔", "ok");
+
+    loadStatusTimer = setTimeout(() => {
+      setLoadStatus("");
+    }, 5000);
+
+    await loadTaDataGraph();
+  } catch (e) {
+    setLoadStatus(`Error: ${e?.message || e}`, "err");
+  } finally {
+    loadTaDataBtn.disabled = false;
+  }
+}
+
+if (loadTaDataBtn) {
+  loadTaDataBtn.onclick = triggerQuickProcessor;
+}
+
+// ================== TA DATA GRAPH ==================
+
+const TA_DATA_READONLY_URL =
+  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
+
+// Replace with your real Supabase anon key if your function still requires JWT.
+// If ta-data-readonly was redeployed with JWT OFF, this can stay unused.
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
+
+const taChartCanvas = document.getElementById("taDataChart");
+const taChartStatus = document.getElementById("taChartStatus");
+const reloadTaChartBtn = document.getElementById("reloadTaChartBtn");
+const taChartTooltip = document.getElementById("taChartTooltip");
+
+let taChartHoverPoints = [];
+
+function setTaChartStatus(text) {
+  if (taChartStatus) taChartStatus.textContent = text;
+}
+
+function formatTaDateLabel(value) {
+  if (!value) return "";
+  return String(value).trim().slice(0, 10);
+}
+
+function parseTaNumericValue(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function niceStep(range) {
+  if (!Number.isFinite(range) || range <= 0) return 1;
+
+  const rough = range / 6;
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / pow;
+
+  let step;
+  if (norm <= 1) step = 1;
+  else if (norm <= 2) step = 2;
+  else if (norm <= 5) step = 5;
+  else step = 10;
+
+  return step * pow;
+}
+
+function computeSymmetricBounds(values) {
+  let maxAbs = 1;
+
+  for (const v of values) {
+    const av = Math.abs(v);
+    if (Number.isFinite(av) && av > maxAbs) maxAbs = av;
+  }
+
+  const step = niceStep(maxAbs * 2);
+  const roundedMax = Math.ceil(maxAbs / step) * step;
+
+  return {
+    min: -roundedMax,
+    max: roundedMax,
+    step
+  };
+}
+
+function drawLineSegment(ctx, x1, y1, x2, y2, color, width) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+function drawCircle(ctx, x, y, r, fill) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+function hideTaChartTooltip() {
+  if (!taChartTooltip) return;
+  taChartTooltip.hidden = true;
+}
+
+function showTaChartTooltip(x, y, text) {
+  if (!taChartTooltip) return;
+  taChartTooltip.textContent = text;
+  taChartTooltip.style.left = `${x}px`;
+  taChartTooltip.style.top = `${y}px`;
+  taChartTooltip.hidden = false;
+}
+
+function drawTaDataChart(rows) {
+  if (!taChartCanvas) return;
+
+  const ctx = taChartCanvas.getContext("2d");
+  if (!ctx) return;
+
+  taChartHoverPoints = [];
+  hideTaChartTooltip();
+
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = taChartCanvas.clientWidth || 1200;
+  const cssHeight = 420;
+
+  taChartCanvas.width = Math.floor(cssWidth * dpr);
+  taChartCanvas.height = Math.floor(cssHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const bg = "#0b1020";
+  const grid = "rgba(255,255,255,0.10)";
+  const axis = "rgba(255,255,255,0.28)";
+  const text = "#cfd5ff";
+  const zeroAxis = "rgba(255,255,255,0.45)";
+  const green = "#16c784";
+  const red = "#ea3943";
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+  const margin = { top: 20, right: 20, bottom: 60, left: 70 };
+  const plotX = margin.left;
+  const plotY = margin.top;
+  const plotW = cssWidth - margin.left - margin.right;
+  const plotH = cssHeight - margin.top - margin.bottom;
+
+  if (!rows.length) {
+    ctx.fillStyle = text;
+    ctx.font = "14px system-ui, sans-serif";
+    ctx.fillText("No data", plotX, plotY + 24);
+    return;
+  }
+
+  const points = rows
+    .map((row) => ({
+      id: Number(row?.id),
+      xLabel: formatTaDateLabel(row.created_at_minsk),
+      rawValue: row.value,
+      y: parseTaNumericValue(row.value)
+    }))
+    .filter((p) => Number.isFinite(p.y));
+
+  if (!points.length) {
+    ctx.fillStyle = text;
+    ctx.font = "14px system-ui, sans-serif";
+    ctx.fillText("No numeric data", plotX, plotY + 24);
+    return;
+  }
+
+  const bounds = computeSymmetricBounds(points.map((p) => p.y));
+  const yMin = bounds.min;
+  const yMax = bounds.max;
+  const yStep = bounds.step;
+
+  function yToPx(v) {
+    const ratio = (v - yMin) / (yMax - yMin);
+    return plotY + plotH - ratio * plotH;
+  }
+
+  function xToPx(i) {
+    if (points.length === 1) return plotX + plotW / 2;
+    return plotX + (i / (points.length - 1)) * plotW;
+  }
+
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+
+  for (let v = yMin; v <= yMax + yStep / 2; v += yStep) {
+    const yy = yToPx(v);
+
+    ctx.beginPath();
+    ctx.moveTo(plotX, yy);
+    ctx.lineTo(plotX + plotW, yy);
+    ctx.strokeStyle = Math.abs(v) < 1e-9 ? zeroAxis : grid;
+    ctx.lineWidth = Math.abs(v) < 1e-9 ? 1.5 : 1;
+    ctx.stroke();
+
+    ctx.fillStyle = text;
+    ctx.fillText(v.toFixed(2), plotX - 10, yy);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(plotX, plotY);
+  ctx.lineTo(plotX, plotY + plotH);
+  ctx.lineTo(plotX + plotW, plotY + plotH);
+  ctx.strokeStyle = axis;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  for (let i = 0; i < points.length; i += labelStep) {
+    const xx = xToPx(i);
+    const lbl = points[i].xLabel;
+
+    ctx.beginPath();
+    ctx.moveTo(xx, plotY + plotH);
+    ctx.lineTo(xx, plotY + plotH + 6);
+    ctx.strokeStyle = axis;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(xx, plotY + plotH + 10);
+    ctx.rotate(-Math.PI / 5);
+    ctx.fillStyle = text;
+    ctx.fillText(lbl, 0, 0);
+    ctx.restore();
+  }
+
+  for (let i = 1; i < points.length; i++) {
+    const p1 = points[i - 1];
+    const p2 = points[i];
+
+    const x1 = xToPx(i - 1);
+    const y1 = yToPx(p1.y);
+    const x2 = xToPx(i);
+    const y2 = yToPx(p2.y);
+
+    if ((p1.y >= 0 && p2.y >= 0) || (p1.y <= 0 && p2.y <= 0)) {
+      drawLineSegment(ctx, x1, y1, x2, y2, p2.y >= 0 ? green : red, 3);
+    } else {
+      const t = (0 - p1.y) / (p2.y - p1.y);
+      const xZero = x1 + (x2 - x1) * t;
+      const yZero = yToPx(0);
+
+      drawLineSegment(ctx, x1, y1, xZero, yZero, p1.y >= 0 ? green : red, 3);
+      drawLineSegment(ctx, xZero, yZero, x2, y2, p2.y >= 0 ? green : red, 3);
+    }
+  }
+
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const xx = xToPx(i);
+    const yy = yToPx(p.y);
+
+    taChartHoverPoints.push({
+      x: xx,
+      y: yy,
+      radius: 10,
+      valueText: String(p.rawValue),
+      dateText: p.xLabel
+    });
+
+    drawCircle(ctx, xx, yy, 4, p.y >= 0 ? green : red);
+  }
+}
+
+async function loadTaDataGraph() {
+  if (!taChartCanvas) return;
+
+  try {
+    setTaChartStatus("Loading…");
+
+    const headers = {
+      "Content-Type": "application/json"
+    };
+
+    if (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE") {
+      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
+      headers["apikey"] = SUPABASE_ANON_KEY;
+    }
+
+    const res = await fetch(TA_DATA_READONLY_URL, {
+      method: "GET",
+      headers,
+      cache: "no-store"
+    });
+
+    const rawText = await res.text();
+
+    let json;
+    try {
+      json = JSON.parse(rawText);
+    } catch {
+      throw new Error("Invalid JSON returned by ta-data-readonly");
+    }
+
+    if (!res.ok) {
+      throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+    }
+
+    const rows = Array.isArray(json?.data) ? json.data : [];
+    const filteredRows = rows.filter((row) => Number(row?.id) >= 13);
+
+    drawTaDataChart(filteredRows);
+    setTaChartStatus("");
+  } catch (e) {
+    console.error("Failed to load TA chart", e);
+    setTaChartStatus(`Error: ${e?.message || e}`);
+    drawTaDataChart([]);
+  }
+}
+
+if (reloadTaChartBtn) {
+  reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
+}
+
+if (taChartCanvas) {
+  taChartCanvas.addEventListener("mouseleave", () => {
+    hideTaChartTooltip();
+  });
+
+  taChartCanvas.addEventListener("mousemove", (e) => {
+    const rect = taChartCanvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    let hit = null;
+    let bestDist = Infinity;
+
+    for (const p of taChartHoverPoints) {
+      const dx = mouseX - p.x;
+      const dy = mouseY - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= p.radius && dist < bestDist) {
+        bestDist = dist;
+        hit = p;
+      }
+    }
+
+    if (!hit) {
+      hideTaChartTooltip();
+      return;
+    }
+
+    showTaChartTooltip(
+      hit.x,
+      hit.y,
+      `${hit.dateText}: ${hit.valueText}`
+    );
+  });
+}
+
 // ================== INITIAL LOADS / REFRESH ==================
 
 window.addEventListener("load", () => {
@@ -1639,6 +2039,7 @@ window.addEventListener("load", () => {
   loadAvgEth();
   loadPnlAssets();
   loadPercentageAssets();
+  loadTaDataGraph();
 
   if (!window.ethereum) return;
   const saved = localStorage.getItem("savedAddress");

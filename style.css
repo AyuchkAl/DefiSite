@@ -475,7 +475,7 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 28px;
   padding: 26px 24px;
   justify-items: stretch;
