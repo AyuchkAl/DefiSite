@@ -1298,6 +1298,7 @@ ${f.content}
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
+  // LMB on Strategy button => open list
   strategyButton.addEventListener("click", (e) => {
     e.stopPropagation();
 
@@ -1325,6 +1326,7 @@ ${f.content}
     toggleStrategyMenu();
   });
 
+  // RMB on Strategy button => upload file
   strategyButton.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1337,6 +1339,7 @@ ${f.content}
     return false;
   }, true);
 
+  // LMB on item => open
   strategyMenu.addEventListener("click", (e) => {
     const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
     if (!item) return;
@@ -1348,6 +1351,7 @@ ${f.content}
     setTimeout(closeStrategyMenu, 0);
   }, true);
 
+  // RMB on item => delete menu
   strategyMenu.addEventListener("contextmenu", (e) => {
     const item = e.target?.closest?.("#strategyMenu a[data-file-id]");
     if (!item) return;
@@ -2068,3 +2072,63 @@ setInterval(loadPuell, 60 * 60 * 1000);
 setInterval(() => {
   if (currentAddress) loadMorphoHealthFactor(currentAddress);
 }, 30 * 60 * 1000);
+
+// ================== LOAD TA DATA TO SUPABASE (quick-processor, JWT OFF) ==================
+const loadTaDataBtn = document.getElementById("loadTaDataBtn");
+const loadTaDataStatus = document.getElementById("loadTaDataStatus");
+
+const QUICK_PROCESSOR_URL =
+  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
+
+let loadStatusTimer = null;
+
+function setLoadStatus(text, mode = "") {
+  if (!loadTaDataStatus) return;
+  loadTaDataStatus.textContent = text;
+  loadTaDataStatus.classList.remove("ok", "err");
+  if (mode) loadTaDataStatus.classList.add(mode);
+}
+
+function clearLoadStatusTimer() {
+  if (loadStatusTimer) {
+    clearTimeout(loadStatusTimer);
+    loadStatusTimer = null;
+  }
+}
+
+async function triggerQuickProcessor() {
+  if (!loadTaDataBtn) return;
+
+  try {
+    clearLoadStatusTimer();
+    loadTaDataBtn.disabled = true;
+    setLoadStatus("Loading");
+
+    const res = await fetch(QUICK_PROCESSOR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // show ONLY "Saved"
+    setLoadStatus("Saved ✔", "ok");
+
+    // hide after 5 seconds
+    loadStatusTimer = setTimeout(() => {
+      setLoadStatus("");
+    }, 5000);
+
+  } catch (e) {
+    setLoadStatus(`Error: ${e?.message || e}`, "err");
+  } finally {
+    loadTaDataBtn.disabled = false;
+  }
+}
+
+if (loadTaDataBtn) {
+  loadTaDataBtn.onclick = triggerQuickProcessor; // overwrite any old handler
+}
