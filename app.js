@@ -25,13 +25,13 @@ const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
 const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
 
-// ================== SUPABASE ======================================
-const SUPABASE_URL = "https://vphdvuvofpkogemvejff.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
-const supabaseClient =
-  window.supabase && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE"
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
+// ================== EDGE FUNCTIONS =================================
+const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
+const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
+const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
+const QUICK_PROCESSOR_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
+const TA_DATA_READONLY_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
+const WEB_SITES_API_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta_web_site_function";
 
 // ================== DOM REFERENCES =================================
 
@@ -56,23 +56,17 @@ const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
-// Morpho HF
-const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
 const morphoHfValueEl = document.getElementById("morphoHfValue");
 const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
 const liqBtcMorphoEl = document.getElementById("liqBtcMorpho");
 
-// Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
 
-// Puell proxy
-const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
-
 let currentAddress = null;
 
-// ================== Hold/Sell (CoinGlass-like peak signals) state ==================
+// ================== Hold/Sell state ==================
 let latestFgValue = null;
 let latestBtc24h  = null;
 let latestEth24h  = null;
@@ -148,7 +142,6 @@ function setMorphoHealthFactorDisplay(hf) {
   }
 
   morphoHfValueEl.textContent = hf.toFixed(2);
-
   morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
 
   if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
@@ -176,9 +169,103 @@ function updateMorphoLiqDisplay() {
   liqBtcMorphoEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
 }
 
-// ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
+function formatUsd(amount) {
+  return (
+    "$" +
+    Math.round(Number(amount)).toLocaleString("de-DE", {
+      maximumFractionDigits: 0,
+      useGrouping: true,
+    })
+  );
+}
 
-const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
+function parseGvizJson(text) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
+  return JSON.parse(text.slice(start, end + 1));
+}
+
+function parseCurrencyLoose(rawValue) {
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  s = s.replace(/[^\d.,-]/g, "");
+
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, "");
+      s = s.replace(/,/g, ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (lastDot !== -1) {
+    const fracLen = s.length - lastDot - 1;
+    if (fracLen === 3) s = s.replace(/\./g, "");
+  } else if (lastComma !== -1) {
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen === 3) s = s.replace(/,/g, "");
+    else s = s.replace(/,/g, ".");
+  }
+
+  return Number(s);
+}
+
+function formatUsd0(num) {
+  return "$" + Math.round(Number(num)).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function parsePercentLoose(rawValue) {
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  s = s.replace(/[^\d.,%\-\+]/g, "");
+  const hasPercent = s.includes("%");
+
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
+  } else if (lastComma !== -1 && lastDot === -1) {
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen !== 3) s = s.replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
+  }
+
+  let num = Number(s.replace("%", ""));
+  if (!Number.isFinite(num)) return NaN;
+
+  if (hasPercent && Math.abs(num) <= 1) num = num * 100;
+  return num;
+}
+
+function hideTaChartTooltip() {
+  if (!taChartTooltip) return;
+  taChartTooltip.hidden = true;
+  taChartTooltip.classList.remove("positive", "negative");
+}
+
+function showTaChartTooltip(x, y, valueText, isPositive) {
+  if (!taChartTooltip) return;
+
+  taChartTooltip.textContent = valueText;
+  taChartTooltip.style.left = `${x}px`;
+  taChartTooltip.style.top = `${y}px`;
+  taChartTooltip.classList.remove("positive", "negative");
+  taChartTooltip.classList.add(isPositive ? "positive" : "negative");
+  taChartTooltip.hidden = false;
+}
+
+// ================== FEAR & GREED ==================
 
 async function loadFearGreed() {
   try {
@@ -210,7 +297,7 @@ async function loadFearGreed() {
   }
 }
 
-// ================== MARKET PRICES (COINGECKO) ======================
+// ================== MARKET PRICES ======================
 
 async function loadCryptoPrices() {
   try {
@@ -274,7 +361,7 @@ async function loadCryptoPrices() {
   }
 }
 
-// ================== AAVE LOGIC (HF + LIQ PRICE ETH/BTC) ===============
+// ================== AAVE LOGIC ===============================
 
 async function loadAaveDataForUser(userAddress, provider) {
   try {
@@ -354,7 +441,7 @@ async function loadMorphoHealthFactor(userAddress) {
   }
 }
 
-// ================== WALLET CONNECTION / INIT ======================
+// ================== WALLET CONNECTION ======================
 
 async function connectAndLoad() {
   try {
@@ -407,7 +494,7 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
 
-// ================== TOTAL ASSETS (Google Sheet cell T2) ==================
+// ================== TOTAL ASSETS ==================
 
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
@@ -415,16 +502,6 @@ const TOTAL_ASSETS_GID = "0";
 
 const TOTAL_ASSETS_CELL_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
-
-function formatUsd(amount) {
-  return (
-    "$" +
-    Math.round(Number(amount)).toLocaleString("de-DE", {
-      maximumFractionDigits: 0,
-      useGrouping: true,
-    })
-  );
-}
 
 async function loadTotalAssets() {
   try {
@@ -450,7 +527,7 @@ async function loadTotalAssets() {
 
 setInterval(loadTotalAssets, 10 * 60 * 1000);
 
-// ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
+// ================== DEFI ASSETS ==================
 
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
@@ -459,43 +536,6 @@ const DEFI_ASSETS_GVIZ_URL =
   "?sheet=DEFI_invest" +
   "&range=W2" +
   "&tqx=out:json";
-
-function parseGvizJson(text) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
-  return JSON.parse(text.slice(start, end + 1));
-}
-
-function parseCurrencyLoose(rawValue) {
-  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
-
-  let s = String(rawValue ?? "").trim();
-  if (!s) return NaN;
-
-  s = s.replace(/[^\d.,-]/g, "");
-
-  const lastDot = s.lastIndexOf(".");
-  const lastComma = s.lastIndexOf(",");
-
-  if (lastDot !== -1 && lastComma !== -1) {
-    if (lastComma > lastDot) {
-      s = s.replace(/\./g, "");
-      s = s.replace(/,/g, ".");
-    } else {
-      s = s.replace(/,/g, "");
-    }
-  } else if (lastDot !== -1) {
-    const fracLen = s.length - lastDot - 1;
-    if (fracLen === 3) s = s.replace(/\./g, "");
-  } else if (lastComma !== -1) {
-    const fracLen = s.length - lastComma - 1;
-    if (fracLen === 3) s = s.replace(/,/g, "");
-    else s = s.replace(/,/g, ".");
-  }
-
-  return Number(s);
-}
 
 async function loadDefiAssets() {
   try {
@@ -523,7 +563,7 @@ async function loadDefiAssets() {
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
 
-// ================== AVG BTC / AVG ETH (Google Sheet DEFI_invest!S2 / L2) ==================
+// ================== AVG BTC / AVG ETH ==================
 
 const AVG_BTC_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
@@ -536,10 +576,6 @@ const AVG_ETH_GVIZ_URL =
   "?sheet=DEFI_invest" +
   "&range=L2" +
   "&tqx=out:json";
-
-function formatUsd0(num) {
-  return "$" + Math.round(Number(num)).toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
 
 async function loadAvgBtc() {
   try {
@@ -592,7 +628,7 @@ async function loadAvgEth() {
 setInterval(loadAvgBtc, 10 * 60 * 1000);
 setInterval(loadAvgEth, 10 * 60 * 1000);
 
-// ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
+// ================== PnL ASSETS ==================
 
 const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
 
@@ -658,7 +694,7 @@ async function loadPnlAssets() {
 
 setInterval(loadPnlAssets, 10 * 60 * 1000);
 
-// ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
+// ================== PERCENTAGE ASSETS ==================
 
 const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
 
@@ -667,34 +703,6 @@ const PCT_ASSETS_GVIZ_URL =
   "?sheet=DEFI_invest" +
   "&range=Y2" +
   "&tqx=out:json";
-
-function parsePercentLoose(rawValue) {
-  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
-
-  let s = String(rawValue ?? "").trim();
-  if (!s) return NaN;
-
-  s = s.replace(/[^\d.,%\-\+]/g, "");
-  const hasPercent = s.includes("%");
-
-  const lastDot = s.lastIndexOf(".");
-  const lastComma = s.lastIndexOf(",");
-
-  if (lastDot !== -1 && lastComma !== -1) {
-    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
-    else s = s.replace(/,/g, "");
-  } else if (lastComma !== -1 && lastDot === -1) {
-    const fracLen = s.length - lastComma - 1;
-    if (fracLen !== 3) s = s.replace(/,/g, ".");
-    else s = s.replace(/,/g, "");
-  }
-
-  let num = Number(s.replace("%", ""));
-  if (!Number.isFinite(num)) return NaN;
-
-  if (hasPercent && Math.abs(num) <= 1) num = num * 100;
-  return num;
-}
 
 async function loadPercentageAssets() {
   try {
@@ -732,6 +740,7 @@ async function loadPercentageAssets() {
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
 // ================== MY ASSETS MENU ==================
+
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -802,7 +811,6 @@ if (myAssetsButton && myAssetsMenu) {
   const defiMenu = document.getElementById("defiMenu");
   const defiContextMenu = document.getElementById("defiContextMenu");
   const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
-
   const defiItemContextMenu = document.getElementById("defiItemContextMenu");
   const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
 
@@ -817,10 +825,6 @@ if (myAssetsButton && myAssetsMenu) {
   ) return;
 
   let pendingDeleteId = null;
-
-  function isSupabaseReady() {
-    return !!supabaseClient;
-  }
 
   function isValidHttpUrl(s) {
     try {
@@ -868,43 +872,68 @@ if (myAssetsButton && myAssetsMenu) {
     }
   }
 
+  async function parseApiJson(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`Invalid JSON from ta_web_site_function: ${text.slice(0, 200)}`);
+    }
+  }
+
   async function fetchDefiLinks() {
-    if (!isSupabaseReady()) {
-      throw new Error("Supabase is not configured. Set SUPABASE_ANON_KEY in app.js.");
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
     }
 
-    const { data, error } = await supabaseClient
-      .from("web_sites")
-      .select("id, url, label")
-      .order("id", { ascending: true });
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+    if (Array.isArray(json)) return json;
+    if (Array.isArray(json?.data)) return json.data;
+    if (Array.isArray(json?.rows)) return json.rows;
+    return [];
   }
 
   async function insertDefiLink(url, label) {
-    if (!isSupabaseReady()) {
-      throw new Error("Supabase is not configured. Set SUPABASE_ANON_KEY in app.js.");
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ url, label })
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
     }
 
-    const { error } = await supabaseClient
-      .from("web_sites")
-      .insert([{ url, label }]);
-
-    if (error) throw error;
+    return json;
   }
 
   async function deleteDefiLink(id) {
-    if (!isSupabaseReady()) {
-      throw new Error("Supabase is not configured. Set SUPABASE_ANON_KEY in app.js.");
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id })
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
     }
 
-    const { error } = await supabaseClient
-      .from("web_sites")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
+    return json;
   }
 
   async function renderDefiMenu() {
@@ -928,10 +957,10 @@ if (myAssetsButton && myAssetsMenu) {
         a.className = "my-assets-item";
         a.target = "_blank";
         a.rel = "noopener noreferrer";
-        a.href = link.url;
-        a.textContent = link.label || makeEdgeLikeLabel(link.url);
+        a.href = String(link.url || "#");
+        a.textContent = String(link.label || makeEdgeLikeLabel(link.url));
         a.dataset.id = String(link.id);
-        a.dataset.url = link.url;
+        a.dataset.url = String(link.url || "");
         defiMenu.appendChild(a);
       }
     } catch (e) {
@@ -1085,7 +1114,7 @@ if (myAssetsButton && myAssetsMenu) {
       await openDefiMenu();
     } catch (err) {
       console.error("Failed to add site", err);
-      alert("Failed to add site.");
+      alert("Failed to add site: " + (err?.message || err));
     }
   });
 
@@ -1104,7 +1133,7 @@ if (myAssetsButton && myAssetsMenu) {
       await openDefiMenu();
     } catch (err) {
       console.error("Failed to delete site", err);
-      alert("Failed to delete site.");
+      alert("Failed to delete site: " + (err?.message || err));
     }
   });
 
@@ -1140,7 +1169,7 @@ if (myAssetsButton && myAssetsMenu) {
   renderDefiMenu();
 })();
 
-// ================== Strategy MENU (upload/open/delete SVG/TXT) ==================
+// ================== Strategy MENU ==================
 (function initStrategyMenu() {
   const strategyContainer = document.getElementById("strategyContainer");
   const strategyButton = document.getElementById("strategyButton");
@@ -1459,7 +1488,7 @@ ${f.content}
   renderStrategyMenu();
 })();
 
-// ================== Hold/Sell (CoinGlass-like peak signals) ==================
+// ================== Hold/Sell ==================
 
 function computePeakSignals({ fg, puell, btc24h, eth24h }) {
   return [
@@ -1507,7 +1536,7 @@ function updateHoldSellPanel() {
   markerEl.style.left = `${sellPct}%`;
 }
 
-// ================== PUELL MULTIPLE ==================
+// ================== PUELL ==================
 
 function normalizePuellPayload(json) {
   const candidates = [
@@ -1675,12 +1704,10 @@ async function loadPuell() {
   }
 }
 
-// ================== LOAD TA DATA TO SUPABASE (quick-processor, JWT OFF) ==================
+// ================== LOAD TA DATA ==================
+
 const loadTaDataBtn = document.getElementById("loadTaDataBtn");
 const loadTaDataStatus = document.getElementById("loadTaDataStatus");
-
-const QUICK_PROCESSOR_URL =
-  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
 
 let loadStatusTimer = null;
 
@@ -1735,9 +1762,6 @@ if (loadTaDataBtn) {
 }
 
 // ================== TA DATA GRAPH ==================
-
-const TA_DATA_READONLY_URL =
-  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
 
 const taChartCanvas = document.getElementById("taDataChart");
 const taChartStatus = document.getElementById("taChartStatus");
@@ -1811,22 +1835,6 @@ function drawCircle(ctx, x, y, r, fill) {
   ctx.fill();
 }
 
-function hideTaChartTooltip() {
-  if (!taChartTooltip) return;
-  taChartTooltip.hidden = true;
-}
-
-function showTaChartTooltip(x, y, valueText, isPositive) {
-  if (!taChartTooltip) return;
-
-  taChartTooltip.textContent = valueText;
-  taChartTooltip.style.left = `${x}px`;
-  taChartTooltip.style.top = `${y}px`;
-  taChartTooltip.classList.remove("positive", "negative");
-  taChartTooltip.classList.add(isPositive ? "positive" : "negative");
-  taChartTooltip.hidden = false;
-}
-
 function drawTaDataChart(rows) {
   if (!taChartCanvas) return;
 
@@ -1834,12 +1842,6 @@ function drawTaDataChart(rows) {
   if (!ctx) return;
 
   taChartHoverPoints = [];
-
-  function hideTaChartTooltip() {
-    if (!taChartTooltip) return;
-    taChartTooltip.hidden = true;
-    taChartTooltip.classList.remove("positive", "negative");
-  }
 
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = taChartCanvas.clientWidth || 1200;
@@ -1902,27 +1904,10 @@ function drawTaDataChart(rows) {
   }
 
   function xToPx(i) {
-    if (points.length === 1) {
-      return plotX + plotW * 0.02;
-    }
-
-    if (points.length === 2) {
-      const start = plotX + plotW * 0.00;
-      const gap = plotW * 0.03;
-      return start + i * gap;
-    }
-
-    if (points.length === 3) {
-      const start = plotX + plotW * 0.00;
-      const gap = plotW * 0.04;
-      return start + i * gap;
-    }
-
-    if (points.length === 4) {
-      const start = plotX + plotW * 0.00;
-      const gap = plotW * 0.06;
-      return start + i * gap;
-    }
+    if (points.length === 1) return plotX + plotW * 0.02;
+    if (points.length === 2) return plotX + plotW * 0.00 + i * (plotW * 0.03);
+    if (points.length === 3) return plotX + plotW * 0.00 + i * (plotW * 0.04);
+    if (points.length === 4) return plotX + plotW * 0.00 + i * (plotW * 0.06);
 
     const innerLeft = plotX + plotW * 0.05;
     const innerRight = plotX + plotW * 0.95;
@@ -2022,18 +2007,11 @@ async function loadTaDataGraph() {
   try {
     setTaChartStatus("Loading…");
 
-    const headers = {
-      "Content-Type": "application/json"
-    };
-
-    if (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE") {
-      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
-      headers["apikey"] = SUPABASE_ANON_KEY;
-    }
-
     const res = await fetch(TA_DATA_READONLY_URL, {
       method: "GET",
-      headers,
+      headers: {
+        "Content-Type": "application/json"
+      },
       cache: "no-store"
     });
 
@@ -2095,12 +2073,7 @@ if (taChartCanvas) {
       return;
     }
 
-    showTaChartTooltip(
-      hit.x,
-      hit.y,
-      `${hit.valueText}`,
-      hit.isPositive
-    );
+    showTaChartTooltip(hit.x, hit.y, `${hit.valueText}`, hit.isPositive);
   });
 }
 
