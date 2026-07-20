@@ -249,6 +249,25 @@
     </section>
   </main>
 
+  <div id="siteDialogBackdrop" class="site-dialog-backdrop hidden" aria-hidden="true">
+    <div class="site-dialog" role="dialog" aria-modal="true" aria-labelledby="siteDialogTitle">
+      <div id="siteDialogTitle" class="site-dialog-title">Add site</div>
+
+      <label class="site-dialog-label" for="siteUrlInput">Enter site URL</label>
+      <input id="siteUrlInput" class="site-dialog-input" type="url" placeholder="https://example.com" />
+
+      <label class="site-dialog-label" for="siteLabelInput">Enter label</label>
+      <input id="siteLabelInput" class="site-dialog-input" type="text" placeholder="Site label" />
+
+      <div class="site-dialog-actions">
+        <button id="siteDialogCancelBtn" class="site-dialog-btn secondary" type="button">Cancel</button>
+        <button id="siteDialogSaveBtn" class="site-dialog-btn primary" type="button">Save</button>
+      </div>
+
+      <div id="siteDialogError" class="site-dialog-error"></div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
