@@ -25,6 +25,14 @@ const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
 const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
 
+// ================== SUPABASE ======================================
+const SUPABASE_URL = "https://vphdvuvofpkogemvejff.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
+const supabaseClient =
+  window.supabase && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE"
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
 // ================== DOM REFERENCES =================================
 
 const connectButton = document.getElementById("connectButton");
@@ -808,22 +816,10 @@ if (myAssetsButton && myAssetsMenu) {
     !defiDeleteSiteBtn
   ) return;
 
-  const DEFI_LINKS_KEY = "defiLinks_v1";
-  let pendingDeleteUrl = null;
+  let pendingDeleteId = null;
 
-  function loadDefiLinks() {
-    try {
-      const raw = localStorage.getItem(DEFI_LINKS_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr.filter(x => x && typeof x.url === "string") : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveDefiLinks(links) {
-    localStorage.setItem(DEFI_LINKS_KEY, JSON.stringify(links));
+  function isSupabaseReady() {
+    return !!supabaseClient;
   }
 
   function isValidHttpUrl(s) {
@@ -872,29 +868,81 @@ if (myAssetsButton && myAssetsMenu) {
     }
   }
 
-  function renderDefiMenu() {
-    const links = loadDefiLinks();
-    defiMenu.innerHTML = "";
-
-    if (links.length === 0) {
-      const empty = document.createElement("div");
-      empty.style.padding = "9px 10px";
-      empty.style.color = "rgba(245,245,245,0.70)";
-      empty.style.fontSize = "13px";
-      empty.textContent = "No sites yet";
-      defiMenu.appendChild(empty);
-      return;
+  async function fetchDefiLinks() {
+    if (!isSupabaseReady()) {
+      throw new Error("Supabase is not configured. Set SUPABASE_ANON_KEY in app.js.");
     }
 
-    for (const link of links) {
-      const a = document.createElement("a");
-      a.className = "my-assets-item";
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.href = link.url;
-      a.textContent = link.label || makeEdgeLikeLabel(link.url);
-      a.dataset.url = link.url;
-      defiMenu.appendChild(a);
+    const { data, error } = await supabaseClient
+      .from("web_sites")
+      .select("id, url, label")
+      .order("id", { ascending: true });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  }
+
+  async function insertDefiLink(url, label) {
+    if (!isSupabaseReady()) {
+      throw new Error("Supabase is not configured. Set SUPABASE_ANON_KEY in app.js.");
+    }
+
+    const { error } = await supabaseClient
+      .from("web_sites")
+      .insert([{ url, label }]);
+
+    if (error) throw error;
+  }
+
+  async function deleteDefiLink(id) {
+    if (!isSupabaseReady()) {
+      throw new Error("Supabase is not configured. Set SUPABASE_ANON_KEY in app.js.");
+    }
+
+    const { error } = await supabaseClient
+      .from("web_sites")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+  }
+
+  async function renderDefiMenu() {
+    defiMenu.innerHTML = "";
+
+    try {
+      const links = await fetchDefiLinks();
+
+      if (links.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.padding = "9px 10px";
+        empty.style.color = "rgba(245,245,245,0.70)";
+        empty.style.fontSize = "13px";
+        empty.textContent = "No sites yet";
+        defiMenu.appendChild(empty);
+        return;
+      }
+
+      for (const link of links) {
+        const a = document.createElement("a");
+        a.className = "my-assets-item";
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.href = link.url;
+        a.textContent = link.label || makeEdgeLikeLabel(link.url);
+        a.dataset.id = String(link.id);
+        a.dataset.url = link.url;
+        defiMenu.appendChild(a);
+      }
+    } catch (e) {
+      console.error("Failed to render DeFi menu", e);
+
+      const err = document.createElement("div");
+      err.style.padding = "9px 10px";
+      err.style.color = "#ff97aa";
+      err.style.fontSize = "13px";
+      err.textContent = "Failed to load sites";
+      defiMenu.appendChild(err);
     }
   }
 
@@ -919,8 +967,8 @@ if (myAssetsButton && myAssetsMenu) {
     defiMenu.style.top  = `${Math.round(top)}px`;
   }
 
-  function openDefiMenu() {
-    renderDefiMenu();
+  async function openDefiMenu() {
+    await renderDefiMenu();
     defiMenu.classList.add("visible");
     defiButton.setAttribute("aria-expanded", "true");
     repositionDefiMenuIfOpen();
@@ -947,11 +995,11 @@ if (myAssetsButton && myAssetsMenu) {
     defiItemContextMenu.classList.remove("visible");
     defiItemContextMenu.style.left = "-9999px";
     defiItemContextMenu.style.top = "-9999px";
-    pendingDeleteUrl = null;
+    pendingDeleteId = null;
   }
 
-  function showDeleteContextMenu(x, y, urlToDelete) {
-    pendingDeleteUrl = urlToDelete;
+  function showDeleteContextMenu(x, y, siteId) {
+    pendingDeleteId = siteId;
     defiItemContextMenu.style.left = `${x}px`;
     defiItemContextMenu.style.top = `${y}px`;
     defiItemContextMenu.classList.add("visible");
@@ -980,7 +1028,7 @@ if (myAssetsButton && myAssetsMenu) {
   defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
 
   function onDefiContextMenu(e) {
-    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    const item = e.target?.closest?.("#defiMenu a[data-id]");
     if (item) return;
 
     e.preventDefault();
@@ -998,9 +1046,10 @@ if (myAssetsButton && myAssetsMenu) {
   }
 
   defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
+  defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
 
   function onDefiItemContextMenu(e) {
-    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    const item = e.target?.closest?.("#defiMenu a[data-id]");
     if (!item) return;
 
     e.preventDefault();
@@ -1008,13 +1057,13 @@ if (myAssetsButton && myAssetsMenu) {
     e.stopImmediatePropagation();
 
     hideAddContextMenu();
-    showDeleteContextMenu(e.clientX, e.clientY, item.dataset.url);
+    showDeleteContextMenu(e.clientX, e.clientY, Number(item.dataset.id));
     return false;
   }
 
   defiMenu.addEventListener("contextmenu", onDefiItemContextMenu, true);
 
-  defiAddSiteBtn.addEventListener("click", (e) => {
+  defiAddSiteBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
     hideAddContextMenu();
@@ -1031,28 +1080,32 @@ if (myAssetsButton && myAssetsMenu) {
     const label = (prompt("Enter label:") || "").trim();
     if (!label) return;
 
-    const links = loadDefiLinks();
-    links.push({ url: trimmedUrl, label });
-    saveDefiLinks(links);
-
-    openDefiMenu();
+    try {
+      await insertDefiLink(trimmedUrl, label);
+      await openDefiMenu();
+    } catch (err) {
+      console.error("Failed to add site", err);
+      alert("Failed to add site.");
+    }
   });
 
-  defiDeleteSiteBtn.addEventListener("click", (e) => {
+  defiDeleteSiteBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!pendingDeleteUrl) {
+    if (!pendingDeleteId) {
       hideDeleteContextMenu();
       return;
     }
 
-    const links = loadDefiLinks();
-    const next = links.filter((l) => l.url !== pendingDeleteUrl);
-    saveDefiLinks(next);
-
-    hideDeleteContextMenu();
-    openDefiMenu();
+    try {
+      await deleteDefiLink(pendingDeleteId);
+      hideDeleteContextMenu();
+      await openDefiMenu();
+    } catch (err) {
+      console.error("Failed to delete site", err);
+      alert("Failed to delete site.");
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -1686,10 +1739,6 @@ if (loadTaDataBtn) {
 const TA_DATA_READONLY_URL =
   "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
 
-// If your ta-data-readonly function requires auth, replace this with your real anon key.
-// If your function is public, you can leave this as-is.
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
-
 const taChartCanvas = document.getElementById("taDataChart");
 const taChartStatus = document.getElementById("taChartStatus");
 const reloadTaChartBtn = document.getElementById("reloadTaChartBtn");
@@ -1785,11 +1834,12 @@ function drawTaDataChart(rows) {
   if (!ctx) return;
 
   taChartHoverPoints = [];
- function hideTaChartTooltip() {
-  if (!taChartTooltip) return;
-  taChartTooltip.hidden = true;
-  taChartTooltip.classList.remove("positive", "negative");
-}
+
+  function hideTaChartTooltip() {
+    if (!taChartTooltip) return;
+    taChartTooltip.hidden = true;
+    taChartTooltip.classList.remove("positive", "negative");
+  }
 
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = taChartCanvas.clientWidth || 1200;
@@ -1954,13 +2004,13 @@ function drawTaDataChart(rows) {
     const xx = xToPx(i);
     const yy = yToPx(p.y);
 
-   taChartHoverPoints.push({
-  x: xx,
-  y: yy,
-  radius: 14,
-  valueText: String(p.rawValue),
-  isPositive: Number(p.y) >= 0
-});
+    taChartHoverPoints.push({
+      x: xx,
+      y: yy,
+      radius: 14,
+      valueText: String(p.rawValue),
+      isPositive: Number(p.y) >= 0
+    });
 
     drawCircle(ctx, xx, yy, 4, p.y >= 0 ? green : red);
   }
@@ -2046,11 +2096,11 @@ if (taChartCanvas) {
     }
 
     showTaChartTooltip(
-  hit.x,
-  hit.y,
-  `${hit.valueText}`,
-  hit.isPositive
-);
+      hit.x,
+      hit.y,
+      `${hit.valueText}`,
+      hit.isPositive
+    );
   });
 }
 
