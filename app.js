@@ -814,6 +814,13 @@ if (myAssetsButton && myAssetsMenu) {
   const defiItemContextMenu = document.getElementById("defiItemContextMenu");
   const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
 
+  const siteDialogBackdrop = document.getElementById("siteDialogBackdrop");
+  const siteUrlInput = document.getElementById("siteUrlInput");
+  const siteLabelInput = document.getElementById("siteLabelInput");
+  const siteDialogCancelBtn = document.getElementById("siteDialogCancelBtn");
+  const siteDialogSaveBtn = document.getElementById("siteDialogSaveBtn");
+  const siteDialogError = document.getElementById("siteDialogError");
+
   if (
     !defiContainer ||
     !defiButton ||
@@ -821,7 +828,13 @@ if (myAssetsButton && myAssetsMenu) {
     !defiContextMenu ||
     !defiAddSiteBtn ||
     !defiItemContextMenu ||
-    !defiDeleteSiteBtn
+    !defiDeleteSiteBtn ||
+    !siteDialogBackdrop ||
+    !siteUrlInput ||
+    !siteLabelInput ||
+    !siteDialogCancelBtn ||
+    !siteDialogSaveBtn ||
+    !siteDialogError
   ) return;
 
   let pendingDeleteId = null;
@@ -870,6 +883,24 @@ if (myAssetsButton && myAssetsMenu) {
     } catch {
       return "Site";
     }
+  }
+
+  function openSiteDialog() {
+    siteDialogError.textContent = "";
+    siteUrlInput.value = "";
+    siteLabelInput.value = "";
+    siteDialogBackdrop.classList.remove("hidden");
+    siteDialogBackdrop.setAttribute("aria-hidden", "false");
+
+    setTimeout(() => {
+      siteUrlInput.focus();
+    }, 0);
+  }
+
+  function closeSiteDialog() {
+    siteDialogBackdrop.classList.add("hidden");
+    siteDialogBackdrop.setAttribute("aria-hidden", "true");
+    siteDialogError.textContent = "";
   }
 
   async function parseApiJson(res) {
@@ -1015,8 +1046,29 @@ if (myAssetsButton && myAssetsMenu) {
   }
 
   function showAddContextMenu(x, y) {
-    defiContextMenu.style.left = `${x}px`;
-    defiContextMenu.style.top = `${y}px`;
+    const strategyButton = document.getElementById("strategyButton");
+    const menuWidth = defiContextMenu.offsetWidth || 190;
+    const menuHeight = defiContextMenu.offsetHeight || 52;
+
+    let left = x;
+    let top = y + 10;
+
+    if (strategyButton) {
+      const r = strategyButton.getBoundingClientRect();
+
+      const overlapsHorizontally = left < r.right && (left + menuWidth) > r.left;
+      const overlapsVertically = top < r.bottom && (top + menuHeight) > r.top;
+
+      if (overlapsHorizontally && overlapsVertically) {
+        top = r.bottom + 8;
+      }
+    }
+
+    left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+    top = Math.max(8, Math.min(top, window.innerHeight - menuHeight - 8));
+
+    defiContextMenu.style.left = `${Math.round(left)}px`;
+    defiContextMenu.style.top = `${Math.round(top)}px`;
     defiContextMenu.classList.add("visible");
   }
 
@@ -1092,29 +1144,60 @@ if (myAssetsButton && myAssetsMenu) {
 
   defiMenu.addEventListener("contextmenu", onDefiItemContextMenu, true);
 
-  defiAddSiteBtn.addEventListener("click", async (e) => {
+  defiAddSiteBtn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     hideAddContextMenu();
+    openSiteDialog();
+  });
 
-    const url = prompt("Enter site URL (https://...):");
-    if (!url) return;
+  siteDialogCancelBtn.addEventListener("click", () => {
+    closeSiteDialog();
+  });
 
-    const trimmedUrl = url.trim();
-    if (!isValidHttpUrl(trimmedUrl)) {
-      alert("Invalid URL. Please enter a full URL starting with https://");
+  siteDialogBackdrop.addEventListener("click", (e) => {
+    if (e.target === siteDialogBackdrop) {
+      closeSiteDialog();
+    }
+  });
+
+  siteDialogSaveBtn.addEventListener("click", async () => {
+    const trimmedUrl = siteUrlInput.value.trim();
+    const label = siteLabelInput.value.trim();
+
+    if (!trimmedUrl) {
+      siteDialogError.textContent = "URL is required.";
+      siteUrlInput.focus();
       return;
     }
 
-    const label = (prompt("Enter label:") || "").trim();
-    if (!label) return;
+    if (!isValidHttpUrl(trimmedUrl)) {
+      siteDialogError.textContent = "Invalid URL. Please enter a full URL starting with https://";
+      siteUrlInput.focus();
+      return;
+    }
+
+    if (!label) {
+      siteDialogError.textContent = "Label is required.";
+      siteLabelInput.focus();
+      return;
+    }
 
     try {
+      siteDialogSaveBtn.disabled = true;
+      siteDialogCancelBtn.disabled = true;
+      siteDialogError.textContent = "";
+
       await insertDefiLink(trimmedUrl, label);
+
+      closeSiteDialog();
       await openDefiMenu();
     } catch (err) {
       console.error("Failed to add site", err);
-      alert("Failed to add site: " + (err?.message || err));
+      siteDialogError.textContent = "Failed to add site: " + (err?.message || err);
+    } finally {
+      siteDialogSaveBtn.disabled = false;
+      siteDialogCancelBtn.disabled = false;
     }
   });
 
@@ -1150,6 +1233,21 @@ if (myAssetsButton && myAssetsMenu) {
   });
 
   document.addEventListener("keydown", (e) => {
+    if (!siteDialogBackdrop.classList.contains("hidden")) {
+      if (e.key === "Escape") {
+        closeSiteDialog();
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (document.activeElement === siteUrlInput || document.activeElement === siteLabelInput) {
+          e.preventDefault();
+          siteDialogSaveBtn.click();
+          return;
+        }
+      }
+    }
+
     if (e.key === "Escape") {
       closeDefiMenu();
       hideAllDefiContextMenus();
