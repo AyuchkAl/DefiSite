@@ -32,6 +32,7 @@ const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
 const QUICK_PROCESSOR_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
 const TA_DATA_READONLY_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
 const WEB_SITES_API_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta_web_site_function";
+const STRATEGY_FILES_API_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta_strategy_file_function";
 
 // ================== DOM REFERENCES =================================
 
@@ -909,7 +910,7 @@ if (myAssetsButton && myAssetsMenu) {
     try {
       return JSON.parse(text);
     } catch {
-      throw new Error(`Invalid JSON from ta_web_site_function: ${text.slice(0, 200)}`);
+      throw new Error(`Invalid JSON from API: ${text.slice(0, 200)}`);
     }
   }
 
@@ -1055,7 +1056,6 @@ if (myAssetsButton && myAssetsMenu) {
 
     if (strategyButton) {
       const r = strategyButton.getBoundingClientRect();
-
       const overlapsHorizontally = left < r.right && (left + menuWidth) > r.left;
       const overlapsVertically = top < r.bottom && (top + menuHeight) > r.top;
 
@@ -1277,31 +1277,8 @@ if (myAssetsButton && myAssetsMenu) {
 
   if (!strategyContainer || !strategyButton || !strategyMenu || !strategyItemContextMenu || !strategyDeleteFileBtn) return;
 
-  const STRATEGY_FILES_KEY = "strategyFiles_v1";
   let pendingDeleteId = null;
-
-  function loadStrategyFiles() {
-    try {
-      const raw = localStorage.getItem(STRATEGY_FILES_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr)
-        ? arr.filter(x =>
-            x &&
-            typeof x.id === "string" &&
-            typeof x.name === "string" &&
-            typeof x.content === "string" &&
-            typeof x.kind === "string"
-          )
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveStrategyFiles(files) {
-    localStorage.setItem(STRATEGY_FILES_KEY, JSON.stringify(files));
-  }
+  let strategyFilesCache = [];
 
   function escapeHtml(s) {
     return String(s)
@@ -1321,8 +1298,76 @@ if (myAssetsButton && myAssetsMenu) {
     return null;
   }
 
-  function renderStrategyMenu() {
-    const files = loadStrategyFiles();
+  async function parseStrategyApiJson(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`Invalid JSON from ta_strategy_file_function: ${text.slice(0, 200)}`);
+    }
+  }
+
+  async function fetchStrategyFiles() {
+    const res = await fetch(STRATEGY_FILES_API_URL, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    const json = await parseStrategyApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    const files =
+      Array.isArray(json) ? json :
+      Array.isArray(json?.data) ? json.data :
+      Array.isArray(json?.rows) ? json.rows :
+      [];
+
+    strategyFilesCache = files;
+    return files;
+  }
+
+  async function insertStrategyFile({ name, kind, content }) {
+    const res = await fetch(STRATEGY_FILES_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name, kind, content })
+    });
+
+    const json = await parseStrategyApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function deleteStrategyFile(fileId) {
+    const res = await fetch(STRATEGY_FILES_API_URL, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id: fileId })
+    });
+
+    const json = await parseStrategyApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function renderStrategyMenu() {
+    const files = await fetchStrategyFiles();
     strategyMenu.innerHTML = "";
 
     if (files.length === 0) {
@@ -1340,7 +1385,7 @@ if (myAssetsButton && myAssetsMenu) {
       a.className = "my-assets-item";
       a.href = "#";
       a.textContent = f.name;
-      a.dataset.fileId = f.id;
+      a.dataset.fileId = String(f.id);
       strategyMenu.appendChild(a);
     }
   }
@@ -1366,8 +1411,20 @@ if (myAssetsButton && myAssetsMenu) {
     strategyMenu.style.top  = `${Math.round(top)}px`;
   }
 
-  function openStrategyMenu() {
-    renderStrategyMenu();
+  async function openStrategyMenu() {
+    try {
+      await renderStrategyMenu();
+    } catch (e) {
+      console.error("Failed to render Strategy menu", e);
+      strategyMenu.innerHTML = "";
+      const err = document.createElement("div");
+      err.style.padding = "9px 10px";
+      err.style.color = "#ff97aa";
+      err.style.fontSize = "13px";
+      err.textContent = "Failed to load files";
+      strategyMenu.appendChild(err);
+    }
+
     strategyMenu.classList.add("visible");
     strategyButton.setAttribute("aria-expanded", "true");
     repositionStrategyMenuIfOpen();
@@ -1416,22 +1473,16 @@ if (myAssetsButton && myAssetsMenu) {
           return;
         }
 
-        const files = loadStrategyFiles();
-        const id = (crypto.randomUUID ? crypto.randomUUID() : `file_${Date.now()}_${Math.random().toString(16).slice(2)}`);
-
-        files.push({
-          id,
+        await insertStrategyFile({
           name: file.name,
           kind,
-          content,
-          uploadedAt: Date.now()
+          content
         });
 
-        saveStrategyFiles(files);
-        openStrategyMenu();
+        await openStrategyMenu();
       } catch (e) {
         console.error("Failed to upload file", e);
-        alert("Failed to upload file.");
+        alert("Failed to upload file: " + (e?.message || e));
       } finally {
         input.remove();
       }
@@ -1442,8 +1493,7 @@ if (myAssetsButton && myAssetsMenu) {
   }
 
   function openStoredFileById(fileId) {
-    const files = loadStrategyFiles();
-    const f = files.find(x => x.id === fileId);
+    const f = strategyFilesCache.find(x => String(x.id) === String(fileId));
     if (!f) return;
 
     let html = "";
@@ -1540,7 +1590,7 @@ ${f.content}
     return false;
   }, true);
 
-  strategyDeleteFileBtn.addEventListener("click", (e) => {
+  strategyDeleteFileBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -1549,12 +1599,14 @@ ${f.content}
       return;
     }
 
-    const files = loadStrategyFiles();
-    const next = files.filter(f => f.id !== pendingDeleteId);
-    saveStrategyFiles(next);
-
-    hideStrategyItemContextMenu();
-    openStrategyMenu();
+    try {
+      await deleteStrategyFile(pendingDeleteId);
+      hideStrategyItemContextMenu();
+      await openStrategyMenu();
+    } catch (e2) {
+      console.error("Failed to delete file", e2);
+      alert("Failed to delete file: " + (e2?.message || e2));
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -1583,7 +1635,9 @@ ${f.content}
     repositionStrategyMenuIfOpen();
   });
 
-  renderStrategyMenu();
+  renderStrategyMenu().catch((e) => {
+    console.error("Initial Strategy render failed", e);
+  });
 })();
 
 // ================== Hold/Sell ==================
