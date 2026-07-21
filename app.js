@@ -514,12 +514,25 @@ async function loadTotalAssets() {
     let text = (await res.text()).trim();
     text = text.replace(/^"+|"+$/g, "");
     text = text.replace(/\s/g, "");
-    text = text.replace(/,/g, "");
+
+    if (text.includes(",") && !text.includes(".")) {
+      text = text.replace(",", ".");
+    } else if (text.includes(",") && text.includes(".")) {
+      const lastComma = text.lastIndexOf(",");
+      const lastDot = text.lastIndexOf(".");
+      if (lastComma > lastDot) {
+        text = text.replace(/\./g, "");
+        text = text.replace(",", ".");
+      } else {
+        text = text.replace(/,/g, "");
+      }
+    }
 
     const value = Number(text);
     if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
 
-    totalAssetsValueCardEl.textContent = formatUsd(value);
+    totalAssetsValueCardEl.textContent =
+      "$" + Math.trunc(value).toLocaleString("de-DE");
   } catch (err) {
     console.error("Failed to load Total Assets", err);
     if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
