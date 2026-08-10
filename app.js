@@ -25,6 +25,15 @@ const ORACLE_ADDRESS        = "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7";
 const WETH_ADDRESS = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
 const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
 
+// ================== EDGE FUNCTIONS =================================
+const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
+const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
+const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
+const QUICK_PROCESSOR_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
+const TA_DATA_READONLY_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
+const WEB_SITES_API_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta_web_site_function";
+const STRATEGY_FILES_API_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta_strategy_file_function";
+
 // ================== DOM REFERENCES =================================
 
 const connectButton = document.getElementById("connectButton");
@@ -48,23 +57,17 @@ const liqEthBottomEl = document.getElementById("liqEthBottom");
 const liqBtcBottomEl = document.getElementById("liqBtcBottom");
 const hfMainRowEl = document.querySelector(".hf-main-row");
 
-// Morpho HF
-const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
 const morphoHfValueEl = document.getElementById("morphoHfValue");
 const morphoHfMainRowEl = document.querySelector(".morpho-hf-main-row");
 const liqBtcMorphoEl = document.getElementById("liqBtcMorpho");
 
-// Fear & Greed
 const fgValueEl = document.getElementById("fgValue");
 const fgLabelEl = document.getElementById("fgLabel");
 const fgNeedleEl = document.getElementById("fgNeedle");
 
-// Puell proxy
-const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
-
 let currentAddress = null;
 
-// ================== Hold/Sell (CoinGlass-like peak signals) state ==================
+// ================== Hold/Sell state ==================
 let latestFgValue = null;
 let latestBtc24h  = null;
 let latestEth24h  = null;
@@ -140,7 +143,6 @@ function setMorphoHealthFactorDisplay(hf) {
   }
 
   morphoHfValueEl.textContent = hf.toFixed(2);
-
   morphoHfMainRowEl.classList.remove("safe", "warning", "danger");
 
   if (hf < 1.0) morphoHfMainRowEl.classList.add("danger");
@@ -168,9 +170,103 @@ function updateMorphoLiqDisplay() {
   liqBtcMorphoEl.textContent = "BTC ~ " + shortenNumber(btcAtHF1);
 }
 
-// ================== FEAR & GREED (CoinMarketCap via Cloudflare Worker) ==================
+function formatUsd(amount) {
+  return (
+    "$" +
+    Math.round(Number(amount)).toLocaleString("de-DE", {
+      maximumFractionDigits: 0,
+      useGrouping: true,
+    })
+  );
+}
 
-const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
+function parseGvizJson(text) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
+  return JSON.parse(text.slice(start, end + 1));
+}
+
+function parseCurrencyLoose(rawValue) {
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  s = s.replace(/[^\d.,-]/g, "");
+
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, "");
+      s = s.replace(/,/g, ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (lastDot !== -1) {
+    const fracLen = s.length - lastDot - 1;
+    if (fracLen === 3) s = s.replace(/\./g, "");
+  } else if (lastComma !== -1) {
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen === 3) s = s.replace(/,/g, "");
+    else s = s.replace(/,/g, ".");
+  }
+
+  return Number(s);
+}
+
+function formatUsd0(num) {
+  return "$" + Math.round(Number(num)).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function parsePercentLoose(rawValue) {
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
+
+  let s = String(rawValue ?? "").trim();
+  if (!s) return NaN;
+
+  s = s.replace(/[^\d.,%\-\+]/g, "");
+  const hasPercent = s.includes("%");
+
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
+  } else if (lastComma !== -1 && lastDot === -1) {
+    const fracLen = s.length - lastComma - 1;
+    if (fracLen !== 3) s = s.replace(/,/g, ".");
+    else s = s.replace(/,/g, "");
+  }
+
+  let num = Number(s.replace("%", ""));
+  if (!Number.isFinite(num)) return NaN;
+
+  if (hasPercent && Math.abs(num) <= 1) num = num * 100;
+  return num;
+}
+
+function hideTaChartTooltip() {
+  if (!taChartTooltip) return;
+  taChartTooltip.hidden = true;
+  taChartTooltip.classList.remove("positive", "negative");
+}
+
+function showTaChartTooltip(x, y, valueText, isPositive) {
+  if (!taChartTooltip) return;
+
+  taChartTooltip.textContent = valueText;
+  taChartTooltip.style.left = `${x}px`;
+  taChartTooltip.style.top = `${y}px`;
+  taChartTooltip.classList.remove("positive", "negative");
+  taChartTooltip.classList.add(isPositive ? "positive" : "negative");
+  taChartTooltip.hidden = false;
+}
+
+// ================== FEAR & GREED ==================
 
 async function loadFearGreed() {
   try {
@@ -202,7 +298,7 @@ async function loadFearGreed() {
   }
 }
 
-// ================== MARKET PRICES (COINGECKO) ======================
+// ================== MARKET PRICES ======================
 
 async function loadCryptoPrices() {
   try {
@@ -266,7 +362,7 @@ async function loadCryptoPrices() {
   }
 }
 
-// ================== AAVE LOGIC (HF + LIQ PRICE ETH/BTC) ===============
+// ================== AAVE LOGIC ===============================
 
 async function loadAaveDataForUser(userAddress, provider) {
   try {
@@ -346,7 +442,7 @@ async function loadMorphoHealthFactor(userAddress) {
   }
 }
 
-// ================== WALLET CONNECTION / INIT ======================
+// ================== WALLET CONNECTION ======================
 
 async function connectAndLoad() {
   try {
@@ -399,7 +495,7 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".wallet-container")) walletMenu.classList.remove("visible");
 });
 
-// ================== TOTAL ASSETS (Google Sheet cell T2) ==================
+// ================== TOTAL ASSETS ==================
 
 const TOTAL_ASSETS_SPREADSHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
 const totalAssetsValueCardEl = document.getElementById("totalAssetsValueCard");
@@ -407,16 +503,6 @@ const TOTAL_ASSETS_GID = "0";
 
 const TOTAL_ASSETS_CELL_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${TOTAL_ASSETS_SPREADSHEET_ID}/export?format=csv&gid=${TOTAL_ASSETS_GID}&range=T2`;
-
-function formatUsd(amount) {
-  return (
-    "$" +
-    Math.round(Number(amount)).toLocaleString("de-DE", {
-      maximumFractionDigits: 0,
-      useGrouping: true,
-    })
-  );
-}
 
 async function loadTotalAssets() {
   try {
@@ -428,12 +514,25 @@ async function loadTotalAssets() {
     let text = (await res.text()).trim();
     text = text.replace(/^"+|"+$/g, "");
     text = text.replace(/\s/g, "");
-    text = text.replace(/,/g, "");
+
+    if (text.includes(",") && !text.includes(".")) {
+      text = text.replace(",", ".");
+    } else if (text.includes(",") && text.includes(".")) {
+      const lastComma = text.lastIndexOf(",");
+      const lastDot = text.lastIndexOf(".");
+      if (lastComma > lastDot) {
+        text = text.replace(/\./g, "");
+        text = text.replace(",", ".");
+      } else {
+        text = text.replace(/,/g, "");
+      }
+    }
 
     const value = Number(text);
     if (!Number.isFinite(value)) throw new Error("Not a number: " + text);
 
-    totalAssetsValueCardEl.textContent = formatUsd(value);
+    totalAssetsValueCardEl.textContent =
+      "$" + Math.trunc(value).toLocaleString("de-DE");
   } catch (err) {
     console.error("Failed to load Total Assets", err);
     if (totalAssetsValueCardEl) totalAssetsValueCardEl.textContent = "Unavailable";
@@ -442,7 +541,7 @@ async function loadTotalAssets() {
 
 setInterval(loadTotalAssets, 10 * 60 * 1000);
 
-// ================== DEFI ASSETS (Google Sheet DEFI_invest!W2) ==================
+// ================== DEFI ASSETS ==================
 
 const defiAssetsValueCardEl = document.getElementById("defiAssetsValueCard");
 
@@ -451,43 +550,6 @@ const DEFI_ASSETS_GVIZ_URL =
   "?sheet=DEFI_invest" +
   "&range=W2" +
   "&tqx=out:json";
-
-function parseGvizJson(text) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end < 0) throw new Error("Unexpected GVIZ response");
-  return JSON.parse(text.slice(start, end + 1));
-}
-
-function parseCurrencyLoose(rawValue) {
-  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
-
-  let s = String(rawValue ?? "").trim();
-  if (!s) return NaN;
-
-  s = s.replace(/[^\d.,-]/g, "");
-
-  const lastDot = s.lastIndexOf(".");
-  const lastComma = s.lastIndexOf(",");
-
-  if (lastDot !== -1 && lastComma !== -1) {
-    if (lastComma > lastDot) {
-      s = s.replace(/\./g, "");
-      s = s.replace(/,/g, ".");
-    } else {
-      s = s.replace(/,/g, "");
-    }
-  } else if (lastDot !== -1) {
-    const fracLen = s.length - lastDot - 1;
-    if (fracLen === 3) s = s.replace(/\./g, "");
-  } else if (lastComma !== -1) {
-    const fracLen = s.length - lastComma - 1;
-    if (fracLen === 3) s = s.replace(/,/g, "");
-    else s = s.replace(/,/g, ".");
-  }
-
-  return Number(s);
-}
 
 async function loadDefiAssets() {
   try {
@@ -515,7 +577,7 @@ async function loadDefiAssets() {
 
 setInterval(loadDefiAssets, 10 * 60 * 1000);
 
-// ================== AVG BTC / AVG ETH (Google Sheet DEFI_invest!S2 / L2) ==================
+// ================== AVG BTC / AVG ETH ==================
 
 const AVG_BTC_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
@@ -528,10 +590,6 @@ const AVG_ETH_GVIZ_URL =
   "?sheet=DEFI_invest" +
   "&range=L2" +
   "&tqx=out:json";
-
-function formatUsd0(num) {
-  return "$" + Math.round(Number(num)).toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
 
 async function loadAvgBtc() {
   try {
@@ -584,7 +642,7 @@ async function loadAvgEth() {
 setInterval(loadAvgBtc, 10 * 60 * 1000);
 setInterval(loadAvgEth, 10 * 60 * 1000);
 
-// ================== PnL ASSETS (Google Sheet DEFI_invest!X2) ==================
+// ================== PnL ASSETS ==================
 
 const pnlAssetsValueCardEl = document.getElementById("pnlAssetsValueCard");
 
@@ -650,7 +708,7 @@ async function loadPnlAssets() {
 
 setInterval(loadPnlAssets, 10 * 60 * 1000);
 
-// ================== PERCENTAGE ASSETS (Google Sheet DEFI_invest!Y2) ==================
+// ================== PERCENTAGE ASSETS ==================
 
 const pctAssetsValueCardEl = document.getElementById("pctAssetsValueCard");
 
@@ -659,34 +717,6 @@ const PCT_ASSETS_GVIZ_URL =
   "?sheet=DEFI_invest" +
   "&range=Y2" +
   "&tqx=out:json";
-
-function parsePercentLoose(rawValue) {
-  if (typeof rawValue === "number" && Number.isFinite(rawValue)) return rawValue;
-
-  let s = String(rawValue ?? "").trim();
-  if (!s) return NaN;
-
-  s = s.replace(/[^\d.,%\-\+]/g, "");
-  const hasPercent = s.includes("%");
-
-  const lastDot = s.lastIndexOf(".");
-  const lastComma = s.lastIndexOf(",");
-
-  if (lastDot !== -1 && lastComma !== -1) {
-    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(/,/g, ".");
-    else s = s.replace(/,/g, "");
-  } else if (lastComma !== -1 && lastDot === -1) {
-    const fracLen = s.length - lastComma - 1;
-    if (fracLen !== 3) s = s.replace(/,/g, ".");
-    else s = s.replace(/,/g, "");
-  }
-
-  let num = Number(s.replace("%", ""));
-  if (!Number.isFinite(num)) return NaN;
-
-  if (hasPercent && Math.abs(num) <= 1) num = num * 100;
-  return num;
-}
 
 async function loadPercentageAssets() {
   try {
@@ -724,6 +754,7 @@ async function loadPercentageAssets() {
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
 // ================== MY ASSETS MENU ==================
+
 const myAssetsButton = document.getElementById("myAssetsButton");
 const myAssetsMenu = document.getElementById("myAssetsMenu");
 
@@ -794,9 +825,15 @@ if (myAssetsButton && myAssetsMenu) {
   const defiMenu = document.getElementById("defiMenu");
   const defiContextMenu = document.getElementById("defiContextMenu");
   const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
-
   const defiItemContextMenu = document.getElementById("defiItemContextMenu");
   const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
+
+  const siteDialogBackdrop = document.getElementById("siteDialogBackdrop");
+  const siteUrlInput = document.getElementById("siteUrlInput");
+  const siteLabelInput = document.getElementById("siteLabelInput");
+  const siteDialogCancelBtn = document.getElementById("siteDialogCancelBtn");
+  const siteDialogSaveBtn = document.getElementById("siteDialogSaveBtn");
+  const siteDialogError = document.getElementById("siteDialogError");
 
   if (
     !defiContainer ||
@@ -805,26 +842,16 @@ if (myAssetsButton && myAssetsMenu) {
     !defiContextMenu ||
     !defiAddSiteBtn ||
     !defiItemContextMenu ||
-    !defiDeleteSiteBtn
+    !defiDeleteSiteBtn ||
+    !siteDialogBackdrop ||
+    !siteUrlInput ||
+    !siteLabelInput ||
+    !siteDialogCancelBtn ||
+    !siteDialogSaveBtn ||
+    !siteDialogError
   ) return;
 
-  const DEFI_LINKS_KEY = "defiLinks_v1";
-  let pendingDeleteUrl = null;
-
-  function loadDefiLinks() {
-    try {
-      const raw = localStorage.getItem(DEFI_LINKS_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr.filter(x => x && typeof x.url === "string") : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveDefiLinks(links) {
-    localStorage.setItem(DEFI_LINKS_KEY, JSON.stringify(links));
-  }
+  let pendingDeleteId = null;
 
   function isValidHttpUrl(s) {
     try {
@@ -872,29 +899,124 @@ if (myAssetsButton && myAssetsMenu) {
     }
   }
 
-  function renderDefiMenu() {
-    const links = loadDefiLinks();
-    defiMenu.innerHTML = "";
+  function openSiteDialog() {
+    siteDialogError.textContent = "";
+    siteUrlInput.value = "";
+    siteLabelInput.value = "";
+    siteDialogBackdrop.classList.remove("hidden");
+    siteDialogBackdrop.setAttribute("aria-hidden", "false");
 
-    if (links.length === 0) {
-      const empty = document.createElement("div");
-      empty.style.padding = "9px 10px";
-      empty.style.color = "rgba(245,245,245,0.70)";
-      empty.style.fontSize = "13px";
-      empty.textContent = "No sites yet";
-      defiMenu.appendChild(empty);
-      return;
+    setTimeout(() => {
+      siteUrlInput.focus();
+    }, 0);
+  }
+
+  function closeSiteDialog() {
+    siteDialogBackdrop.classList.add("hidden");
+    siteDialogBackdrop.setAttribute("aria-hidden", "true");
+    siteDialogError.textContent = "";
+  }
+
+  async function parseApiJson(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`Invalid JSON from API: ${text.slice(0, 200)}`);
+    }
+  }
+
+  async function fetchDefiLinks() {
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
     }
 
-    for (const link of links) {
-      const a = document.createElement("a");
-      a.className = "my-assets-item";
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.href = link.url;
-      a.textContent = link.label || makeEdgeLikeLabel(link.url);
-      a.dataset.url = link.url;
-      defiMenu.appendChild(a);
+    if (Array.isArray(json)) return json;
+    if (Array.isArray(json?.data)) return json.data;
+    if (Array.isArray(json?.rows)) return json.rows;
+    return [];
+  }
+
+  async function insertDefiLink(url, label) {
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ url, label })
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function deleteDefiLink(id) {
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id })
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function renderDefiMenu() {
+    defiMenu.innerHTML = "";
+
+    try {
+      const links = await fetchDefiLinks();
+
+      if (links.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.padding = "9px 10px";
+        empty.style.color = "rgba(245,245,245,0.70)";
+        empty.style.fontSize = "13px";
+        empty.textContent = "No sites yet";
+        defiMenu.appendChild(empty);
+        return;
+      }
+
+      for (const link of links) {
+        const a = document.createElement("a");
+        a.className = "my-assets-item";
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.href = String(link.url || "#");
+        a.textContent = String(link.label || makeEdgeLikeLabel(link.url));
+        a.dataset.id = String(link.id);
+        a.dataset.url = String(link.url || "");
+        defiMenu.appendChild(a);
+      }
+    } catch (e) {
+      console.error("Failed to render DeFi menu", e);
+
+      const err = document.createElement("div");
+      err.style.padding = "9px 10px";
+      err.style.color = "#ff97aa";
+      err.style.fontSize = "13px";
+      err.textContent = "Failed to load sites";
+      defiMenu.appendChild(err);
     }
   }
 
@@ -919,8 +1041,8 @@ if (myAssetsButton && myAssetsMenu) {
     defiMenu.style.top  = `${Math.round(top)}px`;
   }
 
-  function openDefiMenu() {
-    renderDefiMenu();
+  async function openDefiMenu() {
+    await renderDefiMenu();
     defiMenu.classList.add("visible");
     defiButton.setAttribute("aria-expanded", "true");
     repositionDefiMenuIfOpen();
@@ -938,8 +1060,28 @@ if (myAssetsButton && myAssetsMenu) {
   }
 
   function showAddContextMenu(x, y) {
-    defiContextMenu.style.left = `${x}px`;
-    defiContextMenu.style.top = `${y}px`;
+    const strategyButton = document.getElementById("strategyButton");
+    const menuWidth = defiContextMenu.offsetWidth || 190;
+    const menuHeight = defiContextMenu.offsetHeight || 52;
+
+    let left = x;
+    let top = y + 10;
+
+    if (strategyButton) {
+      const r = strategyButton.getBoundingClientRect();
+      const overlapsHorizontally = left < r.right && (left + menuWidth) > r.left;
+      const overlapsVertically = top < r.bottom && (top + menuHeight) > r.top;
+
+      if (overlapsHorizontally && overlapsVertically) {
+        top = r.bottom + 8;
+      }
+    }
+
+    left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+    top = Math.max(8, Math.min(top, window.innerHeight - menuHeight - 8));
+
+    defiContextMenu.style.left = `${Math.round(left)}px`;
+    defiContextMenu.style.top = `${Math.round(top)}px`;
     defiContextMenu.classList.add("visible");
   }
 
@@ -947,11 +1089,11 @@ if (myAssetsButton && myAssetsMenu) {
     defiItemContextMenu.classList.remove("visible");
     defiItemContextMenu.style.left = "-9999px";
     defiItemContextMenu.style.top = "-9999px";
-    pendingDeleteUrl = null;
+    pendingDeleteId = null;
   }
 
-  function showDeleteContextMenu(x, y, urlToDelete) {
-    pendingDeleteUrl = urlToDelete;
+  function showDeleteContextMenu(x, y, siteId) {
+    pendingDeleteId = siteId;
     defiItemContextMenu.style.left = `${x}px`;
     defiItemContextMenu.style.top = `${y}px`;
     defiItemContextMenu.classList.add("visible");
@@ -980,7 +1122,7 @@ if (myAssetsButton && myAssetsMenu) {
   defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
 
   function onDefiContextMenu(e) {
-    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    const item = e.target?.closest?.("#defiMenu a[data-id]");
     if (item) return;
 
     e.preventDefault();
@@ -998,9 +1140,10 @@ if (myAssetsButton && myAssetsMenu) {
   }
 
   defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
+  defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
 
   function onDefiItemContextMenu(e) {
-    const item = e.target?.closest?.("#defiMenu a[data-url]");
+    const item = e.target?.closest?.("#defiMenu a[data-id]");
     if (!item) return;
 
     e.preventDefault();
@@ -1008,7 +1151,7 @@ if (myAssetsButton && myAssetsMenu) {
     e.stopImmediatePropagation();
 
     hideAddContextMenu();
-    showDeleteContextMenu(e.clientX, e.clientY, item.dataset.url);
+    showDeleteContextMenu(e.clientX, e.clientY, Number(item.dataset.id));
     return false;
   }
 
@@ -1018,41 +1161,76 @@ if (myAssetsButton && myAssetsMenu) {
     e.preventDefault();
     e.stopPropagation();
     hideAddContextMenu();
+    openSiteDialog();
+  });
 
-    const url = prompt("Enter site URL (https://...):");
-    if (!url) return;
+  siteDialogCancelBtn.addEventListener("click", () => {
+    closeSiteDialog();
+  });
 
-    const trimmedUrl = url.trim();
-    if (!isValidHttpUrl(trimmedUrl)) {
-      alert("Invalid URL. Please enter a full URL starting with https://");
+  siteDialogBackdrop.addEventListener("click", (e) => {
+    if (e.target === siteDialogBackdrop) {
+      closeSiteDialog();
+    }
+  });
+
+  siteDialogSaveBtn.addEventListener("click", async () => {
+    const trimmedUrl = siteUrlInput.value.trim();
+    const label = siteLabelInput.value.trim();
+
+    if (!trimmedUrl) {
+      siteDialogError.textContent = "URL is required.";
+      siteUrlInput.focus();
       return;
     }
 
-    const label = (prompt("Enter label:") || "").trim();
-    if (!label) return;
+    if (!isValidHttpUrl(trimmedUrl)) {
+      siteDialogError.textContent = "Invalid URL. Please enter a full URL starting with https://";
+      siteUrlInput.focus();
+      return;
+    }
 
-    const links = loadDefiLinks();
-    links.push({ url: trimmedUrl, label });
-    saveDefiLinks(links);
+    if (!label) {
+      siteDialogError.textContent = "Label is required.";
+      siteLabelInput.focus();
+      return;
+    }
 
-    openDefiMenu();
+    try {
+      siteDialogSaveBtn.disabled = true;
+      siteDialogCancelBtn.disabled = true;
+      siteDialogError.textContent = "";
+
+      await insertDefiLink(trimmedUrl, label);
+
+      closeSiteDialog();
+      await openDefiMenu();
+    } catch (err) {
+      console.error("Failed to add site", err);
+      siteDialogError.textContent = "Failed to add site: " + (err?.message || err);
+    } finally {
+      siteDialogSaveBtn.disabled = false;
+      siteDialogCancelBtn.disabled = false;
+    }
   });
 
-  defiDeleteSiteBtn.addEventListener("click", (e) => {
+  defiDeleteSiteBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!pendingDeleteUrl) {
+    if (!pendingDeleteId) {
       hideDeleteContextMenu();
       return;
     }
 
-    const links = loadDefiLinks();
-    const next = links.filter((l) => l.url !== pendingDeleteUrl);
-    saveDefiLinks(next);
-
-    hideDeleteContextMenu();
-    openDefiMenu();
+    try {
+      await deleteDefiLink(pendingDeleteId);
+      hideDeleteContextMenu();
+      await openDefiMenu();
+    } catch (err) {
+      console.error("Failed to delete site", err);
+      alert("Failed to delete site: " + (err?.message || err));
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -1068,6 +1246,21 @@ if (myAssetsButton && myAssetsMenu) {
   });
 
   document.addEventListener("keydown", (e) => {
+    if (!siteDialogBackdrop.classList.contains("hidden")) {
+      if (e.key === "Escape") {
+        closeSiteDialog();
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (document.activeElement === siteUrlInput || document.activeElement === siteLabelInput) {
+          e.preventDefault();
+          siteDialogSaveBtn.click();
+          return;
+        }
+      }
+    }
+
     if (e.key === "Escape") {
       closeDefiMenu();
       hideAllDefiContextMenus();
@@ -1087,7 +1280,7 @@ if (myAssetsButton && myAssetsMenu) {
   renderDefiMenu();
 })();
 
-// ================== Strategy MENU (upload/open/delete SVG/TXT) ==================
+// ================== Strategy MENU ==================
 (function initStrategyMenu() {
   const strategyContainer = document.getElementById("strategyContainer");
   const strategyButton = document.getElementById("strategyButton");
@@ -1097,31 +1290,8 @@ if (myAssetsButton && myAssetsMenu) {
 
   if (!strategyContainer || !strategyButton || !strategyMenu || !strategyItemContextMenu || !strategyDeleteFileBtn) return;
 
-  const STRATEGY_FILES_KEY = "strategyFiles_v1";
   let pendingDeleteId = null;
-
-  function loadStrategyFiles() {
-    try {
-      const raw = localStorage.getItem(STRATEGY_FILES_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr)
-        ? arr.filter(x =>
-            x &&
-            typeof x.id === "string" &&
-            typeof x.name === "string" &&
-            typeof x.content === "string" &&
-            typeof x.kind === "string"
-          )
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveStrategyFiles(files) {
-    localStorage.setItem(STRATEGY_FILES_KEY, JSON.stringify(files));
-  }
+  let strategyFilesCache = [];
 
   function escapeHtml(s) {
     return String(s)
@@ -1141,8 +1311,76 @@ if (myAssetsButton && myAssetsMenu) {
     return null;
   }
 
-  function renderStrategyMenu() {
-    const files = loadStrategyFiles();
+  async function parseStrategyApiJson(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`Invalid JSON from ta_strategy_file_function: ${text.slice(0, 200)}`);
+    }
+  }
+
+  async function fetchStrategyFiles() {
+    const res = await fetch(STRATEGY_FILES_API_URL, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    const json = await parseStrategyApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    const files =
+      Array.isArray(json) ? json :
+      Array.isArray(json?.data) ? json.data :
+      Array.isArray(json?.rows) ? json.rows :
+      [];
+
+    strategyFilesCache = files;
+    return files;
+  }
+
+  async function insertStrategyFile({ name, kind, content }) {
+    const res = await fetch(STRATEGY_FILES_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name, kind, content })
+    });
+
+    const json = await parseStrategyApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function deleteStrategyFile(fileId) {
+    const res = await fetch(STRATEGY_FILES_API_URL, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id: fileId })
+    });
+
+    const json = await parseStrategyApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function renderStrategyMenu() {
+    const files = await fetchStrategyFiles();
     strategyMenu.innerHTML = "";
 
     if (files.length === 0) {
@@ -1160,7 +1398,7 @@ if (myAssetsButton && myAssetsMenu) {
       a.className = "my-assets-item";
       a.href = "#";
       a.textContent = f.name;
-      a.dataset.fileId = f.id;
+      a.dataset.fileId = String(f.id);
       strategyMenu.appendChild(a);
     }
   }
@@ -1186,8 +1424,20 @@ if (myAssetsButton && myAssetsMenu) {
     strategyMenu.style.top  = `${Math.round(top)}px`;
   }
 
-  function openStrategyMenu() {
-    renderStrategyMenu();
+  async function openStrategyMenu() {
+    try {
+      await renderStrategyMenu();
+    } catch (e) {
+      console.error("Failed to render Strategy menu", e);
+      strategyMenu.innerHTML = "";
+      const err = document.createElement("div");
+      err.style.padding = "9px 10px";
+      err.style.color = "#ff97aa";
+      err.style.fontSize = "13px";
+      err.textContent = "Failed to load files";
+      strategyMenu.appendChild(err);
+    }
+
     strategyMenu.classList.add("visible");
     strategyButton.setAttribute("aria-expanded", "true");
     repositionStrategyMenuIfOpen();
@@ -1236,22 +1486,16 @@ if (myAssetsButton && myAssetsMenu) {
           return;
         }
 
-        const files = loadStrategyFiles();
-        const id = (crypto.randomUUID ? crypto.randomUUID() : `file_${Date.now()}_${Math.random().toString(16).slice(2)}`);
-
-        files.push({
-          id,
+        await insertStrategyFile({
           name: file.name,
           kind,
-          content,
-          uploadedAt: Date.now()
+          content
         });
 
-        saveStrategyFiles(files);
-        openStrategyMenu();
+        await openStrategyMenu();
       } catch (e) {
         console.error("Failed to upload file", e);
-        alert("Failed to upload file.");
+        alert("Failed to upload file: " + (e?.message || e));
       } finally {
         input.remove();
       }
@@ -1262,8 +1506,7 @@ if (myAssetsButton && myAssetsMenu) {
   }
 
   function openStoredFileById(fileId) {
-    const files = loadStrategyFiles();
-    const f = files.find(x => x.id === fileId);
+    const f = strategyFilesCache.find(x => String(x.id) === String(fileId));
     if (!f) return;
 
     let html = "";
@@ -1360,7 +1603,7 @@ ${f.content}
     return false;
   }, true);
 
-  strategyDeleteFileBtn.addEventListener("click", (e) => {
+  strategyDeleteFileBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -1369,12 +1612,14 @@ ${f.content}
       return;
     }
 
-    const files = loadStrategyFiles();
-    const next = files.filter(f => f.id !== pendingDeleteId);
-    saveStrategyFiles(next);
-
-    hideStrategyItemContextMenu();
-    openStrategyMenu();
+    try {
+      await deleteStrategyFile(pendingDeleteId);
+      hideStrategyItemContextMenu();
+      await openStrategyMenu();
+    } catch (e2) {
+      console.error("Failed to delete file", e2);
+      alert("Failed to delete file: " + (e2?.message || e2));
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -1403,10 +1648,12 @@ ${f.content}
     repositionStrategyMenuIfOpen();
   });
 
-  renderStrategyMenu();
+  renderStrategyMenu().catch((e) => {
+    console.error("Initial Strategy render failed", e);
+  });
 })();
 
-// ================== Hold/Sell (CoinGlass-like peak signals) ==================
+// ================== Hold/Sell ==================
 
 function computePeakSignals({ fg, puell, btc24h, eth24h }) {
   return [
@@ -1454,7 +1701,7 @@ function updateHoldSellPanel() {
   markerEl.style.left = `${sellPct}%`;
 }
 
-// ================== PUELL MULTIPLE ==================
+// ================== PUELL ==================
 
 function normalizePuellPayload(json) {
   const candidates = [
@@ -1622,12 +1869,10 @@ async function loadPuell() {
   }
 }
 
-// ================== LOAD TA DATA TO SUPABASE (quick-processor, JWT OFF) ==================
+// ================== LOAD TA DATA ==================
+
 const loadTaDataBtn = document.getElementById("loadTaDataBtn");
 const loadTaDataStatus = document.getElementById("loadTaDataStatus");
-
-const QUICK_PROCESSOR_URL =
-  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
 
 let loadStatusTimer = null;
 
@@ -1682,13 +1927,6 @@ if (loadTaDataBtn) {
 }
 
 // ================== TA DATA GRAPH ==================
-
-const TA_DATA_READONLY_URL =
-  "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
-
-// If your ta-data-readonly function requires auth, replace this with your real anon key.
-// If your function is public, you can leave this as-is.
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
 
 const taChartCanvas = document.getElementById("taDataChart");
 const taChartStatus = document.getElementById("taChartStatus");
@@ -1762,22 +2000,6 @@ function drawCircle(ctx, x, y, r, fill) {
   ctx.fill();
 }
 
-function hideTaChartTooltip() {
-  if (!taChartTooltip) return;
-  taChartTooltip.hidden = true;
-}
-
-function showTaChartTooltip(x, y, valueText, isPositive) {
-  if (!taChartTooltip) return;
-
-  taChartTooltip.textContent = valueText;
-  taChartTooltip.style.left = `${x}px`;
-  taChartTooltip.style.top = `${y}px`;
-  taChartTooltip.classList.remove("positive", "negative");
-  taChartTooltip.classList.add(isPositive ? "positive" : "negative");
-  taChartTooltip.hidden = false;
-}
-
 function drawTaDataChart(rows) {
   if (!taChartCanvas) return;
 
@@ -1785,11 +2007,6 @@ function drawTaDataChart(rows) {
   if (!ctx) return;
 
   taChartHoverPoints = [];
- function hideTaChartTooltip() {
-  if (!taChartTooltip) return;
-  taChartTooltip.hidden = true;
-  taChartTooltip.classList.remove("positive", "negative");
-}
 
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = taChartCanvas.clientWidth || 1200;
@@ -1852,27 +2069,10 @@ function drawTaDataChart(rows) {
   }
 
   function xToPx(i) {
-    if (points.length === 1) {
-      return plotX + plotW * 0.02;
-    }
-
-    if (points.length === 2) {
-      const start = plotX + plotW * 0.00;
-      const gap = plotW * 0.03;
-      return start + i * gap;
-    }
-
-    if (points.length === 3) {
-      const start = plotX + plotW * 0.00;
-      const gap = plotW * 0.04;
-      return start + i * gap;
-    }
-
-    if (points.length === 4) {
-      const start = plotX + plotW * 0.00;
-      const gap = plotW * 0.06;
-      return start + i * gap;
-    }
+    if (points.length === 1) return plotX + plotW * 0.02;
+    if (points.length === 2) return plotX + plotW * 0.00 + i * (plotW * 0.03);
+    if (points.length === 3) return plotX + plotW * 0.00 + i * (plotW * 0.04);
+    if (points.length === 4) return plotX + plotW * 0.00 + i * (plotW * 0.06);
 
     const innerLeft = plotX + plotW * 0.05;
     const innerRight = plotX + plotW * 0.95;
@@ -1954,13 +2154,13 @@ function drawTaDataChart(rows) {
     const xx = xToPx(i);
     const yy = yToPx(p.y);
 
-   taChartHoverPoints.push({
-  x: xx,
-  y: yy,
-  radius: 14,
-  valueText: String(p.rawValue),
-  isPositive: Number(p.y) >= 0
-});
+    taChartHoverPoints.push({
+      x: xx,
+      y: yy,
+      radius: 14,
+      valueText: String(p.rawValue),
+      isPositive: Number(p.y) >= 0
+    });
 
     drawCircle(ctx, xx, yy, 4, p.y >= 0 ? green : red);
   }
@@ -1972,18 +2172,11 @@ async function loadTaDataGraph() {
   try {
     setTaChartStatus("Loading…");
 
-    const headers = {
-      "Content-Type": "application/json"
-    };
-
-    if (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE") {
-      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
-      headers["apikey"] = SUPABASE_ANON_KEY;
-    }
-
     const res = await fetch(TA_DATA_READONLY_URL, {
       method: "GET",
-      headers,
+      headers: {
+        "Content-Type": "application/json"
+      },
       cache: "no-store"
     });
 
@@ -2045,12 +2238,7 @@ if (taChartCanvas) {
       return;
     }
 
-    showTaChartTooltip(
-  hit.x,
-  hit.y,
-  `${hit.valueText}`,
-  hit.isPositive
-);
+    showTaChartTooltip(hit.x, hit.y, `${hit.valueText}`, hit.isPositive);
   });
 }
 

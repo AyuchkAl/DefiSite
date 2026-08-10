@@ -12,11 +12,8 @@
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <!-- LEFT SIDE: all panels -->
       <div class="left-group">
-        <!-- Aave + Morpho HF stacked -->
         <div class="hf-stack">
-          <!-- Aave Health Factor -->
           <div id="hfBlock" class="hf-block">
             <div class="hf-main-row">
               <div class="hf-label">HF Aave</div>
@@ -29,7 +26,6 @@
             </div>
           </div>
 
-          <!-- Morpho Health Factor -->
           <div id="morphoHfBlock" class="hf-block morpho-hf-block">
             <div class="hf-main-row morpho-hf-main-row">
               <div class="hf-label">HF Morpho</div>
@@ -41,9 +37,7 @@
           </div>
         </div>
 
-        <!-- Prices + Indicators -->
         <div class="prices-row">
-          <!-- Prices left -->
           <div class="prices-left">
             <div class="prices-pair">
               <div class="price-pill">
@@ -86,10 +80,8 @@
             </div>
           </div>
 
-          <!-- Indicators right -->
           <div class="prices-right">
             <div class="right-indicators">
-              <!-- Fear & Greed -->
               <div id="fgBlock" class="fg-block" aria-label="Fear and Greed Index">
                 <div class="fg-header">
                   <div class="fg-title">Fear &amp; Greed</div>
@@ -98,16 +90,11 @@
                 <div class="fg-gauge">
                   <svg class="fg-svg" viewBox="0 0 220 130" role="img" aria-label="Fear and Greed gauge">
                     <path class="fg-track" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"></path>
-                    <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                      stroke-dasharray="20 80" stroke-dashoffset="0"></path>
-                    <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                      stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
-                    <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                      stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
-                    <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                      stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
-                    <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100"
-                      stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
+                    <path class="fg-seg fg-seg-1" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100" stroke-dasharray="20 80" stroke-dashoffset="0"></path>
+                    <path class="fg-seg fg-seg-2" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100" stroke-dasharray="20 80" stroke-dashoffset="-20"></path>
+                    <path class="fg-seg fg-seg-3" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100" stroke-dasharray="20 80" stroke-dashoffset="-40"></path>
+                    <path class="fg-seg fg-seg-4" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100" stroke-dasharray="20 80" stroke-dashoffset="-60"></path>
+                    <path class="fg-seg fg-seg-5" d="M 30 110 A 80 80 0 0 1 190 110" pathLength="100" stroke-dasharray="20 80" stroke-dashoffset="-80"></path>
 
                     <g class="fg-needle" id="fgNeedle" transform="rotate(-90 110 110)">
                       <line x1="110" y1="110" x2="110" y2="44" class="fg-needle-line"></line>
@@ -122,7 +109,6 @@
                 </div>
               </div>
 
-              <!-- Puell -->
               <div id="puellPanel" class="cmc-card" aria-label="Puell Multiple Status">
                 <div class="cmc-card-title">Puell Multiple</div>
 
@@ -142,7 +128,6 @@
                 </div>
               </div>
 
-              <!-- Hold/Sell -->
               <div id="hsPanel" class="hs-panel hs-panel--compact" aria-label="Hold vs Sell composite signal">
                 <div class="hs-top">
                   <span class="hs-left">Hold <strong id="hsHoldPct">–</strong></span>
@@ -155,7 +140,6 @@
                 </div>
               </div>
 
-              <!-- Menus (My Assets / DeFi / Strategy) -->
               <div class="menus-group">
                 <div class="my-assets-container">
                   <button id="myAssetsButton" class="my-assets-button" aria-haspopup="true" aria-expanded="false">
@@ -205,7 +189,6 @@
         </div>
       </div>
 
-      <!-- RIGHT SIDE: wallet -->
       <div class="wallet-container">
         <button id="connectButton">
           <span class="wallet-dot"></span>
@@ -266,6 +249,25 @@
       </div>
     </section>
   </main>
+
+  <div id="siteDialogBackdrop" class="site-dialog-backdrop hidden" aria-hidden="true">
+    <div class="site-dialog" role="dialog" aria-modal="true" aria-labelledby="siteDialogTitle">
+      <div id="siteDialogTitle" class="site-dialog-title">Add site</div>
+
+      <label class="site-dialog-label" for="siteUrlInput">Enter site URL</label>
+      <input id="siteUrlInput" class="site-dialog-input" type="url" placeholder="https://example.com" />
+
+      <label class="site-dialog-label" for="siteLabelInput">Enter label</label>
+      <input id="siteLabelInput" class="site-dialog-input" type="text" placeholder="Site label" />
+
+      <div class="site-dialog-actions">
+        <button id="siteDialogCancelBtn" class="site-dialog-btn secondary" type="button">Cancel</button>
+        <button id="siteDialogSaveBtn" class="site-dialog-btn primary" type="button">Save</button>
+      </div>
+
+      <div id="siteDialogError" class="site-dialog-error"></div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
