@@ -2194,7 +2194,14 @@ async function loadTaDataGraph() {
     }
 
     const rows = Array.isArray(json?.data) ? json.data : [];
-    const filteredRows = rows.filter((row) => Number(row?.id) >= 13);
+    const filteredRows = rows
+      .filter((row) => Number(row?.id) >= 13)
+      .sort((a, b) => {
+        const aTime = new Date(a?.created_at_minsk || 0).getTime();
+        const bTime = new Date(b?.created_at_minsk || 0).getTime();
+        if (aTime !== bTime) return aTime - bTime;
+        return Number(a?.id) - Number(b?.id);
+      });
 
     drawTaDataChart(filteredRows);
     setTaChartStatus("");
