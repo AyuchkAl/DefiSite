@@ -2194,6 +2194,11 @@ async function loadTaDataGraph() {
     }
 
     const rows = Array.isArray(json?.data) ? json.data : [];
+
+    console.log("TA API rows received:", rows.length);
+    console.log("TA API first row:", rows[0]);
+    console.log("TA API last row:", rows[rows.length - 1]);
+
     const filteredRows = rows
       .filter((row) => Number(row?.id) >= 13)
       .filter((row) => row?.created_at_minsk)
@@ -2205,13 +2210,11 @@ async function loadTaDataGraph() {
       });
 
     const latestRow = filteredRows.length ? filteredRows[filteredRows.length - 1] : null;
+
+    console.log("TA filtered rows:", filteredRows.length);
+    console.log("TA latest row:", latestRow);
+
     if (latestRow) {
-      console.log(
-        "Latest TA row:",
-        latestRow.id,
-        latestRow.created_at_minsk,
-        latestRow.value
-      );
       setTaChartStatus(`Latest date: ${formatTaDateLabel(latestRow.created_at_minsk)}`);
     } else {
       setTaChartStatus("");
@@ -2224,6 +2227,9 @@ async function loadTaDataGraph() {
     drawTaDataChart([]);
   }
 }
+
+
+
 
 if (reloadTaChartBtn) {
   reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
