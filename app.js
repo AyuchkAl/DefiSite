@@ -2108,8 +2108,16 @@ function drawTaDataChart(rows) {
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
 
-  const labelStep = Math.max(1, Math.ceil(points.length / 8));
+    const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  const labelIndexes = new Set();
+
   for (let i = 0; i < points.length; i += labelStep) {
+    labelIndexes.add(i);
+  }
+
+  labelIndexes.add(points.length - 1);
+
+  for (const i of Array.from(labelIndexes).sort((a, b) => a - b)) {
     const xx = xToPx(i);
     const lbl = points[i].xLabel;
 
@@ -2127,7 +2135,7 @@ function drawTaDataChart(rows) {
     ctx.fillText(lbl, 0, 0);
     ctx.restore();
   }
-
+  
   for (let i = 1; i < points.length; i++) {
     const p1 = points[i - 1];
     const p2 = points[i];
