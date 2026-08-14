@@ -852,6 +852,8 @@ if (myAssetsButton && myAssetsMenu) {
   ) return;
 
   let pendingDeleteId = null;
+  let pendingDeleteFolderId = null;
+  let dragSiteId = null;
 
   function isValidHttpUrl(s) {
     try {
@@ -927,7 +929,7 @@ if (myAssetsButton && myAssetsMenu) {
     }
   }
 
-  async function fetchDefiLinks() {
+  async function fetchDefiData() {
     const res = await fetch(WEB_SITES_API_URL, {
       method: "GET",
       cache: "no-store"
@@ -939,19 +941,72 @@ if (myAssetsButton && myAssetsMenu) {
       throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
     }
 
-    if (Array.isArray(json)) return json;
-    if (Array.isArray(json?.data)) return json.data;
-    if (Array.isArray(json?.rows)) return json.rows;
-    return [];
+    if (json?.data && typeof json.data === "object") {
+      return {
+        folders: Array.isArray(json.data.folders) ? json.data.folders : [],
+        sites: Array.isArray(json.data.sites) ? json.data.sites : [],
+      };
+    }
+
+    return {
+      folders: Array.isArray(json?.folders) ? json.folders : [],
+      sites: Array.isArray(json?.sites) ? json.sites : [],
+    };
   }
 
-  async function insertDefiLink(url, label) {
+  async function insertDefiLink(url, label, folderId = null) {
     const res = await fetch(WEB_SITES_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ url, label })
+      body: JSON.stringify({
+        url,
+        label,
+        folder_id: folderId
+      })
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function insertFolder(name) {
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "folder",
+        name
+      })
+    });
+
+    const json = await parseApiJson(res);
+
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+    }
+
+    return json;
+  }
+
+  async function moveSite(siteId, folderId) {
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        id: siteId,
+        folder_id: folderId
+      })
     });
 
     const json = await parseApiJson(res);
@@ -981,43 +1036,25 @@ if (myAssetsButton && myAssetsMenu) {
     return json;
   }
 
-  async function renderDefiMenu() {
-    defiMenu.innerHTML = "";
+  async function deleteFolder(folderId) {
+    const res = await fetch(WEB_SITES_API_URL, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "folder",
+        id: folderId
+      })
+    });
 
-    try {
-      const links = await fetchDefiLinks();
+    const json = await parseApiJson(res);
 
-      if (links.length === 0) {
-        const empty = document.createElement("div");
-        empty.style.padding = "9px 10px";
-        empty.style.color = "rgba(245,245,245,0.70)";
-        empty.style.fontSize = "13px";
-        empty.textContent = "No sites yet";
-        defiMenu.appendChild(empty);
-        return;
-      }
-
-      for (const link of links) {
-        const a = document.createElement("a");
-        a.className = "my-assets-item";
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.href = String(link.url || "#");
-        a.textContent = String(link.label || makeEdgeLikeLabel(link.url));
-        a.dataset.id = String(link.id);
-        a.dataset.url = String(link.url || "");
-        defiMenu.appendChild(a);
-      }
-    } catch (e) {
-      console.error("Failed to render DeFi menu", e);
-
-      const err = document.createElement("div");
-      err.style.padding = "9px 10px";
-      err.style.color = "#ff97aa";
-      err.style.fontSize = "13px";
-      err.textContent = "Failed to load sites";
-      defiMenu.appendChild(err);
+    if (!res.ok) {
+      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
     }
+
+    return json;
   }
 
   function closeDefiMenu() {
@@ -1039,18 +1076,6 @@ if (myAssetsButton && myAssetsMenu) {
 
     defiMenu.style.left = `${Math.round(left)}px`;
     defiMenu.style.top  = `${Math.round(top)}px`;
-  }
-
-  async function openDefiMenu() {
-    await renderDefiMenu();
-    defiMenu.classList.add("visible");
-    defiButton.setAttribute("aria-expanded", "true");
-    repositionDefiMenuIfOpen();
-  }
-
-  function toggleDefiMenu() {
-    if (defiMenu.classList.contains("visible")) closeDefiMenu();
-    else openDefiMenu();
   }
 
   function hideAddContextMenu() {
@@ -1090,18 +1115,220 @@ if (myAssetsButton && myAssetsMenu) {
     defiItemContextMenu.style.left = "-9999px";
     defiItemContextMenu.style.top = "-9999px";
     pendingDeleteId = null;
+    pendingDeleteFolderId = null;
   }
 
   function showDeleteContextMenu(x, y, siteId) {
     pendingDeleteId = siteId;
+    pendingDeleteFolderId = null;
     defiItemContextMenu.style.left = `${x}px`;
     defiItemContextMenu.style.top = `${y}px`;
     defiItemContextMenu.classList.add("visible");
   }
 
+  function showFolderDeleteContextMenu(x, y, folderId) {
+    pendingDeleteFolderId = folderId;
+    pendingDeleteId = null;
+    defiItemContextMenu.style.left = `${x}px`;
+    defiItemContextMenu.style.top = `${y}px`;
+    defiItemContextMenu.classList.add("visible");
+    const btn = defiDeleteSiteBtn;
+    if (btn) btn.textContent = "Delete folder";
+  }
+
   function hideAllDefiContextMenus() {
     hideAddContextMenu();
     hideDeleteContextMenu();
+    if (defiDeleteSiteBtn) defiDeleteSiteBtn.textContent = "Delete site";
+  }
+
+  function createSiteElement(site) {
+    const a = document.createElement("a");
+    a.className = "my-assets-item defi-site-item";
+    a.href = String(site.url || "#");
+    a.textContent = String(site.label || makeEdgeLikeLabel(site.url));
+    a.dataset.id = String(site.id);
+    a.dataset.folderId = site.folder_id == null ? "" : String(site.folder_id);
+    a.draggable = true;
+
+    a.addEventListener("dragstart", () => {
+      dragSiteId = a.dataset.id;
+      a.classList.add("dragging");
+    });
+
+    a.addEventListener("dragend", () => {
+      dragSiteId = null;
+      a.classList.remove("dragging");
+      document.querySelectorAll(".defi-folder.drop-target").forEach(el => el.classList.remove("drop-target"));
+    });
+
+    return a;
+  }
+
+  function createFolderSection(folder, sitesByFolder) {
+    const section = document.createElement("div");
+    section.className = "defi-folder";
+    section.dataset.folderId = String(folder.id);
+
+    const header = document.createElement("div");
+    header.className = "defi-folder-header";
+    header.textContent = folder.name || "Folder";
+
+    header.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideAddContextMenu();
+      showFolderDeleteContextMenu(e.clientX, e.clientY, Number(folder.id));
+    });
+
+    section.addEventListener("dragover", (e) => {
+      if (!dragSiteId) return;
+      e.preventDefault();
+      section.classList.add("drop-target");
+    });
+
+    section.addEventListener("dragleave", () => {
+      section.classList.remove("drop-target");
+    });
+
+    section.addEventListener("drop", async (e) => {
+      if (!dragSiteId) return;
+      e.preventDefault();
+      section.classList.remove("drop-target");
+
+      try {
+        await moveSite(Number(dragSiteId), Number(folder.id));
+        await openDefiMenu();
+      } catch (err) {
+        console.error("Failed to move site", err);
+        alert("Failed to move site: " + (err?.message || err));
+      }
+    });
+
+    const body = document.createElement("div");
+    body.className = "defi-folder-body";
+
+    const folderSites = sitesByFolder.get(String(folder.id)) || [];
+    if (folderSites.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "defi-folder-empty";
+      empty.textContent = "Drop sites here";
+      body.appendChild(empty);
+    } else {
+      for (const site of folderSites) {
+        body.appendChild(createSiteElement(site));
+      }
+    }
+
+    section.appendChild(header);
+    section.appendChild(body);
+    return section;
+  }
+
+  async function renderDefiMenu() {
+    defiMenu.innerHTML = "";
+
+    try {
+      const data = await fetchDefiData();
+      const folders = Array.isArray(data.folders) ? data.folders : [];
+      const sites = Array.isArray(data.sites) ? data.sites : [];
+
+      const sitesByFolder = new Map();
+      const unassignedSites = [];
+
+      for (const site of sites) {
+        const fid = site.folder_id == null ? null : String(site.folder_id);
+        if (fid == null) {
+          unassignedSites.push(site);
+          continue;
+        }
+
+        if (!sitesByFolder.has(fid)) sitesByFolder.set(fid, []);
+        sitesByFolder.get(fid).push(site);
+      }
+
+      folders.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+      if (folders.length === 0 && unassignedSites.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.padding = "9px 10px";
+        empty.style.color = "rgba(245,245,245,0.70)";
+        empty.style.fontSize = "13px";
+        empty.textContent = "No sites yet";
+        defiMenu.appendChild(empty);
+        return;
+      }
+
+      for (const folder of folders) {
+        defiMenu.appendChild(createFolderSection(folder, sitesByFolder));
+      }
+
+      if (unassignedSites.length > 0) {
+        const section = document.createElement("div");
+        section.className = "defi-folder";
+        section.dataset.folderId = "";
+
+        const header = document.createElement("div");
+        header.className = "defi-folder-header";
+        header.textContent = "Unassigned";
+
+        const body = document.createElement("div");
+        body.className = "defi-folder-body";
+
+        for (const site of unassignedSites) {
+          body.appendChild(createSiteElement(site));
+        }
+
+        section.addEventListener("dragover", (e) => {
+          if (!dragSiteId) return;
+          e.preventDefault();
+          section.classList.add("drop-target");
+        });
+
+        section.addEventListener("dragleave", () => {
+          section.classList.remove("drop-target");
+        });
+
+        section.addEventListener("drop", async (e) => {
+          if (!dragSiteId) return;
+          e.preventDefault();
+          section.classList.remove("drop-target");
+
+          try {
+            await moveSite(Number(dragSiteId), null);
+            await openDefiMenu();
+          } catch (err) {
+            console.error("Failed to unassign site", err);
+            alert("Failed to move site: " + (err?.message || err));
+          }
+        });
+
+        section.appendChild(header);
+        section.appendChild(body);
+        defiMenu.appendChild(section);
+      }
+    } catch (e) {
+      console.error("Failed to render DeFi menu", e);
+
+      const err = document.createElement("div");
+      err.style.padding = "9px 10px";
+      err.style.color = "#ff97aa";
+      err.style.fontSize = "13px";
+      err.textContent = "Failed to load sites";
+      defiMenu.appendChild(err);
+    }
+  }
+
+  async function openDefiMenu() {
+    await renderDefiMenu();
+    defiMenu.classList.add("visible");
+    defiButton.setAttribute("aria-expanded", "true");
+    repositionDefiMenuIfOpen();
+  }
+
+  function toggleDefiMenu() {
+    if (defiMenu.classList.contains("visible")) closeDefiMenu();
+    else openDefiMenu();
   }
 
   defiButton.addEventListener("click", (e) => {
@@ -1113,13 +1340,6 @@ if (myAssetsButton && myAssetsMenu) {
 
     toggleDefiMenu();
   });
-
-  function closeDefiOnLinkClick(e) {
-    const a = e.target && e.target.closest ? e.target.closest("a") : null;
-    if (!a) return;
-    setTimeout(closeDefiMenu, 0);
-  }
-  defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
 
   function onDefiContextMenu(e) {
     const item = e.target?.closest?.("#defiMenu a[data-id]");
@@ -1201,7 +1421,7 @@ if (myAssetsButton && myAssetsMenu) {
       siteDialogCancelBtn.disabled = true;
       siteDialogError.textContent = "";
 
-      await insertDefiLink(trimmedUrl, label);
+      await insertDefiLink(trimmedUrl, label, null);
 
       closeSiteDialog();
       await openDefiMenu();
@@ -1217,6 +1437,18 @@ if (myAssetsButton && myAssetsMenu) {
   defiDeleteSiteBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (pendingDeleteFolderId != null) {
+      try {
+        await deleteFolder(pendingDeleteFolderId);
+        hideDeleteContextMenu();
+        await openDefiMenu();
+      } catch (err) {
+        console.error("Failed to delete folder", err);
+        alert("Failed to delete folder: " + (err?.message || err));
+      }
+      return;
+    }
 
     if (!pendingDeleteId) {
       hideDeleteContextMenu();
@@ -2108,7 +2340,7 @@ function drawTaDataChart(rows) {
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
 
-    const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  const labelStep = Math.max(1, Math.ceil(points.length / 8));
   const labelIndexes = new Set();
 
   for (let i = 0; i < points.length; i += labelStep) {
@@ -2135,7 +2367,7 @@ function drawTaDataChart(rows) {
     ctx.fillText(lbl, 0, 0);
     ctx.restore();
   }
-  
+
   for (let i = 1; i < points.length; i++) {
     const p1 = points[i - 1];
     const p2 = points[i];
@@ -2235,9 +2467,6 @@ async function loadTaDataGraph() {
     drawTaDataChart([]);
   }
 }
-
-
-
 
 if (reloadTaChartBtn) {
   reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
