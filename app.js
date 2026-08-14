@@ -1244,30 +1244,6 @@ if (myAssetsButton && myAssetsMenu) {
     const header = createFolderRow(folder, false);
     section.appendChild(header);
 
-    section.addEventListener("dragover", (e) => {
-      if (!dragSiteId) return;
-      e.preventDefault();
-      section.classList.add("drop-target");
-    });
-
-    section.addEventListener("dragleave", () => {
-      section.classList.remove("drop-target");
-    });
-
-    section.addEventListener("drop", async (e) => {
-      if (!dragSiteId) return;
-      e.preventDefault();
-      section.classList.remove("drop-target");
-
-      try {
-        await moveSite(Number(dragSiteId), Number(folder.id));
-        await openDefiMenu();
-      } catch (err) {
-        console.error("Failed to move site", err);
-        alert("Failed to move site: " + (err?.message || err));
-      }
-    });
-
     return section;
   }
 
@@ -1285,14 +1261,13 @@ if (myAssetsButton && myAssetsMenu) {
 
       const unassignedFolder = { id: null, name: "Unassigned" };
 
-      // LMB on DeFi: folders only
       if (defiViewMode === "folders") {
-        if (folders.length === 0 && getSitesForFolder(null).length === 0) {
+        if (folders.length === 0) {
           const empty = document.createElement("div");
           empty.style.padding = "9px 10px";
           empty.style.color = "rgba(245,245,245,0.70)";
           empty.style.fontSize = "13px";
-          empty.textContent = "No sites yet";
+          empty.textContent = "No folders yet";
           defiMenu.appendChild(empty);
           return;
         }
@@ -1309,7 +1284,6 @@ if (myAssetsButton && myAssetsMenu) {
         return;
       }
 
-      // LMB on folder: show sites in that folder
       const folder =
         currentFolderId == null
           ? unassignedFolder
@@ -1390,7 +1364,6 @@ if (myAssetsButton && myAssetsMenu) {
     if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
     if (walletMenu) walletMenu.classList.remove("visible");
 
-    // LMB on DeFi -> folders
     showFoldersView();
     toggleDefiMenu();
   });
