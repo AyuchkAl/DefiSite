@@ -859,6 +859,7 @@ if (myAssetsButton && myAssetsMenu) {
   let pendingDeleteFolderId = null;
   let dragSiteId = null;
   let dialogMode = "site"; // "site" | "folder"
+
   let defiFoldersCache = [];
   let defiSitesCache = [];
   let defiViewMode = "folders"; // "folders" | "sites"
@@ -913,7 +914,6 @@ if (myAssetsButton && myAssetsMenu) {
   function openSiteDialog(mode = "site") {
     dialogMode = mode;
     siteDialogError.textContent = "";
-
     siteUrlInput.value = "";
     siteLabelInput.value = "";
 
@@ -934,10 +934,7 @@ if (myAssetsButton && myAssetsMenu) {
 
     siteDialogBackdrop.classList.remove("hidden");
     siteDialogBackdrop.setAttribute("aria-hidden", "false");
-
-    setTimeout(() => {
-      siteLabelInput.focus();
-    }, 0);
+    setTimeout(() => siteLabelInput.focus(), 0);
   }
 
   function closeSiteDialog() {
@@ -1236,17 +1233,6 @@ if (myAssetsButton && myAssetsMenu) {
     return row;
   }
 
-  function createFolderSection(folder) {
-    const section = document.createElement("div");
-    section.className = "defi-folder";
-    section.dataset.folderId = String(folder.id);
-
-    const header = createFolderRow(folder, false);
-    section.appendChild(header);
-
-    return section;
-  }
-
   async function renderDefiMenu() {
     defiMenu.innerHTML = "";
 
@@ -1261,6 +1247,7 @@ if (myAssetsButton && myAssetsMenu) {
 
       const unassignedFolder = { id: null, name: "Unassigned" };
 
+      // LEFT CLICK DeFi => ONLY FOLDERS
       if (defiViewMode === "folders") {
         if (folders.length === 0) {
           const empty = document.createElement("div");
@@ -1273,17 +1260,52 @@ if (myAssetsButton && myAssetsMenu) {
         }
 
         for (const folder of folders) {
-          defiMenu.appendChild(createFolderSection(folder));
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "my-assets-item defi-folder-row";
+          row.textContent = folder.name || "Folder";
+          row.dataset.folderId = String(folder.id);
+
+          row.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showSitesView(folder.id);
+          });
+
+          row.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            hideAddContextMenu();
+            showFolderDeleteContextMenu(e.clientX, e.clientY, Number(folder.id));
+          });
+
+          defiMenu.appendChild(row);
         }
 
-        const unassignedRow = document.createElement("div");
-        unassignedRow.className = "defi-folder";
+        const unassignedRow = document.createElement("button");
+        unassignedRow.type = "button";
+        unassignedRow.className = "my-assets-item defi-folder-row";
+        unassignedRow.textContent = "Unassigned";
         unassignedRow.dataset.folderId = "";
-        unassignedRow.appendChild(createFolderRow(unassignedFolder, false));
+
+        unassignedRow.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showSitesView(null);
+        });
+
+        unassignedRow.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          hideAddContextMenu();
+          showFolderDeleteContextMenu(e.clientX, e.clientY, null);
+        });
+
         defiMenu.appendChild(unassignedRow);
         return;
       }
 
+      // LEFT CLICK folder => SITES IN THAT FOLDER
       const folder =
         currentFolderId == null
           ? unassignedFolder
@@ -1294,9 +1316,15 @@ if (myAssetsButton && myAssetsMenu) {
         return;
       }
 
-      const backRow = document.createElement("div");
-      backRow.className = "defi-folder";
-      backRow.appendChild(createFolderRow(unassignedFolder, true));
+      const backRow = document.createElement("button");
+      backRow.type = "button";
+      backRow.className = "my-assets-item defi-folder-row";
+      backRow.textContent = "← Back";
+      backRow.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showFoldersView();
+      });
       defiMenu.appendChild(backRow);
 
       const headerRow = document.createElement("div");
