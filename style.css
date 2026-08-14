@@ -645,6 +645,11 @@ body {
   color: #ffffff;
 }
 
+/* Style Add Folder the same as Add Site */
+#defiContextMenu .defi-context-btn + .defi-context-btn {
+  margin-top: 4px;
+}
+
 .defi-container,
 .strategy-container{
   margin-left: 0 !important;
@@ -1205,4 +1210,47 @@ body {
   margin-top: 10px;
   color: #ff97aa;
   font-size: 12px;
+}
+
+/* ================== DeFi folders ================== */
+.defi-folder{
+  margin: 6px 0;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  background: rgba(17,21,42,0.75);
+  overflow: hidden;
+}
+
+.defi-folder-header{
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.defi-folder-body{
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.defi-folder-empty{
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #9aa4d8;
+  border: 1px dashed rgba(255,255,255,0.10);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.defi-site-item.dragging{
+  opacity: 0.5;
+}
+
+.defi-folder.drop-target{
+  outline: 2px solid rgba(46,186,198,0.8);
+  box-shadow: 0 0 0 2px rgba(46,186,198,0.15);
 }
