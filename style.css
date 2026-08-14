@@ -612,6 +612,71 @@ body {
   color: #ffffff;
 }
 
+/* DeFi menu styling to match screenshot */
+#defiMenu{
+  min-width: 220px;
+  padding: 10px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(17,21,42,0.98), rgba(12,16,35,0.96));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+}
+
+.defi-folder-row{
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.defi-folder-row:hover{
+  background: rgba(255,255,255,0.06);
+  color: #ffffff;
+}
+
+.defi-folder-row::before{
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: rgba(46,186,198,0.95);
+  vertical-align: middle;
+  box-shadow: 0 0 10px rgba(46,186,198,0.35);
+}
+
+.defi-site-item{
+  margin-left: 12px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+}
+
+.defi-site-item:hover{
+  background: rgba(255,255,255,0.06);
+}
+
+.defi-folder{
+  margin-bottom: 8px;
+}
+
+.defi-folder-body{
+  padding: 8px 0 2px;
+}
+
+.defi-folder-empty{
+  padding: 8px 12px;
+  color: #9aa4d8;
+  font-size: 12px;
+}
+
 /* DeFi / Strategy containers */
 .defi-container,
 .strategy-container{
@@ -643,11 +708,6 @@ body {
 .defi-context-btn:hover{
   background: rgba(255,255,255,0.06);
   color: #ffffff;
-}
-
-/* Style Add Folder the same as Add Site */
-#defiContextMenu .defi-context-btn + .defi-context-btn {
-  margin-top: 4px;
 }
 
 .defi-container,
@@ -1210,47 +1270,4 @@ body {
   margin-top: 10px;
   color: #ff97aa;
   font-size: 12px;
-}
-
-/* ================== DeFi folders ================== */
-.defi-folder{
-  margin: 6px 0;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
-  background: rgba(17,21,42,0.75);
-  overflow: hidden;
-}
-
-.defi-folder-header{
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #ffffff;
-  background: rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.defi-folder-body{
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.defi-folder-empty{
-  padding: 8px 10px;
-  font-size: 12px;
-  color: #9aa4d8;
-  border: 1px dashed rgba(255,255,255,0.10);
-  border-radius: 10px;
-  text-align: center;
-}
-
-.defi-site-item.dragging{
-  opacity: 0.5;
-}
-
-.defi-folder.drop-target{
-  outline: 2px solid rgba(46,186,198,0.8);
-  box-shadow: 0 0 0 2px rgba(46,186,198,0.15);
 }
