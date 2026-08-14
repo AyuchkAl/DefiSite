@@ -612,9 +612,9 @@ body {
   color: #ffffff;
 }
 
-/* DeFi menu styling to match screenshot */
+/* DeFi menu styling */
 #defiMenu{
-  min-width: 220px;
+  min-width: 230px;
   padding: 10px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(17,21,42,0.98), rgba(12,16,35,0.96));
@@ -624,32 +624,36 @@ body {
 
 .defi-folder-row{
   width: 100%;
-  border: none;
-  background: transparent;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, rgba(20,24,46,0.95), rgba(14,18,36,0.95));
   text-align: left;
-  color: #ffffff;
+  color: rgba(245,245,245,0.95);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   padding: 10px 12px;
   border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
 }
 
 .defi-folder-row:hover{
-  background: rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(24,29,56,0.98), rgba(17,21,42,0.98));
+  border-color: rgba(46,186,198,0.25);
   color: #ffffff;
 }
 
 .defi-folder-row::before{
   content: "";
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   margin-right: 8px;
   border-radius: 50%;
-  background: rgba(46,186,198,0.95);
+  background: linear-gradient(180deg, #2ebac6, #b6509e);
   vertical-align: middle;
-  box-shadow: 0 0 10px rgba(46,186,198,0.35);
+  box-shadow: 0 0 10px rgba(46,186,198,0.30);
 }
 
 .defi-site-item{
