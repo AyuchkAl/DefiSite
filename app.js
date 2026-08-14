@@ -859,6 +859,10 @@ if (myAssetsButton && myAssetsMenu) {
   let pendingDeleteFolderId = null;
   let dragSiteId = null;
   let dialogMode = "site"; // "site" | "folder"
+  let defiFoldersCache = [];
+  let defiSitesCache = [];
+  let defiViewMode = "folders"; // "folders" | "sites"
+  let currentFolderId = null;
 
   function isValidHttpUrl(s) {
     try {
@@ -1165,6 +1169,23 @@ if (myAssetsButton && myAssetsMenu) {
     hideDeleteContextMenu();
   }
 
+  function getSitesForFolder(folderId) {
+    if (folderId == null) return defiSitesCache.filter((s) => s.folder_id == null);
+    return defiSitesCache.filter((s) => String(s.folder_id) === String(folderId));
+  }
+
+  function showFoldersView() {
+    defiViewMode = "folders";
+    currentFolderId = null;
+    renderDefiMenu();
+  }
+
+  function showSitesView(folderId) {
+    defiViewMode = "sites";
+    currentFolderId = folderId;
+    renderDefiMenu();
+  }
+
   function createSiteElement(site) {
     const a = document.createElement("a");
     a.className = "my-assets-item defi-site-item";
@@ -1185,24 +1206,43 @@ if (myAssetsButton && myAssetsMenu) {
       document.querySelectorAll(".defi-folder.drop-target").forEach(el => el.classList.remove("drop-target"));
     });
 
+    a.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
     return a;
   }
 
-  function createFolderSection(folder, sitesByFolder) {
+  function createFolderRow(folder, isBack = false) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "my-assets-item defi-folder-row";
+    row.textContent = isBack ? "← Back" : (folder.name || "Folder");
+    row.dataset.folderId = folder.id == null ? "" : String(folder.id);
+    row.dataset.isBack = isBack ? "1" : "0";
+
+    row.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (isBack) {
+        showFoldersView();
+        return;
+      }
+
+      showSitesView(folder.id);
+    });
+
+    return row;
+  }
+
+  function createFolderSection(folder) {
     const section = document.createElement("div");
     section.className = "defi-folder";
     section.dataset.folderId = String(folder.id);
 
-    const header = document.createElement("div");
-    header.className = "defi-folder-header";
-    header.textContent = folder.name || "Folder";
-
-    header.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      hideAddContextMenu();
-      showFolderDeleteContextMenu(e.clientX, e.clientY, Number(folder.id));
-    });
+    const header = createFolderRow(folder, false);
+    section.appendChild(header);
 
     section.addEventListener("dragover", (e) => {
       if (!dragSiteId) return;
@@ -1228,23 +1268,6 @@ if (myAssetsButton && myAssetsMenu) {
       }
     });
 
-    const body = document.createElement("div");
-    body.className = "defi-folder-body";
-
-    const folderSites = sitesByFolder.get(String(folder.id)) || [];
-    if (folderSites.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "defi-folder-empty";
-      empty.textContent = "Drop sites here";
-      body.appendChild(empty);
-    } else {
-      for (const site of folderSites) {
-        body.appendChild(createSiteElement(site));
-      }
-    }
-
-    section.appendChild(header);
-    section.appendChild(body);
     return section;
   }
 
@@ -1253,80 +1276,86 @@ if (myAssetsButton && myAssetsMenu) {
 
     try {
       const data = await fetchDefiData();
-      const folders = Array.isArray(data.folders) ? data.folders : [];
-      const sites = Array.isArray(data.sites) ? data.sites : [];
+      defiFoldersCache = Array.isArray(data.folders) ? data.folders : [];
+      defiSitesCache = Array.isArray(data.sites) ? data.sites : [];
 
-      const sitesByFolder = new Map();
-      const unassignedSites = [];
+      const folders = [...defiFoldersCache].sort((a, b) =>
+        String(a.name || "").localeCompare(String(b.name || ""))
+      );
 
-      for (const site of sites) {
-        const fid = site.folder_id == null ? null : String(site.folder_id);
-        if (fid == null) {
-          unassignedSites.push(site);
-          continue;
+      const unassignedFolder = { id: null, name: "Unassigned" };
+
+      // LMB on DeFi: folders only
+      if (defiViewMode === "folders") {
+        if (folders.length === 0 && getSitesForFolder(null).length === 0) {
+          const empty = document.createElement("div");
+          empty.style.padding = "9px 10px";
+          empty.style.color = "rgba(245,245,245,0.70)";
+          empty.style.fontSize = "13px";
+          empty.textContent = "No sites yet";
+          defiMenu.appendChild(empty);
+          return;
         }
 
-        if (!sitesByFolder.has(fid)) sitesByFolder.set(fid, []);
-        sitesByFolder.get(fid).push(site);
+        for (const folder of folders) {
+          defiMenu.appendChild(createFolderSection(folder));
+        }
+
+        const unassignedRow = document.createElement("div");
+        unassignedRow.className = "defi-folder";
+        unassignedRow.dataset.folderId = "";
+        unassignedRow.appendChild(createFolderRow(unassignedFolder, false));
+        defiMenu.appendChild(unassignedRow);
+        return;
       }
 
-      folders.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      // LMB on folder: show sites in that folder
+      const folder =
+        currentFolderId == null
+          ? unassignedFolder
+          : defiFoldersCache.find((f) => String(f.id) === String(currentFolderId));
 
-      if (folders.length === 0 && unassignedSites.length === 0) {
+      if (!folder) {
+        showFoldersView();
+        return;
+      }
+
+      const backRow = document.createElement("div");
+      backRow.className = "defi-folder";
+      backRow.appendChild(createFolderRow(unassignedFolder, true));
+      defiMenu.appendChild(backRow);
+
+      const headerRow = document.createElement("div");
+      headerRow.className = "defi-folder";
+      const header = document.createElement("div");
+      header.className = "defi-folder-header";
+      header.textContent = folder.name || "Unassigned";
+      header.style.cursor = "default";
+      headerRow.appendChild(header);
+      defiMenu.appendChild(headerRow);
+
+      const sites = getSitesForFolder(currentFolderId);
+
+      if (sites.length === 0) {
         const empty = document.createElement("div");
-        empty.style.padding = "9px 10px";
-        empty.style.color = "rgba(245,245,245,0.70)";
-        empty.style.fontSize = "13px";
-        empty.textContent = "No sites yet";
+        empty.className = "defi-folder";
+        const body = document.createElement("div");
+        body.className = "defi-folder-body";
+        const emptyText = document.createElement("div");
+        emptyText.className = "defi-folder-empty";
+        emptyText.textContent = "No sites in this folder";
+        body.appendChild(emptyText);
+        empty.appendChild(body);
         defiMenu.appendChild(empty);
         return;
       }
 
-      for (const folder of folders) {
-        defiMenu.appendChild(createFolderSection(folder, sitesByFolder));
-      }
-
-      if (unassignedSites.length > 0) {
+      for (const site of sites) {
         const section = document.createElement("div");
         section.className = "defi-folder";
-        section.dataset.folderId = "";
-
-        const header = document.createElement("div");
-        header.className = "defi-folder-header";
-        header.textContent = "Unassigned";
-
         const body = document.createElement("div");
         body.className = "defi-folder-body";
-
-        for (const site of unassignedSites) {
-          body.appendChild(createSiteElement(site));
-        }
-
-        section.addEventListener("dragover", (e) => {
-          if (!dragSiteId) return;
-          e.preventDefault();
-          section.classList.add("drop-target");
-        });
-
-        section.addEventListener("dragleave", () => {
-          section.classList.remove("drop-target");
-        });
-
-        section.addEventListener("drop", async (e) => {
-          if (!dragSiteId) return;
-          e.preventDefault();
-          section.classList.remove("drop-target");
-
-          try {
-            await moveSite(Number(dragSiteId), null);
-            await openDefiMenu();
-          } catch (err) {
-            console.error("Failed to unassign site", err);
-            alert("Failed to move site: " + (err?.message || err));
-          }
-        });
-
-        section.appendChild(header);
+        body.appendChild(createSiteElement(site));
         section.appendChild(body);
         defiMenu.appendChild(section);
       }
@@ -1361,22 +1390,21 @@ if (myAssetsButton && myAssetsMenu) {
     if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
     if (walletMenu) walletMenu.classList.remove("visible");
 
+    // LMB on DeFi -> folders
+    showFoldersView();
     toggleDefiMenu();
   });
 
   function onDefiContextMenu(e) {
-    const item = e.target?.closest?.("#defiMenu a[data-id]");
-    if (item) return;
-
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    closeDefiMenu();
-    hideDeleteContextMenu();
-
     if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
     if (walletMenu) walletMenu.classList.remove("visible");
+
+    closeDefiMenu();
+    hideDeleteContextMenu();
 
     showAddContextMenu(e.clientX, e.clientY);
     return false;
@@ -1554,6 +1582,7 @@ if (myAssetsButton && myAssetsMenu) {
 
   renderDefiMenu();
 })();
+
 
 // ================== Strategy MENU ==================
 (function initStrategyMenu() {
