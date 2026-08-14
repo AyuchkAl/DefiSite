@@ -825,10 +825,12 @@ if (myAssetsButton && myAssetsMenu) {
   const defiMenu = document.getElementById("defiMenu");
   const defiContextMenu = document.getElementById("defiContextMenu");
   const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
+  const defiAddFolderBtn = document.getElementById("defiAddFolderBtn");
   const defiItemContextMenu = document.getElementById("defiItemContextMenu");
   const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
 
   const siteDialogBackdrop = document.getElementById("siteDialogBackdrop");
+  const siteDialogTitle = document.getElementById("siteDialogTitle");
   const siteUrlInput = document.getElementById("siteUrlInput");
   const siteLabelInput = document.getElementById("siteLabelInput");
   const siteDialogCancelBtn = document.getElementById("siteDialogCancelBtn");
@@ -841,9 +843,11 @@ if (myAssetsButton && myAssetsMenu) {
     !defiMenu ||
     !defiContextMenu ||
     !defiAddSiteBtn ||
+    !defiAddFolderBtn ||
     !defiItemContextMenu ||
     !defiDeleteSiteBtn ||
     !siteDialogBackdrop ||
+    !siteDialogTitle ||
     !siteUrlInput ||
     !siteLabelInput ||
     !siteDialogCancelBtn ||
@@ -854,6 +858,7 @@ if (myAssetsButton && myAssetsMenu) {
   let pendingDeleteId = null;
   let pendingDeleteFolderId = null;
   let dragSiteId = null;
+  let dialogMode = "site"; // "site" | "folder"
 
   function isValidHttpUrl(s) {
     try {
@@ -901,15 +906,33 @@ if (myAssetsButton && myAssetsMenu) {
     }
   }
 
-  function openSiteDialog() {
+  function openSiteDialog(mode = "site") {
+    dialogMode = mode;
     siteDialogError.textContent = "";
+
     siteUrlInput.value = "";
     siteLabelInput.value = "";
+
+    if (mode === "site") {
+      siteDialogTitle.textContent = "Add site";
+      siteUrlInput.style.display = "";
+      siteUrlInput.previousElementSibling.style.display = "";
+      siteUrlInput.placeholder = "https://example.com";
+      siteLabelInput.previousElementSibling.textContent = "Enter label";
+      siteLabelInput.placeholder = "Site label";
+    } else {
+      siteDialogTitle.textContent = "Add folder";
+      siteUrlInput.style.display = "none";
+      siteUrlInput.previousElementSibling.style.display = "none";
+      siteLabelInput.previousElementSibling.textContent = "Enter folder name";
+      siteLabelInput.placeholder = "Folder name";
+    }
+
     siteDialogBackdrop.classList.remove("hidden");
     siteDialogBackdrop.setAttribute("aria-hidden", "false");
 
     setTimeout(() => {
-      siteUrlInput.focus();
+      siteLabelInput.focus();
     }, 0);
   }
 
@@ -1116,11 +1139,13 @@ if (myAssetsButton && myAssetsMenu) {
     defiItemContextMenu.style.top = "-9999px";
     pendingDeleteId = null;
     pendingDeleteFolderId = null;
+    if (defiDeleteSiteBtn) defiDeleteSiteBtn.textContent = "Delete site";
   }
 
   function showDeleteContextMenu(x, y, siteId) {
     pendingDeleteId = siteId;
     pendingDeleteFolderId = null;
+    if (defiDeleteSiteBtn) defiDeleteSiteBtn.textContent = "Delete site";
     defiItemContextMenu.style.left = `${x}px`;
     defiItemContextMenu.style.top = `${y}px`;
     defiItemContextMenu.classList.add("visible");
@@ -1129,17 +1154,15 @@ if (myAssetsButton && myAssetsMenu) {
   function showFolderDeleteContextMenu(x, y, folderId) {
     pendingDeleteFolderId = folderId;
     pendingDeleteId = null;
+    if (defiDeleteSiteBtn) defiDeleteSiteBtn.textContent = "Delete folder";
     defiItemContextMenu.style.left = `${x}px`;
     defiItemContextMenu.style.top = `${y}px`;
     defiItemContextMenu.classList.add("visible");
-    const btn = defiDeleteSiteBtn;
-    if (btn) btn.textContent = "Delete folder";
   }
 
   function hideAllDefiContextMenus() {
     hideAddContextMenu();
     hideDeleteContextMenu();
-    if (defiDeleteSiteBtn) defiDeleteSiteBtn.textContent = "Delete site";
   }
 
   function createSiteElement(site) {
@@ -1381,7 +1404,14 @@ if (myAssetsButton && myAssetsMenu) {
     e.preventDefault();
     e.stopPropagation();
     hideAddContextMenu();
-    openSiteDialog();
+    openSiteDialog("site");
+  });
+
+  defiAddFolderBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAddContextMenu();
+    openSiteDialog("folder");
   });
 
   siteDialogCancelBtn.addEventListener("click", () => {
@@ -1395,39 +1425,52 @@ if (myAssetsButton && myAssetsMenu) {
   });
 
   siteDialogSaveBtn.addEventListener("click", async () => {
-    const trimmedUrl = siteUrlInput.value.trim();
     const label = siteLabelInput.value.trim();
-
-    if (!trimmedUrl) {
-      siteDialogError.textContent = "URL is required.";
-      siteUrlInput.focus();
-      return;
-    }
-
-    if (!isValidHttpUrl(trimmedUrl)) {
-      siteDialogError.textContent = "Invalid URL. Please enter a full URL starting with https://";
-      siteUrlInput.focus();
-      return;
-    }
-
-    if (!label) {
-      siteDialogError.textContent = "Label is required.";
-      siteLabelInput.focus();
-      return;
-    }
+    const trimmedUrl = siteUrlInput.value.trim();
 
     try {
       siteDialogSaveBtn.disabled = true;
       siteDialogCancelBtn.disabled = true;
       siteDialogError.textContent = "";
 
+      if (dialogMode === "folder") {
+        if (!label) {
+          siteDialogError.textContent = "Folder name is required.";
+          siteLabelInput.focus();
+          return;
+        }
+
+        await insertFolder(label);
+        closeSiteDialog();
+        await openDefiMenu();
+        return;
+      }
+
+      if (!trimmedUrl) {
+        siteDialogError.textContent = "URL is required.";
+        siteUrlInput.focus();
+        return;
+      }
+
+      if (!isValidHttpUrl(trimmedUrl)) {
+        siteDialogError.textContent = "Invalid URL. Please enter a full URL starting with https://";
+        siteUrlInput.focus();
+        return;
+      }
+
+      if (!label) {
+        siteDialogError.textContent = "Label is required.";
+        siteLabelInput.focus();
+        return;
+      }
+
       await insertDefiLink(trimmedUrl, label, null);
 
       closeSiteDialog();
       await openDefiMenu();
     } catch (err) {
-      console.error("Failed to add site", err);
-      siteDialogError.textContent = "Failed to add site: " + (err?.message || err);
+      console.error("Failed to save item", err);
+      siteDialogError.textContent = "Failed to save: " + (err?.message || err);
     } finally {
       siteDialogSaveBtn.disabled = false;
       siteDialogCancelBtn.disabled = false;
