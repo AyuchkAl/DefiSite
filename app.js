@@ -1234,144 +1234,152 @@ if (myAssetsButton && myAssetsMenu) {
   }
 
   async function renderDefiMenu() {
-    defiMenu.innerHTML = "";
+  defiMenu.innerHTML = "";
 
-    try {
-      const data = await fetchDefiData();
-      defiFoldersCache = Array.isArray(data.folders) ? data.folders : [];
-      defiSitesCache = Array.isArray(data.sites) ? data.sites : [];
+  try {
+    const data = await fetchDefiData();
+    defiFoldersCache = Array.isArray(data.folders) ? data.folders : [];
+    defiSitesCache = Array.isArray(data.sites) ? data.sites : [];
 
-      const folders = [...defiFoldersCache].sort((a, b) =>
-        String(a.name || "").localeCompare(String(b.name || ""))
-      );
+    const folders = [...defiFoldersCache].sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""))
+    );
 
-      const unassignedFolder = { id: null, name: "Unassigned" };
+    const unassignedFolder = { id: null, name: "Unassigned" };
 
-      // LEFT CLICK DeFi => ONLY FOLDERS
-      if (defiViewMode === "folders") {
-        if (folders.length === 0) {
-          const empty = document.createElement("div");
-          empty.style.padding = "9px 10px";
-          empty.style.color = "rgba(245,245,245,0.70)";
-          empty.style.fontSize = "13px";
-          empty.textContent = "No folders yet";
-          defiMenu.appendChild(empty);
-          return;
-        }
-
-        for (const folder of folders) {
-          const row = document.createElement("button");
-          row.type = "button";
-          row.className = "my-assets-item defi-folder-row";
-          row.textContent = folder.name || "Folder";
-          row.dataset.folderId = String(folder.id);
-
-          row.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            showSitesView(folder.id);
-          });
-
-          row.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            hideAddContextMenu();
-            showFolderDeleteContextMenu(e.clientX, e.clientY, Number(folder.id));
-          });
-
-          defiMenu.appendChild(row);
-        }
-
-        const unassignedRow = document.createElement("button");
-        unassignedRow.type = "button";
-        unassignedRow.className = "my-assets-item defi-folder-row";
-        unassignedRow.textContent = "Unassigned";
-        unassignedRow.dataset.folderId = "";
-
-        unassignedRow.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          showSitesView(null);
-        });
-
-        unassignedRow.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          hideAddContextMenu();
-          showFolderDeleteContextMenu(e.clientX, e.clientY, null);
-        });
-
-        defiMenu.appendChild(unassignedRow);
-        return;
-      }
-
-      // LEFT CLICK folder => SITES IN THAT FOLDER
-      const folder =
-        currentFolderId == null
-          ? unassignedFolder
-          : defiFoldersCache.find((f) => String(f.id) === String(currentFolderId));
-
-      if (!folder) {
-        showFoldersView();
-        return;
-      }
-
-      const backRow = document.createElement("button");
-      backRow.type = "button";
-      backRow.className = "my-assets-item defi-folder-row";
-      backRow.textContent = "← Back";
-      backRow.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showFoldersView();
+    // LEFT CLICK DeFi => ONLY FOLDERS (deduplicated)
+    if (defiViewMode === "folders") {
+      const seen = new Set();
+      const uniqueFolders = folders.filter((folder) => {
+        const key = String(folder.id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
       });
-      defiMenu.appendChild(backRow);
 
-      const headerRow = document.createElement("div");
-      headerRow.className = "defi-folder";
-      const header = document.createElement("div");
-      header.className = "defi-folder-header";
-      header.textContent = folder.name || "Unassigned";
-      header.style.cursor = "default";
-      headerRow.appendChild(header);
-      defiMenu.appendChild(headerRow);
-
-      const sites = getSitesForFolder(currentFolderId);
-
-      if (sites.length === 0) {
+      if (uniqueFolders.length === 0) {
         const empty = document.createElement("div");
-        empty.className = "defi-folder";
-        const body = document.createElement("div");
-        body.className = "defi-folder-body";
-        const emptyText = document.createElement("div");
-        emptyText.className = "defi-folder-empty";
-        emptyText.textContent = "No sites in this folder";
-        body.appendChild(emptyText);
-        empty.appendChild(body);
+        empty.style.padding = "9px 10px";
+        empty.style.color = "rgba(245,245,245,0.70)";
+        empty.style.fontSize = "13px";
+        empty.textContent = "No folders yet";
         defiMenu.appendChild(empty);
         return;
       }
 
-      for (const site of sites) {
-        const section = document.createElement("div");
-        section.className = "defi-folder";
-        const body = document.createElement("div");
-        body.className = "defi-folder-body";
-        body.appendChild(createSiteElement(site));
-        section.appendChild(body);
-        defiMenu.appendChild(section);
-      }
-    } catch (e) {
-      console.error("Failed to render DeFi menu", e);
+      for (const folder of uniqueFolders) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "my-assets-item defi-folder-row";
+        row.textContent = folder.name || "Folder";
+        row.dataset.folderId = String(folder.id);
 
-      const err = document.createElement("div");
-      err.style.padding = "9px 10px";
-      err.style.color = "#ff97aa";
-      err.style.fontSize = "13px";
-      err.textContent = "Failed to load sites";
-      defiMenu.appendChild(err);
+        row.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showSitesView(folder.id);
+        });
+
+        row.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          hideAddContextMenu();
+          showFolderDeleteContextMenu(e.clientX, e.clientY, Number(folder.id));
+        });
+
+        defiMenu.appendChild(row);
+      }
+
+      const unassignedRow = document.createElement("button");
+      unassignedRow.type = "button";
+      unassignedRow.className = "my-assets-item defi-folder-row";
+      unassignedRow.textContent = "Unassigned";
+      unassignedRow.dataset.folderId = "";
+
+      unassignedRow.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showSitesView(null);
+      });
+
+      unassignedRow.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        hideAddContextMenu();
+        showFolderDeleteContextMenu(e.clientX, e.clientY, null);
+      });
+
+      defiMenu.appendChild(unassignedRow);
+      return;
     }
+
+    // LEFT CLICK folder => SITES IN THAT FOLDER
+    const folder =
+      currentFolderId == null
+        ? unassignedFolder
+        : defiFoldersCache.find((f) => String(f.id) === String(currentFolderId));
+
+    if (!folder) {
+      showFoldersView();
+      return;
+    }
+
+    const backRow = document.createElement("button");
+    backRow.type = "button";
+    backRow.className = "my-assets-item defi-folder-row";
+    backRow.textContent = "← Back";
+    backRow.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showFoldersView();
+    });
+    defiMenu.appendChild(backRow);
+
+    const headerRow = document.createElement("div");
+    headerRow.className = "defi-folder";
+    const header = document.createElement("div");
+    header.className = "defi-folder-header";
+    header.textContent = folder.name || "Unassigned";
+    header.style.cursor = "default";
+    headerRow.appendChild(header);
+    defiMenu.appendChild(headerRow);
+
+    const sites = getSitesForFolder(currentFolderId);
+
+    if (sites.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "defi-folder";
+      const body = document.createElement("div");
+      body.className = "defi-folder-body";
+      const emptyText = document.createElement("div");
+      emptyText.className = "defi-folder-empty";
+      emptyText.textContent = "No sites in this folder";
+      body.appendChild(emptyText);
+      empty.appendChild(body);
+      defiMenu.appendChild(empty);
+      return;
+    }
+
+    for (const site of sites) {
+      const section = document.createElement("div");
+      section.className = "defi-folder";
+      const body = document.createElement("div");
+      body.className = "defi-folder-body";
+      body.appendChild(createSiteElement(site));
+      section.appendChild(body);
+      defiMenu.appendChild(section);
+    }
+  } catch (e) {
+    console.error("Failed to render DeFi menu", e);
+
+    const err = document.createElement("div");
+    err.style.padding = "9px 10px";
+    err.style.color = "#ff97aa";
+    err.style.fontSize = "13px";
+    err.textContent = "Failed to load sites";
+    defiMenu.appendChild(err);
   }
+}
 
   async function openDefiMenu() {
     await renderDefiMenu();
