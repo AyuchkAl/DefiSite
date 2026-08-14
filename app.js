@@ -1219,10 +1219,7 @@ if (myAssetsButton && myAssetsMenu) {
 
       const folders = [...defiFoldersCache]
         .filter((f) => f && f.id != null)
-        .filter((f, index, arr) => {
-          const id = String(f.id);
-          return arr.findIndex((x) => String(x.id) === id) === index;
-        })
+        .filter((f, index, arr) => arr.findIndex((x) => String(x.id) === String(f.id)) === index)
         .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 
       const unassignedFolder = { id: null, name: "Unassigned" };
@@ -1358,11 +1355,6 @@ if (myAssetsButton && myAssetsMenu) {
     repositionDefiMenuIfOpen();
   }
 
-  function toggleDefiMenu() {
-    if (defiMenu.classList.contains("visible")) closeDefiMenu();
-    else openDefiMenu();
-  }
-
   defiButton.addEventListener("click", async (e) => {
     e.stopPropagation();
     hideAllDefiContextMenus();
@@ -1378,7 +1370,10 @@ if (myAssetsButton && myAssetsMenu) {
       return;
     }
 
-    await openDefiMenu();
+    await renderDefiMenu();
+    defiMenu.classList.add("visible");
+    defiButton.setAttribute("aria-expanded", "true");
+    repositionDefiMenuIfOpen();
   });
 
   function onDefiContextMenu(e) {
@@ -1584,7 +1579,6 @@ if (myAssetsButton && myAssetsMenu) {
 
   renderDefiMenu();
 })();
-
 
 // ================== Strategy MENU ==================
 (function initStrategyMenu() {
