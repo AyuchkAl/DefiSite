@@ -1252,9 +1252,10 @@ if (window.__defiMenuInitialized) {
               row.addEventListener("contextmenu", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
                 hideAddContextMenu();
                 showFolderItemContextMenu(e.clientX, e.clientY, folder.id);
-              });
+              }, true);
 
               defiMenu.appendChild(row);
             }
@@ -1277,8 +1278,9 @@ if (window.__defiMenuInitialized) {
           unassignedRow.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             hideDeleteContextMenu();
-          });
+          }, true);
 
           defiMenu.appendChild(unassignedRow);
           return;
@@ -1380,6 +1382,9 @@ if (window.__defiMenuInitialized) {
     });
 
     function onDefiContextMenu(e) {
+      // If RMB happened in DeFi menu area, do not open Add Site/Add Folder menu
+      if (e.target?.closest?.("#defiMenu")) return;
+
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -1398,9 +1403,10 @@ if (window.__defiMenuInitialized) {
     defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
 
     function onDefiItemContextMenu(e) {
+      const folderItem = e.target?.closest?.("#defiMenu .defi-folder-row");
       const siteItem = e.target?.closest?.("#defiMenu a[data-id]");
-      const folderItem = e.target?.closest?.("#defiMenu button[data-folder-id]");
-      if (!siteItem && !folderItem) return;
+
+      if (!folderItem && !siteItem) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -1414,8 +1420,15 @@ if (window.__defiMenuInitialized) {
       }
 
       if (folderItem) {
-        const folderId = folderItem.dataset.folderId;
-        showFolderItemContextMenu(e.clientX, e.clientY, folderId === "" ? null : Number(folderId));
+        const folderIdRaw = folderItem.dataset.folderId;
+
+        // Unassigned => no RMB menu
+        if (folderIdRaw === "" || folderIdRaw == null) {
+          hideDeleteContextMenu();
+          return false;
+        }
+
+        showFolderItemContextMenu(e.clientX, e.clientY, Number(folderIdRaw));
         return false;
       }
 
@@ -1451,6 +1464,7 @@ if (window.__defiMenuInitialized) {
       const currentName = folder?.name || "";
 
       hideDeleteContextMenu();
+      pendingRenameFolderId = folder?.id ?? pendingRenameFolderId;
       openSiteDialog("folder_rename", currentName);
     });
 
