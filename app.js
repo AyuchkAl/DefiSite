@@ -865,7 +865,7 @@ if (window.__defiMenuInitialized) {
       !siteDialogError
     ) return;
 
-    let pendingDeleteId = null;
+    let pendingDeleteSiteId = null;
     let pendingDeleteFolderId = null;
     let pendingRenameFolderId = null;
 
@@ -1125,11 +1125,12 @@ if (window.__defiMenuInitialized) {
       defiContextMenu.classList.add("visible");
     }
 
-    function hideDeleteContextMenu() {
+    function hideItemContextMenu() {
       defiItemContextMenu.classList.remove("visible");
       defiItemContextMenu.style.left = "-9999px";
       defiItemContextMenu.style.top = "-9999px";
-      pendingDeleteId = null;
+
+      pendingDeleteSiteId = null;
       pendingDeleteFolderId = null;
       pendingRenameFolderId = null;
     }
@@ -1148,10 +1149,10 @@ if (window.__defiMenuInitialized) {
     }
 
     function showSiteItemContextMenu(x, y, siteId) {
-      pendingDeleteId = siteId;
+      setItemContextMode("site");
+      pendingDeleteSiteId = siteId;
       pendingDeleteFolderId = null;
       pendingRenameFolderId = null;
-      setItemContextMode("site");
 
       defiItemContextMenu.style.left = `${x}px`;
       defiItemContextMenu.style.top = `${y}px`;
@@ -1159,13 +1160,12 @@ if (window.__defiMenuInitialized) {
     }
 
     function showFolderItemContextMenu(x, y, folderId) {
-      // Unassigned has null/empty folderId => no context menu
-      if (folderId == null || folderId === "") return;
+      if (folderId == null || folderId === "") return; // Unassigned => no menu
 
+      setItemContextMode("folder");
       pendingDeleteFolderId = Number(folderId);
       pendingRenameFolderId = Number(folderId);
-      pendingDeleteId = null;
-      setItemContextMode("folder");
+      pendingDeleteSiteId = null;
 
       defiItemContextMenu.style.left = `${x}px`;
       defiItemContextMenu.style.top = `${y}px`;
@@ -1174,7 +1174,7 @@ if (window.__defiMenuInitialized) {
 
     function hideAllDefiContextMenus() {
       hideAddContextMenu();
-      hideDeleteContextMenu();
+      hideItemContextMenu();
     }
 
     function getSitesForFolder(folderId) {
@@ -1249,38 +1249,20 @@ if (window.__defiMenuInitialized) {
                 showSitesView(folder.id);
               });
 
-              row.addEventListener("contextmenu", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                hideAddContextMenu();
-                showFolderItemContextMenu(e.clientX, e.clientY, folder.id);
-              }, true);
-
               defiMenu.appendChild(row);
             }
           }
 
-          // Always show Unassigned
           const unassignedRow = document.createElement("button");
           unassignedRow.type = "button";
           unassignedRow.className = "my-assets-item defi-folder-row";
           unassignedRow.textContent = "Unassigned";
           unassignedRow.dataset.folderId = "";
-
           unassignedRow.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
             showSitesView(null);
           });
-
-          // 1A: no RMB menu for Unassigned
-          unassignedRow.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            hideDeleteContextMenu();
-          }, true);
 
           defiMenu.appendChild(unassignedRow);
           return;
@@ -1300,6 +1282,7 @@ if (window.__defiMenuInitialized) {
         backRow.type = "button";
         backRow.className = "my-assets-item defi-folder-row";
         backRow.textContent = "← Back";
+        backRow.dataset.folderId = "__BACK__";
         backRow.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -1360,6 +1343,7 @@ if (window.__defiMenuInitialized) {
       repositionDefiMenuIfOpen();
     }
 
+    // --- OPEN/CLOSE ---
     defiButton.addEventListener("click", async (e) => {
       e.stopPropagation();
       hideAllDefiContextMenus();
@@ -1381,8 +1365,8 @@ if (window.__defiMenuInitialized) {
       repositionDefiMenuIfOpen();
     });
 
-    function onDefiContextMenu(e) {
-      // Only allow global Add menu from DeFi button
+    // --- GLOBAL ADD MENU (ONLY on DeFi button RMB) ---
+    function onDefiButtonContextMenu(e) {
       if (!e.target?.closest?.("#defiButton")) return;
 
       e.preventDefault();
@@ -1393,29 +1377,23 @@ if (window.__defiMenuInitialized) {
       if (walletMenu) walletMenu.classList.remove("visible");
 
       closeDefiMenu();
-      hideDeleteContextMenu();
-
+      hideItemContextMenu();
       showAddContextMenu(e.clientX, e.clientY);
       return false;
     }
 
-    // Global add menu on RMB ONLY on button
-    defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
+    defiButton.addEventListener("contextmenu", onDefiButtonContextMenu, true);
 
-    // Important: container no longer opens add menu except when event comes from button
-    defiContainer.addEventListener("contextmenu", (e) => {
-      // if RMB inside opened menu => item handler must own it
-      if (e.target?.closest?.("#defiMenu")) return;
-      // if not on button => do nothing
-      if (!e.target?.closest?.("#defiButton")) return;
-      onDefiContextMenu(e);
-    }, true);
+    // IMPORTANT:
+    // NO container-level RMB opening.
+    // This prevents Add site/Add folder from appearing when RMB on folder rows.
 
-    function onDefiItemContextMenu(e) {
-      const folderItem = e.target?.closest?.("#defiMenu .defi-folder-row");
-      const siteItem = e.target?.closest?.("#defiMenu a[data-id]");
+    // --- ITEM/FOLDER RMB MENU (capturing hard block) ---
+    defiMenu.addEventListener("contextmenu", (e) => {
+      const siteItem = e.target.closest("a[data-id]");
+      const folderRow = e.target.closest(".defi-folder-row");
 
-      if (!folderItem && !siteItem) return;
+      if (!siteItem && !folderRow) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -1424,26 +1402,30 @@ if (window.__defiMenuInitialized) {
       hideAddContextMenu();
 
       if (siteItem) {
-        showSiteItemContextMenu(e.clientX, e.clientY, Number(siteItem.dataset.id));
-        return false;
+        const siteId = Number(siteItem.dataset.id);
+        showSiteItemContextMenu(e.clientX, e.clientY, siteId);
+        return;
       }
 
-      if (folderItem) {
-        const folderIdRaw = folderItem.dataset.folderId;
-        if (folderIdRaw === "" || folderIdRaw == null) {
-          hideDeleteContextMenu();
-          return false;
-        }
+      // folder row case
+      const raw = folderRow.dataset.folderId;
 
-        showFolderItemContextMenu(e.clientX, e.clientY, Number(folderIdRaw));
-        return false;
+      // Back row: no context menu
+      if (raw === "__BACK__") {
+        hideItemContextMenu();
+        return;
       }
 
-      return false;
-    }
+      // Unassigned: no context menu
+      if (raw === "" || raw == null) {
+        hideItemContextMenu();
+        return;
+      }
 
-    defiMenu.addEventListener("contextmenu", onDefiItemContextMenu, true);
+      showFolderItemContextMenu(e.clientX, e.clientY, Number(raw));
+    }, true);
 
+    // --- Add menu actions ---
     defiAddSiteBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1458,23 +1440,63 @@ if (window.__defiMenuInitialized) {
       openSiteDialog("folder");
     });
 
+    // --- Item menu actions ---
     defiRenameFolderBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
 
       if (pendingRenameFolderId == null) {
-        hideDeleteContextMenu();
+        hideItemContextMenu();
         return;
       }
 
       const folder = defiFoldersCache.find((f) => String(f.id) === String(pendingRenameFolderId));
       const currentName = folder?.name || "";
 
-      hideDeleteContextMenu();
-      pendingRenameFolderId = folder?.id ?? pendingRenameFolderId;
+      // keep id for save; just close menu
+      defiItemContextMenu.classList.remove("visible");
       openSiteDialog("folder_rename", currentName);
     });
 
+    defiDeleteFolderBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (pendingDeleteFolderId == null) {
+        hideItemContextMenu();
+        return;
+      }
+
+      try {
+        await deleteFolder(pendingDeleteFolderId);
+        hideItemContextMenu();
+        await openDefiMenu();
+      } catch (err) {
+        console.error("Failed to delete folder", err);
+        alert("Failed to delete folder: " + (err?.message || err));
+      }
+    });
+
+    defiDeleteSiteBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!pendingDeleteSiteId) {
+        hideItemContextMenu();
+        return;
+      }
+
+      try {
+        await deleteDefiLink(pendingDeleteSiteId);
+        hideItemContextMenu();
+        await openDefiMenu();
+      } catch (err) {
+        console.error("Failed to delete site", err);
+        alert("Failed to delete site: " + (err?.message || err));
+      }
+    });
+
+    // --- Dialog actions ---
     siteDialogCancelBtn.addEventListener("click", () => {
       closeSiteDialog();
     });
@@ -1556,44 +1578,7 @@ if (window.__defiMenuInitialized) {
       }
     });
 
-    defiDeleteFolderBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (pendingDeleteFolderId == null) {
-        hideDeleteContextMenu();
-        return;
-      }
-
-      try {
-        await deleteFolder(pendingDeleteFolderId);
-        hideDeleteContextMenu();
-        await openDefiMenu();
-      } catch (err) {
-        console.error("Failed to delete folder", err);
-        alert("Failed to delete folder: " + (err?.message || err));
-      }
-    });
-
-    defiDeleteSiteBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (!pendingDeleteId) {
-        hideDeleteContextMenu();
-        return;
-      }
-
-      try {
-        await deleteDefiLink(pendingDeleteId);
-        hideDeleteContextMenu();
-        await openDefiMenu();
-      } catch (err) {
-        console.error("Failed to delete site", err);
-        alert("Failed to delete site: " + (err?.message || err));
-      }
-    });
-
+    // --- Outside/escape handlers ---
     document.addEventListener("click", (e) => {
       if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
         closeDefiMenu();
@@ -1602,7 +1587,7 @@ if (window.__defiMenuInitialized) {
         hideAddContextMenu();
       }
       if (defiItemContextMenu.classList.contains("visible") && !e.target.closest("#defiItemContextMenu")) {
-        hideDeleteContextMenu();
+        hideItemContextMenu();
       }
     });
 
@@ -1638,6 +1623,7 @@ if (window.__defiMenuInitialized) {
       repositionDefiMenuIfOpen();
     });
 
+    // initial render (cache warm)
     renderDefiMenu();
   })();
 }
