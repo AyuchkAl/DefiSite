@@ -868,6 +868,8 @@ if (window.__defiMenuInitialized) {
     let pendingDeleteSiteId = null;
     let pendingDeleteFolderId = null;
     let pendingRenameFolderId = null;
+    let pendingMoveSiteId = null;
+    let pendingMoveSiteCurrentFolderId = null;
 
     let dialogMode = "site"; // "site" | "folder" | "folder_rename"
 
@@ -876,6 +878,10 @@ if (window.__defiMenuInitialized) {
     let defiViewMode = "folders"; // "folders" | "sites"
     let currentFolderId = null;
     let renderSeq = 0;
+
+    // dynamic move submenu elements
+    let moveFolderBtn = null;
+    let moveFolderList = null;
 
     function isValidHttpUrl(s) {
       try {
@@ -920,6 +926,44 @@ if (window.__defiMenuInitialized) {
         return name.length > max ? name.slice(0, max - 1) + "…" : name;
       } catch {
         return "Site";
+      }
+    }
+
+    function ensureMoveFolderUi() {
+      if (moveFolderBtn && moveFolderList) return;
+
+      moveFolderBtn = document.createElement("button");
+      moveFolderBtn.type = "button";
+      moveFolderBtn.className = "defi-context-btn";
+      moveFolderBtn.id = "defiMoveFolderBtn";
+      moveFolderBtn.textContent = "Move to folder";
+
+      moveFolderList = document.createElement("div");
+      moveFolderList.id = "defiMoveFolderList";
+      moveFolderList.style.marginTop = "4px";
+      moveFolderList.style.paddingTop = "4px";
+      moveFolderList.style.borderTop = "1px solid rgba(255,255,255,0.08)";
+      moveFolderList.style.maxHeight = "220px";
+      moveFolderList.style.overflowY = "auto";
+      moveFolderList.style.display = "none";
+
+      moveFolderBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        moveFolderList.style.display = moveFolderList.style.display === "none" ? "block" : "none";
+      });
+
+      // Insert before delete site button for better UX
+      defiItemContextMenu.insertBefore(moveFolderBtn, defiDeleteSiteBtn);
+      defiItemContextMenu.insertBefore(moveFolderList, defiDeleteSiteBtn);
+    }
+
+    function resetMoveState() {
+      pendingMoveSiteId = null;
+      pendingMoveSiteCurrentFolderId = null;
+      if (moveFolderList) {
+        moveFolderList.innerHTML = "";
+        moveFolderList.style.display = "none";
       }
     }
 
@@ -1045,6 +1089,21 @@ if (window.__defiMenuInitialized) {
       return json;
     }
 
+    async function moveSiteToFolder(siteId, folderIdOrNull) {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: siteId,
+          folder_id: folderIdOrNull == null ? null : folderIdOrNull
+        })
+      });
+
+      const json = await parseApiJson(res);
+      if (!res.ok) throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      return json;
+    }
+
     async function deleteDefiLink(id) {
       const res = await fetch(WEB_SITES_API_URL, {
         method: "DELETE",
@@ -1133,6 +1192,7 @@ if (window.__defiMenuInitialized) {
       pendingDeleteSiteId = null;
       pendingDeleteFolderId = null;
       pendingRenameFolderId = null;
+      resetMoveState();
     }
 
     function setItemContextMode(mode) {
@@ -1141,18 +1201,97 @@ if (window.__defiMenuInitialized) {
         defiRenameFolderBtn.style.display = "none";
         defiDeleteFolderBtn.style.display = "none";
         defiDeleteSiteBtn.style.display = "block";
+        if (moveFolderBtn) moveFolderBtn.style.display = "block";
+        if (moveFolderList) moveFolderList.style.display = "none";
       } else {
         defiRenameFolderBtn.style.display = "block";
         defiDeleteFolderBtn.style.display = "block";
         defiDeleteSiteBtn.style.display = "none";
+        if (moveFolderBtn) moveFolderBtn.style.display = "none";
+        if (moveFolderList) moveFolderList.style.display = "none";
       }
     }
 
-    function showSiteItemContextMenu(x, y, siteId) {
+    function buildMoveFolderList() {
+      if (!moveFolderList) return;
+      moveFolderList.innerHTML = "";
+
+      // Unassigned first
+      const unassignedBtn = document.createElement("button");
+      unassignedBtn.type = "button";
+      unassignedBtn.className = "defi-context-btn";
+      unassignedBtn.textContent = "Unassigned";
+      unassignedBtn.style.fontSize = "12px";
+      unassignedBtn.style.padding = "7px 10px";
+      unassignedBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (pendingMoveSiteId == null) return;
+        if (pendingMoveSiteCurrentFolderId == null) {
+          hideItemContextMenu();
+          return;
+        }
+        try {
+          await moveSiteToFolder(pendingMoveSiteId, null);
+          hideItemContextMenu();
+          await openDefiMenu();
+        } catch (err) {
+          console.error("Failed to move site to Unassigned", err);
+          alert("Failed to move site: " + (err?.message || err));
+        }
+      });
+      moveFolderList.appendChild(unassignedBtn);
+
+      const folders = [...defiFoldersCache]
+        .filter((f) => f && f.id != null)
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+      for (const folder of folders) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "defi-context-btn";
+        btn.textContent = folder.name || "Folder";
+        btn.style.fontSize = "12px";
+        btn.style.padding = "7px 10px";
+
+        btn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (pendingMoveSiteId == null) return;
+          const targetId = Number(folder.id);
+          const currentId = pendingMoveSiteCurrentFolderId == null ? null : Number(pendingMoveSiteCurrentFolderId);
+
+          // No-op if same folder
+          if (currentId != null && currentId === targetId) {
+            hideItemContextMenu();
+            return;
+          }
+
+          try {
+            await moveSiteToFolder(pendingMoveSiteId, targetId);
+            hideItemContextMenu();
+            await openDefiMenu();
+          } catch (err) {
+            console.error("Failed to move site", err);
+            alert("Failed to move site: " + (err?.message || err));
+          }
+        });
+
+        moveFolderList.appendChild(btn);
+      }
+    }
+
+    function showSiteItemContextMenu(x, y, siteId, siteFolderId) {
       setItemContextMode("site");
       pendingDeleteSiteId = siteId;
       pendingDeleteFolderId = null;
       pendingRenameFolderId = null;
+
+      pendingMoveSiteId = siteId;
+      pendingMoveSiteCurrentFolderId = siteFolderId == null || siteFolderId === "" ? null : Number(siteFolderId);
+
+      buildMoveFolderList();
 
       defiItemContextMenu.style.left = `${x}px`;
       defiItemContextMenu.style.top = `${y}px`;
@@ -1166,6 +1305,7 @@ if (window.__defiMenuInitialized) {
       pendingDeleteFolderId = Number(folderId);
       pendingRenameFolderId = Number(folderId);
       pendingDeleteSiteId = null;
+      resetMoveState();
 
       defiItemContextMenu.style.left = `${x}px`;
       defiItemContextMenu.style.top = `${y}px`;
@@ -1343,6 +1483,9 @@ if (window.__defiMenuInitialized) {
       repositionDefiMenuIfOpen();
     }
 
+    // init dynamic move UI
+    ensureMoveFolderUi();
+
     // --- OPEN/CLOSE ---
     defiButton.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -1384,10 +1527,6 @@ if (window.__defiMenuInitialized) {
 
     defiButton.addEventListener("contextmenu", onDefiButtonContextMenu, true);
 
-    // IMPORTANT:
-    // NO container-level RMB opening.
-    // This prevents Add site/Add folder from appearing when RMB on folder rows.
-
     // --- ITEM/FOLDER RMB MENU (capturing hard block) ---
     defiMenu.addEventListener("contextmenu", (e) => {
       const siteItem = e.target.closest("a[data-id]");
@@ -1403,7 +1542,8 @@ if (window.__defiMenuInitialized) {
 
       if (siteItem) {
         const siteId = Number(siteItem.dataset.id);
-        showSiteItemContextMenu(e.clientX, e.clientY, siteId);
+        const siteFolderId = siteItem.dataset.folderId;
+        showSiteItemContextMenu(e.clientX, e.clientY, siteId, siteFolderId);
         return;
       }
 
