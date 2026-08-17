@@ -1382,8 +1382,8 @@ if (window.__defiMenuInitialized) {
     });
 
     function onDefiContextMenu(e) {
-      // If RMB happened in DeFi menu area, do not open Add Site/Add Folder menu
-      if (e.target?.closest?.("#defiMenu")) return;
+      // Only allow global Add menu from DeFi button
+      if (!e.target?.closest?.("#defiButton")) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -1399,8 +1399,17 @@ if (window.__defiMenuInitialized) {
       return false;
     }
 
+    // Global add menu on RMB ONLY on button
     defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
-    defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
+
+    // Important: container no longer opens add menu except when event comes from button
+    defiContainer.addEventListener("contextmenu", (e) => {
+      // if RMB inside opened menu => item handler must own it
+      if (e.target?.closest?.("#defiMenu")) return;
+      // if not on button => do nothing
+      if (!e.target?.closest?.("#defiButton")) return;
+      onDefiContextMenu(e);
+    }, true);
 
     function onDefiItemContextMenu(e) {
       const folderItem = e.target?.closest?.("#defiMenu .defi-folder-row");
@@ -1421,8 +1430,6 @@ if (window.__defiMenuInitialized) {
 
       if (folderItem) {
         const folderIdRaw = folderItem.dataset.folderId;
-
-        // Unassigned => no RMB menu
         if (folderIdRaw === "" || folderIdRaw == null) {
           hideDeleteContextMenu();
           return false;
