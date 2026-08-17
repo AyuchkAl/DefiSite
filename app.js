@@ -879,7 +879,6 @@ if (window.__defiMenuInitialized) {
     let currentFolderId = null;
     let renderSeq = 0;
 
-    // dynamic move submenu elements
     let moveFolderBtn = null;
     let moveFolderList = null;
 
@@ -929,38 +928,49 @@ if (window.__defiMenuInitialized) {
       }
     }
 
-    function ensureMoveFolderUi() {
-      if (moveFolderBtn && moveFolderList) return;
+    function ensureMoveControls() {
+      if (!moveFolderBtn) {
+        moveFolderBtn = document.getElementById("defiMoveFolderBtn");
+      }
+      if (!moveFolderList) {
+        moveFolderList = document.getElementById("defiMoveFolderList");
+      }
 
-      moveFolderBtn = document.createElement("button");
-      moveFolderBtn.type = "button";
-      moveFolderBtn.className = "defi-context-btn";
-      moveFolderBtn.id = "defiMoveFolderBtn";
-      moveFolderBtn.textContent = "Move to folder";
+      if (!moveFolderBtn) {
+        moveFolderBtn = document.createElement("button");
+        moveFolderBtn.id = "defiMoveFolderBtn";
+        moveFolderBtn.type = "button";
+        moveFolderBtn.className = "defi-context-btn";
+        moveFolderBtn.textContent = "Move to folder";
+        moveFolderBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          ensureMoveControls();
+          if (!moveFolderList) return;
+          moveFolderList.style.display = moveFolderList.style.display === "none" ? "block" : "none";
+        });
+        defiItemContextMenu.insertBefore(moveFolderBtn, defiDeleteSiteBtn);
+      }
 
-      moveFolderList = document.createElement("div");
-      moveFolderList.id = "defiMoveFolderList";
-      moveFolderList.style.marginTop = "4px";
-      moveFolderList.style.paddingTop = "4px";
-      moveFolderList.style.borderTop = "1px solid rgba(255,255,255,0.08)";
-      moveFolderList.style.maxHeight = "220px";
-      moveFolderList.style.overflowY = "auto";
-      moveFolderList.style.display = "none";
+      if (!moveFolderList) {
+        moveFolderList = document.createElement("div");
+        moveFolderList.id = "defiMoveFolderList";
+        moveFolderList.style.display = "none";
+        moveFolderList.style.marginTop = "4px";
+        moveFolderList.style.paddingTop = "4px";
+        moveFolderList.style.borderTop = "1px solid rgba(255,255,255,0.08)";
+        moveFolderList.style.maxHeight = "220px";
+        moveFolderList.style.overflowY = "auto";
+        defiItemContextMenu.insertBefore(moveFolderList, defiDeleteSiteBtn);
+      }
 
-      moveFolderBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        moveFolderList.style.display = moveFolderList.style.display === "none" ? "block" : "none";
-      });
-
-      // Insert before delete site button for better UX
-      defiItemContextMenu.insertBefore(moveFolderBtn, defiDeleteSiteBtn);
-      defiItemContextMenu.insertBefore(moveFolderList, defiDeleteSiteBtn);
+      return { moveFolderBtn, moveFolderList };
     }
 
     function resetMoveState() {
       pendingMoveSiteId = null;
       pendingMoveSiteCurrentFolderId = null;
+      ensureMoveControls();
       if (moveFolderList) {
         moveFolderList.innerHTML = "";
         moveFolderList.style.display = "none";
@@ -1196,27 +1206,31 @@ if (window.__defiMenuInitialized) {
     }
 
     function setItemContextMode(mode) {
-      // mode: "site" | "folder"
+      ensureMoveControls();
+
       if (mode === "site") {
         defiRenameFolderBtn.style.display = "none";
         defiDeleteFolderBtn.style.display = "none";
         defiDeleteSiteBtn.style.display = "block";
-        if (moveFolderBtn) moveFolderBtn.style.display = "block";
-        if (moveFolderList) moveFolderList.style.display = "none";
+
+        moveFolderBtn.style.display = "block";
+        moveFolderList.style.display = "none";
       } else {
         defiRenameFolderBtn.style.display = "block";
         defiDeleteFolderBtn.style.display = "block";
         defiDeleteSiteBtn.style.display = "none";
-        if (moveFolderBtn) moveFolderBtn.style.display = "none";
-        if (moveFolderList) moveFolderList.style.display = "none";
+
+        moveFolderBtn.style.display = "none";
+        moveFolderList.style.display = "none";
       }
     }
 
     function buildMoveFolderList() {
+      ensureMoveControls();
       if (!moveFolderList) return;
       moveFolderList.innerHTML = "";
 
-      // Unassigned first
+      // Unassigned target
       const unassignedBtn = document.createElement("button");
       unassignedBtn.type = "button";
       unassignedBtn.className = "defi-context-btn";
@@ -1226,11 +1240,15 @@ if (window.__defiMenuInitialized) {
       unassignedBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
+
         if (pendingMoveSiteId == null) return;
+
+        // if already in unassigned -> no-op
         if (pendingMoveSiteCurrentFolderId == null) {
           hideItemContextMenu();
           return;
         }
+
         try {
           await moveSiteToFolder(pendingMoveSiteId, null);
           hideItemContextMenu();
@@ -1259,10 +1277,11 @@ if (window.__defiMenuInitialized) {
           e.stopPropagation();
 
           if (pendingMoveSiteId == null) return;
+
           const targetId = Number(folder.id);
           const currentId = pendingMoveSiteCurrentFolderId == null ? null : Number(pendingMoveSiteCurrentFolderId);
 
-          // No-op if same folder
+          // same folder -> no-op
           if (currentId != null && currentId === targetId) {
             hideItemContextMenu();
             return;
@@ -1284,12 +1303,14 @@ if (window.__defiMenuInitialized) {
 
     function showSiteItemContextMenu(x, y, siteId, siteFolderId) {
       setItemContextMode("site");
+
       pendingDeleteSiteId = siteId;
       pendingDeleteFolderId = null;
       pendingRenameFolderId = null;
 
       pendingMoveSiteId = siteId;
-      pendingMoveSiteCurrentFolderId = siteFolderId == null || siteFolderId === "" ? null : Number(siteFolderId);
+      pendingMoveSiteCurrentFolderId =
+        siteFolderId == null || siteFolderId === "" ? null : Number(siteFolderId);
 
       buildMoveFolderList();
 
@@ -1299,9 +1320,10 @@ if (window.__defiMenuInitialized) {
     }
 
     function showFolderItemContextMenu(x, y, folderId) {
-      if (folderId == null || folderId === "") return; // Unassigned => no menu
+      if (folderId == null || folderId === "") return; // Unassigned => no context menu
 
       setItemContextMode("folder");
+
       pendingDeleteFolderId = Number(folderId);
       pendingRenameFolderId = Number(folderId);
       pendingDeleteSiteId = null;
@@ -1483,8 +1505,8 @@ if (window.__defiMenuInitialized) {
       repositionDefiMenuIfOpen();
     }
 
-    // init dynamic move UI
-    ensureMoveFolderUi();
+    // prepare dynamic controls
+    ensureMoveControls();
 
     // --- OPEN/CLOSE ---
     defiButton.addEventListener("click", async (e) => {
@@ -1508,7 +1530,7 @@ if (window.__defiMenuInitialized) {
       repositionDefiMenuIfOpen();
     });
 
-    // --- GLOBAL ADD MENU (ONLY on DeFi button RMB) ---
+    // --- GLOBAL ADD MENU (ONLY on button RMB) ---
     function onDefiButtonContextMenu(e) {
       if (!e.target?.closest?.("#defiButton")) return;
 
@@ -1527,7 +1549,7 @@ if (window.__defiMenuInitialized) {
 
     defiButton.addEventListener("contextmenu", onDefiButtonContextMenu, true);
 
-    // --- ITEM/FOLDER RMB MENU (capturing hard block) ---
+    // --- ITEM/FOLDER RMB MENU ---
     defiMenu.addEventListener("contextmenu", (e) => {
       const siteItem = e.target.closest("a[data-id]");
       const folderRow = e.target.closest(".defi-folder-row");
@@ -1547,18 +1569,15 @@ if (window.__defiMenuInitialized) {
         return;
       }
 
-      // folder row case
       const raw = folderRow.dataset.folderId;
 
-      // Back row: no context menu
       if (raw === "__BACK__") {
         hideItemContextMenu();
         return;
       }
 
-      // Unassigned: no context menu
       if (raw === "" || raw == null) {
-        hideItemContextMenu();
+        hideItemContextMenu(); // Unassigned folder row: no rename/delete
         return;
       }
 
@@ -1593,7 +1612,6 @@ if (window.__defiMenuInitialized) {
       const folder = defiFoldersCache.find((f) => String(f.id) === String(pendingRenameFolderId));
       const currentName = folder?.name || "";
 
-      // keep id for save; just close menu
       defiItemContextMenu.classList.remove("visible");
       openSiteDialog("folder_rename", currentName);
     });
@@ -1763,7 +1781,6 @@ if (window.__defiMenuInitialized) {
       repositionDefiMenuIfOpen();
     });
 
-    // initial render (cache warm)
     renderDefiMenu();
   })();
 }
