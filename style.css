@@ -715,23 +715,30 @@ body {
   color: #ffffff;
 }
 
-/* --- Move-to-folder submenu (NEW) --- */
-#defiMoveFolderBtn::after{
+/* ===== DeFi site context menu clarity improvements ===== */
+
+/* Move button */
+#defiMoveFolderBtn {
+  font-weight: 700;
+  color: #dfe6ff;
+}
+
+#defiMoveFolderBtn::after {
   content: "›";
   float: right;
-  opacity: 0.8;
+  opacity: 0.75;
 }
 
-#defiMoveFolderList{
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+/* Folder list block */
+#defiMoveFolderList {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   max-height: 220px;
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
-#defiMoveFolderList .defi-context-btn{
+#defiMoveFolderList .defi-context-btn {
   font-size: 12px;
   padding: 7px 10px;
   margin-left: 8px;
@@ -740,19 +747,39 @@ body {
   color: #bfc8ff;
 }
 
-#defiMoveFolderList .defi-context-btn:hover{
-  background: rgba(46,186,198,0.16);
+#defiMoveFolderList .defi-context-btn:hover {
+  background: rgba(46, 186, 198, 0.16);
   color: #ffffff;
 }
 
-#defiMoveFolderList::-webkit-scrollbar{
+/* Delete site: danger icon + separate destructive action */
+#defiDeleteSiteBtn {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 92, 92, 0.42);
+  color: #ff9aa8;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+#defiDeleteSiteBtn::before {
+  content: "🗑 ";
+  margin-right: 2px;
+}
+
+#defiDeleteSiteBtn:hover {
+  background: rgba(255, 92, 92, 0.16);
+  color: #ffd5dc;
+}
+
+/* Move list scrollbar */
+#defiMoveFolderList::-webkit-scrollbar {
   width: 8px;
 }
-#defiMoveFolderList::-webkit-scrollbar-thumb{
-  background: rgba(255,255,255,0.12);
+#defiMoveFolderList::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14);
   border-radius: 999px;
 }
-/* --- /Move-to-folder submenu --- */
 
 .defi-container,
 .strategy-container{
@@ -1314,64 +1341,4 @@ body {
   margin-top: 10px;
   color: #ff97aa;
   font-size: 12px;
-}
-/* ===== DeFi site context menu clarity improvements ===== */
-
-/* Keep Move section grouped */
-#defiMoveFolderBtn {
-  font-weight: 700;
-  color: #dfe6ff;
-}
-
-#defiMoveFolderBtn::after {
-  content: "›";
-  float: right;
-  opacity: 0.75;
-}
-
-/* Folder list block under Move */
-#defiMoveFolderList {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-/* Folder options look like sub-items */
-#defiMoveFolderList .defi-context-btn {
-  font-size: 12px;
-  padding: 7px 10px;
-  margin-left: 8px;
-  width: calc(100% - 8px);
-  border-radius: 8px;
-  color: #bfc8ff;
-}
-
-#defiMoveFolderList .defi-context-btn:hover {
-  background: rgba(46, 186, 198, 0.16);
-  color: #ffffff;
-}
-
-/* --- DELETE SITE as destructive, separated action --- */
-#defiDeleteSiteBtn {
-  margin-top: 8px;
-  padding-top: 9px;
-  border-top: 1px dashed rgba(255, 92, 92, 0.35);
-  color: #ff9aa8;
-  font-weight: 700;
-}
-
-#defiDeleteSiteBtn:hover {
-  background: rgba(255, 92, 92, 0.14);
-  color: #ffd3da;
-}
-
-/* Nice scrollbar in move list */
-#defiMoveFolderList::-webkit-scrollbar {
-  width: 8px;
-}
-#defiMoveFolderList::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.14);
-  border-radius: 999px;
 }
