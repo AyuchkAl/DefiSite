@@ -707,12 +707,52 @@ body {
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
+  transition: background 0.1s ease, color 0.1s ease;
 }
 
 .defi-context-btn:hover{
   background: rgba(255,255,255,0.06);
   color: #ffffff;
 }
+
+/* --- Move-to-folder submenu (NEW) --- */
+#defiMoveFolderBtn::after{
+  content: "›";
+  float: right;
+  opacity: 0.8;
+}
+
+#defiMoveFolderList{
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#defiMoveFolderList .defi-context-btn{
+  font-size: 12px;
+  padding: 7px 10px;
+  margin-left: 8px;
+  width: calc(100% - 8px);
+  border-radius: 8px;
+  color: #bfc8ff;
+}
+
+#defiMoveFolderList .defi-context-btn:hover{
+  background: rgba(46,186,198,0.16);
+  color: #ffffff;
+}
+
+#defiMoveFolderList::-webkit-scrollbar{
+  width: 8px;
+}
+#defiMoveFolderList::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.12);
+  border-radius: 999px;
+}
+/* --- /Move-to-folder submenu --- */
 
 .defi-container,
 .strategy-container{
