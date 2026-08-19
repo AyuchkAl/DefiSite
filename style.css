@@ -707,11 +707,112 @@ body {
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
+  transition: background 0.1s ease, color 0.1s ease;
 }
 
 .defi-context-btn:hover{
   background: rgba(255,255,255,0.06);
   color: #ffffff;
+}
+
+
+#defiMoveFolderBtn {
+  font-weight: 700;
+  color: #dfe6ff;
+}
+
+#defiMoveFolderBtn::after {
+  content: "›";
+  float: right;
+  opacity: 0.75;
+}
+
+/* Folder list block */
+#defiMoveFolderList {
+  display: none;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* Folder options */
+#defiMoveFolderList .defi-context-btn {
+  display: block;
+  width: calc(100% - 8px);
+  margin-left: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  color: #bfc8ff;
+}
+
+#defiMoveFolderList .defi-context-btn:hover {
+  background: rgba(46, 186, 198, 0.16);
+  color: #ffffff;
+}
+
+/* Delete site = destructive action (outside list) */
+#defiDeleteSiteBtn {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding-top: 11px;
+  border-top: 1px dashed rgba(255, 92, 92, 0.45);
+  color: #ff9aa8;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+#defiDeleteSiteBtn::before {
+  content: "🗑 ";
+  margin-right: 1px;
+}
+
+#defiDeleteSiteBtn:hover {
+  background: rgba(255, 92, 92, 0.16);
+  color: #ffd5dc;
+}
+
+/* move list scrollbar */
+#defiMoveFolderList::-webkit-scrollbar {
+  width: 8px;
+}
+
+#defiMoveFolderList::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14);
+  border-radius: 999px;
+}
+
+/* Delete site: danger icon + separate destructive action */
+#defiDeleteSiteBtn {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 92, 92, 0.42);
+  color: #ff9aa8;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+#defiDeleteSiteBtn::before {
+  content: "🗑 ";
+  margin-right: 2px;
+}
+
+#defiDeleteSiteBtn:hover {
+  background: rgba(255, 92, 92, 0.16);
+  color: #ffd5dc;
+}
+
+/* Move list scrollbar */
+#defiMoveFolderList::-webkit-scrollbar {
+  width: 8px;
+}
+#defiMoveFolderList::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14);
+  border-radius: 999px;
 }
 
 .defi-container,
