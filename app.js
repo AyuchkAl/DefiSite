@@ -819,466 +819,940 @@ if (myAssetsButton && myAssetsMenu) {
 }
 
 // ================== DeFi MENU ==================
-(function initDefiMenu() {
-  const defiContainer = document.getElementById("defiContainer");
-  const defiButton = document.getElementById("defiButton");
-  const defiMenu = document.getElementById("defiMenu");
-  const defiContextMenu = document.getElementById("defiContextMenu");
-  const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
-  const defiItemContextMenu = document.getElementById("defiItemContextMenu");
-  const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
+if (window.__defiMenuInitialized) {
+  console.warn("DeFi menu already initialized; skipping duplicate init.");
+} else {
+  window.__defiMenuInitialized = true;
 
-  const siteDialogBackdrop = document.getElementById("siteDialogBackdrop");
-  const siteUrlInput = document.getElementById("siteUrlInput");
-  const siteLabelInput = document.getElementById("siteLabelInput");
-  const siteDialogCancelBtn = document.getElementById("siteDialogCancelBtn");
-  const siteDialogSaveBtn = document.getElementById("siteDialogSaveBtn");
-  const siteDialogError = document.getElementById("siteDialogError");
+  (function initDefiMenu() {
+    const defiContainer = document.getElementById("defiContainer");
+    const defiButton = document.getElementById("defiButton");
+    const defiMenu = document.getElementById("defiMenu");
+    const defiContextMenu = document.getElementById("defiContextMenu");
+    const defiAddSiteBtn = document.getElementById("defiAddSiteBtn");
+    const defiAddFolderBtn = document.getElementById("defiAddFolderBtn");
 
-  if (
-    !defiContainer ||
-    !defiButton ||
-    !defiMenu ||
-    !defiContextMenu ||
-    !defiAddSiteBtn ||
-    !defiItemContextMenu ||
-    !defiDeleteSiteBtn ||
-    !siteDialogBackdrop ||
-    !siteUrlInput ||
-    !siteLabelInput ||
-    !siteDialogCancelBtn ||
-    !siteDialogSaveBtn ||
-    !siteDialogError
-  ) return;
+    const defiItemContextMenu = document.getElementById("defiItemContextMenu");
+    const defiRenameFolderBtn = document.getElementById("defiRenameFolderBtn");
+    const defiDeleteFolderBtn = document.getElementById("defiDeleteFolderBtn");
+    const defiDeleteSiteBtn = document.getElementById("defiDeleteSiteBtn");
 
-  let pendingDeleteId = null;
+    const siteDialogBackdrop = document.getElementById("siteDialogBackdrop");
+    const siteDialogTitle = document.getElementById("siteDialogTitle");
+    const siteUrlInput = document.getElementById("siteUrlInput");
+    const siteLabelInput = document.getElementById("siteLabelInput");
+    const siteDialogCancelBtn = document.getElementById("siteDialogCancelBtn");
+    const siteDialogSaveBtn = document.getElementById("siteDialogSaveBtn");
+    const siteDialogError = document.getElementById("siteDialogError");
 
-  function isValidHttpUrl(s) {
-    try {
-      const u = new URL(s);
-      return u.protocol === "http:" || u.protocol === "https:";
-    } catch {
-      return false;
-    }
-  }
+    if (
+      !defiContainer ||
+      !defiButton ||
+      !defiMenu ||
+      !defiContextMenu ||
+      !defiAddSiteBtn ||
+      !defiAddFolderBtn ||
+      !defiItemContextMenu ||
+      !defiRenameFolderBtn ||
+      !defiDeleteFolderBtn ||
+      !defiDeleteSiteBtn ||
+      !siteDialogBackdrop ||
+      !siteDialogTitle ||
+      !siteUrlInput ||
+      !siteLabelInput ||
+      !siteDialogCancelBtn ||
+      !siteDialogSaveBtn ||
+      !siteDialogError
+    ) return;
 
-  function edgeStyleFromDomain(hostname) {
-    let h = String(hostname || "").replace(/^www\./i, "");
-    if (!h) return "Site";
+    let pendingDeleteSiteId = null;
+    let pendingDeleteFolderId = null;
+    let pendingRenameFolderId = null;
+    let pendingMoveSiteId = null;
+    let pendingMoveSiteCurrentFolderId = null;
 
-    const parts = h.split(".");
-    let base = parts.length >= 2 ? parts[0] : h;
+    let dialogMode = "site"; // "site" | "folder" | "folder_rename"
 
-    base = base
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/defi/ig, "DeFi")
-      .replace(/devops/ig, "DevOps")
-      .replace(/tracker/ig, "Tracker")
-      .replace(/[-_]+/g, " ")
-      .trim();
+    let defiFoldersCache = [];
+    let defiSitesCache = [];
+    let defiViewMode = "folders"; // "folders" | "sites"
+    let currentFolderId = null;
+    let renderSeq = 0;
 
-    base = base.replace(/DeFi([A-Za-z]+)/, "DeFi $1").trim();
+    let moveFolderBtn = null;
+    let moveFolderList = null;
 
-    base = base
-      .split(/\s+/)
-      .map(w => (w === "DeFi" || w === "DevOps") ? w : (w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
-      .join(" ")
-      .trim();
-
-    return base || h;
-  }
-
-  function makeEdgeLikeLabel(url) {
-    try {
-      const u = new URL(url);
-      const name = edgeStyleFromDomain(u.hostname);
-      const max = 22;
-      return name.length > max ? name.slice(0, max - 1) + "…" : name;
-    } catch {
-      return "Site";
-    }
-  }
-
-  function openSiteDialog() {
-    siteDialogError.textContent = "";
-    siteUrlInput.value = "";
-    siteLabelInput.value = "";
-    siteDialogBackdrop.classList.remove("hidden");
-    siteDialogBackdrop.setAttribute("aria-hidden", "false");
-
-    setTimeout(() => {
-      siteUrlInput.focus();
-    }, 0);
-  }
-
-  function closeSiteDialog() {
-    siteDialogBackdrop.classList.add("hidden");
-    siteDialogBackdrop.setAttribute("aria-hidden", "true");
-    siteDialogError.textContent = "";
-  }
-
-  async function parseApiJson(res) {
-    const text = await res.text();
-    if (!text) return {};
-    try {
-      return JSON.parse(text);
-    } catch {
-      throw new Error(`Invalid JSON from API: ${text.slice(0, 200)}`);
-    }
-  }
-
-  async function fetchDefiLinks() {
-    const res = await fetch(WEB_SITES_API_URL, {
-      method: "GET",
-      cache: "no-store"
-    });
-
-    const json = await parseApiJson(res);
-
-    if (!res.ok) {
-      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
-    }
-
-    if (Array.isArray(json)) return json;
-    if (Array.isArray(json?.data)) return json.data;
-    if (Array.isArray(json?.rows)) return json.rows;
-    return [];
-  }
-
-  async function insertDefiLink(url, label) {
-    const res = await fetch(WEB_SITES_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ url, label })
-    });
-
-    const json = await parseApiJson(res);
-
-    if (!res.ok) {
-      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
-    }
-
-    return json;
-  }
-
-  async function deleteDefiLink(id) {
-    const res = await fetch(WEB_SITES_API_URL, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ id })
-    });
-
-    const json = await parseApiJson(res);
-
-    if (!res.ok) {
-      throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
-    }
-
-    return json;
-  }
-
-  async function renderDefiMenu() {
-    defiMenu.innerHTML = "";
-
-    try {
-      const links = await fetchDefiLinks();
-
-      if (links.length === 0) {
-        const empty = document.createElement("div");
-        empty.style.padding = "9px 10px";
-        empty.style.color = "rgba(245,245,245,0.70)";
-        empty.style.fontSize = "13px";
-        empty.textContent = "No sites yet";
-        defiMenu.appendChild(empty);
-        return;
-      }
-
-      for (const link of links) {
-        const a = document.createElement("a");
-        a.className = "my-assets-item";
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.href = String(link.url || "#");
-        a.textContent = String(link.label || makeEdgeLikeLabel(link.url));
-        a.dataset.id = String(link.id);
-        a.dataset.url = String(link.url || "");
-        defiMenu.appendChild(a);
-      }
-    } catch (e) {
-      console.error("Failed to render DeFi menu", e);
-
-      const err = document.createElement("div");
-      err.style.padding = "9px 10px";
-      err.style.color = "#ff97aa";
-      err.style.fontSize = "13px";
-      err.textContent = "Failed to load sites";
-      defiMenu.appendChild(err);
-    }
-  }
-
-  function closeDefiMenu() {
-    defiMenu.classList.remove("visible");
-    defiMenu.style.left = "";
-    defiMenu.style.top = "";
-    defiButton.setAttribute("aria-expanded", "false");
-  }
-
-  function repositionDefiMenuIfOpen() {
-    if (!defiMenu.classList.contains("visible")) return;
-
-    const r = defiButton.getBoundingClientRect();
-    const menuW = defiMenu.offsetWidth || 190;
-
-    let left = r.left + (r.width / 2) - (menuW / 2);
-    left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
-    const top = r.bottom + 10;
-
-    defiMenu.style.left = `${Math.round(left)}px`;
-    defiMenu.style.top  = `${Math.round(top)}px`;
-  }
-
-  async function openDefiMenu() {
-    await renderDefiMenu();
-    defiMenu.classList.add("visible");
-    defiButton.setAttribute("aria-expanded", "true");
-    repositionDefiMenuIfOpen();
-  }
-
-  function toggleDefiMenu() {
-    if (defiMenu.classList.contains("visible")) closeDefiMenu();
-    else openDefiMenu();
-  }
-
-  function hideAddContextMenu() {
-    defiContextMenu.classList.remove("visible");
-    defiContextMenu.style.left = "-9999px";
-    defiContextMenu.style.top = "-9999px";
-  }
-
-  function showAddContextMenu(x, y) {
-    const strategyButton = document.getElementById("strategyButton");
-    const menuWidth = defiContextMenu.offsetWidth || 190;
-    const menuHeight = defiContextMenu.offsetHeight || 52;
-
-    let left = x;
-    let top = y + 10;
-
-    if (strategyButton) {
-      const r = strategyButton.getBoundingClientRect();
-      const overlapsHorizontally = left < r.right && (left + menuWidth) > r.left;
-      const overlapsVertically = top < r.bottom && (top + menuHeight) > r.top;
-
-      if (overlapsHorizontally && overlapsVertically) {
-        top = r.bottom + 8;
+    function isValidHttpUrl(s) {
+      try {
+        const u = new URL(s);
+        return u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        return false;
       }
     }
 
-    left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
-    top = Math.max(8, Math.min(top, window.innerHeight - menuHeight - 8));
+    function edgeStyleFromDomain(hostname) {
+      let h = String(hostname || "").replace(/^www\./i, "");
+      if (!h) return "Site";
 
-    defiContextMenu.style.left = `${Math.round(left)}px`;
-    defiContextMenu.style.top = `${Math.round(top)}px`;
-    defiContextMenu.classList.add("visible");
-  }
+      const parts = h.split(".");
+      let base = parts.length >= 2 ? parts[0] : h;
 
-  function hideDeleteContextMenu() {
-    defiItemContextMenu.classList.remove("visible");
-    defiItemContextMenu.style.left = "-9999px";
-    defiItemContextMenu.style.top = "-9999px";
-    pendingDeleteId = null;
-  }
+      base = base
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/defi/ig, "DeFi")
+        .replace(/devops/ig, "DevOps")
+        .replace(/tracker/ig, "Tracker")
+        .replace(/[-_]+/g, " ")
+        .trim();
 
-  function showDeleteContextMenu(x, y, siteId) {
-    pendingDeleteId = siteId;
-    defiItemContextMenu.style.left = `${x}px`;
-    defiItemContextMenu.style.top = `${y}px`;
-    defiItemContextMenu.classList.add("visible");
-  }
+      base = base.replace(/DeFi([A-Za-z]+)/, "DeFi $1").trim();
 
-  function hideAllDefiContextMenus() {
-    hideAddContextMenu();
-    hideDeleteContextMenu();
-  }
+      base = base
+        .split(/\s+/)
+        .map(w => (w === "DeFi" || w === "DevOps") ? w : (w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+        .join(" ")
+        .trim();
 
-  defiButton.addEventListener("click", (e) => {
-    e.stopPropagation();
-    hideAllDefiContextMenus();
-
-    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
-    if (walletMenu) walletMenu.classList.remove("visible");
-
-    toggleDefiMenu();
-  });
-
-  function closeDefiOnLinkClick(e) {
-    const a = e.target && e.target.closest ? e.target.closest("a") : null;
-    if (!a) return;
-    setTimeout(closeDefiMenu, 0);
-  }
-  defiMenu.addEventListener("click", closeDefiOnLinkClick, true);
-
-  function onDefiContextMenu(e) {
-    const item = e.target?.closest?.("#defiMenu a[data-id]");
-    if (item) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-
-    closeDefiMenu();
-    hideDeleteContextMenu();
-
-    if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
-    if (walletMenu) walletMenu.classList.remove("visible");
-
-    showAddContextMenu(e.clientX, e.clientY);
-    return false;
-  }
-
-  defiButton.addEventListener("contextmenu", onDefiContextMenu, true);
-  defiContainer.addEventListener("contextmenu", onDefiContextMenu, true);
-
-  function onDefiItemContextMenu(e) {
-    const item = e.target?.closest?.("#defiMenu a[data-id]");
-    if (!item) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-
-    hideAddContextMenu();
-    showDeleteContextMenu(e.clientX, e.clientY, Number(item.dataset.id));
-    return false;
-  }
-
-  defiMenu.addEventListener("contextmenu", onDefiItemContextMenu, true);
-
-  defiAddSiteBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    hideAddContextMenu();
-    openSiteDialog();
-  });
-
-  siteDialogCancelBtn.addEventListener("click", () => {
-    closeSiteDialog();
-  });
-
-  siteDialogBackdrop.addEventListener("click", (e) => {
-    if (e.target === siteDialogBackdrop) {
-      closeSiteDialog();
-    }
-  });
-
-  siteDialogSaveBtn.addEventListener("click", async () => {
-    const trimmedUrl = siteUrlInput.value.trim();
-    const label = siteLabelInput.value.trim();
-
-    if (!trimmedUrl) {
-      siteDialogError.textContent = "URL is required.";
-      siteUrlInput.focus();
-      return;
+      return base || h;
     }
 
-    if (!isValidHttpUrl(trimmedUrl)) {
-      siteDialogError.textContent = "Invalid URL. Please enter a full URL starting with https://";
-      siteUrlInput.focus();
-      return;
-    }
-
-    if (!label) {
-      siteDialogError.textContent = "Label is required.";
-      siteLabelInput.focus();
-      return;
-    }
-
-    try {
-      siteDialogSaveBtn.disabled = true;
-      siteDialogCancelBtn.disabled = true;
-      siteDialogError.textContent = "";
-
-      await insertDefiLink(trimmedUrl, label);
-
-      closeSiteDialog();
-      await openDefiMenu();
-    } catch (err) {
-      console.error("Failed to add site", err);
-      siteDialogError.textContent = "Failed to add site: " + (err?.message || err);
-    } finally {
-      siteDialogSaveBtn.disabled = false;
-      siteDialogCancelBtn.disabled = false;
-    }
-  });
-
-  defiDeleteSiteBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!pendingDeleteId) {
-      hideDeleteContextMenu();
-      return;
-    }
-
-    try {
-      await deleteDefiLink(pendingDeleteId);
-      hideDeleteContextMenu();
-      await openDefiMenu();
-    } catch (err) {
-      console.error("Failed to delete site", err);
-      alert("Failed to delete site: " + (err?.message || err));
-    }
-  });
-
-  document.addEventListener("click", (e) => {
-    if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
-      closeDefiMenu();
-    }
-    if (defiContextMenu.classList.contains("visible") && !e.target.closest("#defiContextMenu")) {
-      hideAddContextMenu();
-    }
-    if (defiItemContextMenu.classList.contains("visible") && !e.target.closest("#defiItemContextMenu")) {
-      hideDeleteContextMenu();
-    }
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (!siteDialogBackdrop.classList.contains("hidden")) {
-      if (e.key === "Escape") {
-        closeSiteDialog();
-        return;
+    function makeEdgeLikeLabel(url) {
+      try {
+        const u = new URL(url);
+        const name = edgeStyleFromDomain(u.hostname);
+        const max = 22;
+        return name.length > max ? name.slice(0, max - 1) + "…" : name;
+      } catch {
+        return "Site";
       }
+    }
 
-      if (e.key === "Enter") {
-        if (document.activeElement === siteUrlInput || document.activeElement === siteLabelInput) {
+    function ensureMoveControls() {
+      if (!moveFolderBtn) moveFolderBtn = document.getElementById("defiMoveFolderBtn");
+      if (!moveFolderList) moveFolderList = document.getElementById("defiMoveFolderList");
+
+      if (!moveFolderBtn) {
+        moveFolderBtn = document.createElement("button");
+        moveFolderBtn.id = "defiMoveFolderBtn";
+        moveFolderBtn.type = "button";
+        moveFolderBtn.className = "defi-context-btn";
+        moveFolderBtn.textContent = "Move to folder";
+        moveFolderBtn.addEventListener("click", (e) => {
           e.preventDefault();
-          siteDialogSaveBtn.click();
-          return;
+          e.stopPropagation();
+          ensureMoveControls();
+          if (!moveFolderList) return;
+          moveFolderList.style.display = moveFolderList.style.display === "none" ? "block" : "none";
+        });
+      }
+
+      if (!moveFolderList) {
+        moveFolderList = document.createElement("div");
+        moveFolderList.id = "defiMoveFolderList";
+        moveFolderList.style.display = "none";
+      }
+
+      // STRICT ORDER:
+      // [Rename folder]
+      // [Delete folder]
+      // [Move to folder]
+      // [Move list]
+      // [Delete site]
+      if (moveFolderBtn.parentNode !== defiItemContextMenu) {
+        defiItemContextMenu.appendChild(moveFolderBtn);
+      }
+      if (moveFolderList.parentNode !== defiItemContextMenu) {
+        defiItemContextMenu.appendChild(moveFolderList);
+      }
+
+      // Ensure delete site is always LAST and outside list
+      if (defiDeleteSiteBtn.parentNode === defiItemContextMenu) {
+        defiItemContextMenu.appendChild(defiDeleteSiteBtn);
+      }
+
+      return { moveFolderBtn, moveFolderList };
+    }
+
+    function resetMoveState() {
+      pendingMoveSiteId = null;
+      pendingMoveSiteCurrentFolderId = null;
+      ensureMoveControls();
+      if (moveFolderList) {
+        moveFolderList.innerHTML = "";
+        moveFolderList.style.display = "none";
+      }
+    }
+
+    function openSiteDialog(mode = "site", presetName = "") {
+      dialogMode = mode;
+      siteDialogError.textContent = "";
+      siteUrlInput.value = "";
+      siteLabelInput.value = "";
+
+      if (mode === "site") {
+        siteDialogTitle.textContent = "Add site";
+        siteUrlInput.style.display = "";
+        siteUrlInput.previousElementSibling.style.display = "";
+        siteUrlInput.placeholder = "https://example.com";
+        siteLabelInput.previousElementSibling.textContent = "Enter label";
+        siteLabelInput.placeholder = "Site label";
+      } else if (mode === "folder") {
+        siteDialogTitle.textContent = "Add folder";
+        siteUrlInput.style.display = "none";
+        siteUrlInput.previousElementSibling.style.display = "none";
+        siteLabelInput.previousElementSibling.textContent = "Enter folder name";
+        siteLabelInput.placeholder = "Folder name";
+      } else {
+        siteDialogTitle.textContent = "Rename folder";
+        siteUrlInput.style.display = "none";
+        siteUrlInput.previousElementSibling.style.display = "none";
+        siteLabelInput.previousElementSibling.textContent = "Enter new folder name";
+        siteLabelInput.placeholder = "New folder name";
+        siteLabelInput.value = presetName || "";
+      }
+
+      siteDialogBackdrop.classList.remove("hidden");
+      siteDialogBackdrop.setAttribute("aria-hidden", "false");
+      setTimeout(() => siteLabelInput.focus(), 0);
+    }
+
+    function closeSiteDialog() {
+      siteDialogBackdrop.classList.add("hidden");
+      siteDialogBackdrop.setAttribute("aria-hidden", "true");
+      siteDialogError.textContent = "";
+      pendingRenameFolderId = null;
+    }
+
+    async function parseApiJson(res) {
+      const text = await res.text();
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`Invalid JSON from API: ${text.slice(0, 200)}`);
+      }
+    }
+
+    async function fetchDefiData() {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "GET",
+        cache: "no-store"
+      });
+
+      const json = await parseApiJson(res);
+
+      if (!res.ok) {
+        throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      }
+
+      if (json?.data && typeof json.data === "object") {
+        return {
+          folders: Array.isArray(json.data.folders) ? json.data.folders : [],
+          sites: Array.isArray(json.data.sites) ? json.data.sites : [],
+        };
+      }
+
+      return {
+        folders: Array.isArray(json?.folders) ? json.folders : [],
+        sites: Array.isArray(json?.sites) ? json.sites : [],
+      };
+    }
+
+    async function insertDefiLink(url, label, folderId = null) {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          label,
+          folder_id: folderId
+        })
+      });
+
+      const json = await parseApiJson(res);
+      if (!res.ok) throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      return json;
+    }
+
+    async function insertFolder(name) {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "folder",
+          name
+        })
+      });
+
+      const json = await parseApiJson(res);
+      if (!res.ok) throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      return json;
+    }
+
+    async function renameFolder(folderId, name) {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "folder_rename",
+          id: folderId,
+          name
+        })
+      });
+
+      const json = await parseApiJson(res);
+      if (!res.ok) throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      return json;
+    }
+
+    async function moveSiteToFolder(siteId, folderIdOrNull) {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: siteId,
+          folder_id: folderIdOrNull == null ? null : folderIdOrNull
+        })
+      });
+
+      const json = await parseApiJson(res);
+      if (!res.ok) throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      return json;
+    }
+
+    async function deleteDefiLink(id) {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+      });
+
+      const json = await parseApiJson(res);
+      if (!res.ok) throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      return json;
+    }
+
+    async function deleteFolder(folderId) {
+      const res = await fetch(WEB_SITES_API_URL, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "folder",
+          id: folderId
+        })
+      });
+
+      const json = await parseApiJson(res);
+      if (!res.ok) throw new Error(json?.error || json?.message || `HTTP ${res.status}`);
+      return json;
+    }
+
+    function closeDefiMenu() {
+      defiMenu.classList.remove("visible");
+      defiMenu.style.left = "";
+      defiMenu.style.top = "";
+      defiButton.setAttribute("aria-expanded", "false");
+    }
+
+    function repositionDefiMenuIfOpen() {
+      if (!defiMenu.classList.contains("visible")) return;
+
+      const r = defiButton.getBoundingClientRect();
+      const menuW = defiMenu.offsetWidth || 190;
+
+      let left = r.left + (r.width / 2) - (menuW / 2);
+      left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+      const top = r.bottom + 10;
+
+      defiMenu.style.left = `${Math.round(left)}px`;
+      defiMenu.style.top = `${Math.round(top)}px`;
+    }
+
+    function hideAddContextMenu() {
+      defiContextMenu.classList.remove("visible");
+      defiContextMenu.style.left = "-9999px";
+      defiContextMenu.style.top = "-9999px";
+    }
+
+    function showAddContextMenu(x, y) {
+      const strategyButton = document.getElementById("strategyButton");
+      const menuWidth = defiContextMenu.offsetWidth || 190;
+      const menuHeight = defiContextMenu.offsetHeight || 52;
+
+      let left = x;
+      let top = y + 10;
+
+      if (strategyButton) {
+        const r = strategyButton.getBoundingClientRect();
+        const overlapsHorizontally = left < r.right && (left + menuWidth) > r.left;
+        const overlapsVertically = top < r.bottom && (top + menuHeight) > r.top;
+
+        if (overlapsHorizontally && overlapsVertically) {
+          top = r.bottom + 8;
         }
       }
+
+      left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+      top = Math.max(8, Math.min(top, window.innerHeight - menuHeight - 8));
+
+      defiContextMenu.style.left = `${Math.round(left)}px`;
+      defiContextMenu.style.top = `${Math.round(top)}px`;
+      defiContextMenu.classList.add("visible");
     }
 
-    if (e.key === "Escape") {
-      closeDefiMenu();
+    function hideItemContextMenu() {
+      defiItemContextMenu.classList.remove("visible");
+      defiItemContextMenu.style.left = "-9999px";
+      defiItemContextMenu.style.top = "-9999px";
+
+      pendingDeleteSiteId = null;
+      pendingDeleteFolderId = null;
+      pendingRenameFolderId = null;
+      resetMoveState();
+    }
+
+    function setItemContextMode(mode) {
+      ensureMoveControls();
+
+      if (mode === "site") {
+        defiRenameFolderBtn.style.display = "none";
+        defiDeleteFolderBtn.style.display = "none";
+        defiDeleteSiteBtn.style.display = "block";
+
+        moveFolderBtn.style.display = "block";
+        moveFolderList.style.display = "none";
+      } else {
+        defiRenameFolderBtn.style.display = "block";
+        defiDeleteFolderBtn.style.display = "block";
+        defiDeleteSiteBtn.style.display = "none";
+
+        moveFolderBtn.style.display = "none";
+        moveFolderList.style.display = "none";
+      }
+    }
+
+    function buildMoveFolderList() {
+      ensureMoveControls();
+      moveFolderList.innerHTML = "";
+
+      // Unassigned target
+      const unassignedBtn = document.createElement("button");
+      unassignedBtn.type = "button";
+      unassignedBtn.className = "defi-context-btn";
+      unassignedBtn.textContent = "Unassigned";
+      unassignedBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (pendingMoveSiteId == null) return;
+        if (pendingMoveSiteCurrentFolderId == null) {
+          hideItemContextMenu();
+          return;
+        }
+
+        try {
+          await moveSiteToFolder(pendingMoveSiteId, null);
+          hideItemContextMenu();
+          await openDefiMenu();
+        } catch (err) {
+          console.error("Failed to move site to Unassigned", err);
+          alert("Failed to move site: " + (err?.message || err));
+        }
+      });
+      moveFolderList.appendChild(unassignedBtn);
+
+      const folders = [...defiFoldersCache]
+        .filter((f) => f && f.id != null)
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+      for (const folder of folders) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "defi-context-btn";
+        btn.textContent = folder.name || "Folder";
+
+        btn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (pendingMoveSiteId == null) return;
+
+          const targetId = Number(folder.id);
+          const currentId = pendingMoveSiteCurrentFolderId == null ? null : Number(pendingMoveSiteCurrentFolderId);
+
+          if (currentId != null && currentId === targetId) {
+            hideItemContextMenu();
+            return;
+          }
+
+          try {
+            await moveSiteToFolder(pendingMoveSiteId, targetId);
+            hideItemContextMenu();
+            await openDefiMenu();
+          } catch (err) {
+            console.error("Failed to move site", err);
+            alert("Failed to move site: " + (err?.message || err));
+          }
+        });
+
+        moveFolderList.appendChild(btn);
+      }
+    }
+
+    function showSiteItemContextMenu(x, y, siteId, siteFolderId) {
+      setItemContextMode("site");
+
+      pendingDeleteSiteId = siteId;
+      pendingDeleteFolderId = null;
+      pendingRenameFolderId = null;
+
+      pendingMoveSiteId = siteId;
+      pendingMoveSiteCurrentFolderId =
+        siteFolderId == null || siteFolderId === "" ? null : Number(siteFolderId);
+
+      buildMoveFolderList();
+
+      defiItemContextMenu.style.left = `${x}px`;
+      defiItemContextMenu.style.top = `${y}px`;
+      defiItemContextMenu.classList.add("visible");
+    }
+
+    function showFolderItemContextMenu(x, y, folderId) {
+      if (folderId == null || folderId === "") return;
+
+      setItemContextMode("folder");
+
+      pendingDeleteFolderId = Number(folderId);
+      pendingRenameFolderId = Number(folderId);
+      pendingDeleteSiteId = null;
+      resetMoveState();
+
+      defiItemContextMenu.style.left = `${x}px`;
+      defiItemContextMenu.style.top = `${y}px`;
+      defiItemContextMenu.classList.add("visible");
+    }
+
+    function hideAllDefiContextMenus() {
+      hideAddContextMenu();
+      hideItemContextMenu();
+    }
+
+    function getSitesForFolder(folderId) {
+      if (folderId == null) return defiSitesCache.filter((s) => s.folder_id == null);
+      return defiSitesCache.filter((s) => String(s.folder_id) === String(folderId));
+    }
+
+    function showFoldersView() {
+      defiViewMode = "folders";
+      currentFolderId = null;
+      renderDefiMenu();
+    }
+
+    function showSitesView(folderId) {
+      defiViewMode = "sites";
+      currentFolderId = folderId;
+      renderDefiMenu();
+    }
+
+    function createSiteElement(site) {
+      const a = document.createElement("a");
+      a.className = "my-assets-item defi-site-item";
+      a.href = String(site.url || "#");
+      a.textContent = String(site.label || makeEdgeLikeLabel(site.url));
+      a.dataset.id = String(site.id);
+      a.dataset.folderId = site.folder_id == null ? "" : String(site.folder_id);
+
+      a.addEventListener("click", (e) => e.stopPropagation());
+      return a;
+    }
+
+    async function renderDefiMenu() {
+      const seq = ++renderSeq;
+      defiMenu.innerHTML = "";
+
+      try {
+        const data = await fetchDefiData();
+        if (seq !== renderSeq) return;
+
+        defiFoldersCache = Array.isArray(data.folders) ? data.folders : [];
+        defiSitesCache = Array.isArray(data.sites) ? data.sites : [];
+
+        const folders = [...defiFoldersCache]
+          .filter((f) => f && f.id != null)
+          .filter((f, i, arr) => arr.findIndex((x) => String(x.id) === String(f.id)) === i)
+          .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+        const unassignedFolder = { id: null, name: "Unassigned" };
+
+        if (defiViewMode === "folders") {
+          if (folders.length === 0) {
+            const empty = document.createElement("div");
+            empty.style.padding = "9px 10px";
+            empty.style.color = "rgba(245,245,245,0.70)";
+            empty.style.fontSize = "13px";
+            empty.textContent = "No folders yet";
+            defiMenu.appendChild(empty);
+          } else {
+            for (const folder of folders) {
+              const row = document.createElement("button");
+              row.type = "button";
+              row.className = "my-assets-item defi-folder-row";
+              row.textContent = folder.name || "Folder";
+              row.dataset.folderId = String(folder.id);
+              row.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showSitesView(folder.id);
+              });
+              defiMenu.appendChild(row);
+            }
+          }
+
+          const unassignedRow = document.createElement("button");
+          unassignedRow.type = "button";
+          unassignedRow.className = "my-assets-item defi-folder-row";
+          unassignedRow.textContent = "Unassigned";
+          unassignedRow.dataset.folderId = "";
+          unassignedRow.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showSitesView(null);
+          });
+          defiMenu.appendChild(unassignedRow);
+          return;
+        }
+
+        const folder =
+          currentFolderId == null
+            ? unassignedFolder
+            : defiFoldersCache.find((f) => String(f.id) === String(currentFolderId));
+
+        if (!folder) {
+          showFoldersView();
+          return;
+        }
+
+        const backRow = document.createElement("button");
+        backRow.type = "button";
+        backRow.className = "my-assets-item defi-folder-row";
+        backRow.textContent = "← Back";
+        backRow.dataset.folderId = "__BACK__";
+        backRow.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showFoldersView();
+        });
+        defiMenu.appendChild(backRow);
+
+        const headerRow = document.createElement("div");
+        headerRow.className = "defi-folder";
+        const header = document.createElement("div");
+        header.className = "defi-folder-header";
+        header.textContent = folder.name || "Unassigned";
+        header.style.cursor = "default";
+        headerRow.appendChild(header);
+        defiMenu.appendChild(headerRow);
+
+        const sites = getSitesForFolder(currentFolderId);
+
+        if (sites.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "defi-folder";
+          const body = document.createElement("div");
+          body.className = "defi-folder-body";
+          const emptyText = document.createElement("div");
+          emptyText.className = "defi-folder-empty";
+          emptyText.textContent = "No sites in this folder";
+          body.appendChild(emptyText);
+          empty.appendChild(body);
+          defiMenu.appendChild(empty);
+          return;
+        }
+
+        for (const site of sites) {
+          const section = document.createElement("div");
+          section.className = "defi-folder";
+          const body = document.createElement("div");
+          body.className = "defi-folder-body";
+          body.appendChild(createSiteElement(site));
+          section.appendChild(body);
+          defiMenu.appendChild(section);
+        }
+      } catch (e) {
+        console.error("Failed to render DeFi menu", e);
+        const err = document.createElement("div");
+        err.style.padding = "9px 10px";
+        err.style.color = "#ff97aa";
+        err.style.fontSize = "13px";
+        err.textContent = "Failed to load sites";
+        defiMenu.appendChild(err);
+      }
+    }
+
+    async function openDefiMenu() {
+      await renderDefiMenu();
+      defiMenu.classList.add("visible");
+      defiButton.setAttribute("aria-expanded", "true");
+      repositionDefiMenuIfOpen();
+    }
+
+    ensureMoveControls();
+
+    defiButton.addEventListener("click", async (e) => {
+      e.stopPropagation();
       hideAllDefiContextMenus();
+
+      if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+      if (walletMenu) walletMenu.classList.remove("visible");
+
+      defiViewMode = "folders";
+      currentFolderId = null;
+
+      if (defiMenu.classList.contains("visible")) {
+        closeDefiMenu();
+        return;
+      }
+
+      await renderDefiMenu();
+      defiMenu.classList.add("visible");
+      defiButton.setAttribute("aria-expanded", "true");
+      repositionDefiMenuIfOpen();
+    });
+
+    function onDefiButtonContextMenu(e) {
+      if (!e.target?.closest?.("#defiButton")) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      if (typeof closeMyAssetsMenu === "function") closeMyAssetsMenu();
+      if (walletMenu) walletMenu.classList.remove("visible");
+
+      closeDefiMenu();
+      hideItemContextMenu();
+      showAddContextMenu(e.clientX, e.clientY);
+      return false;
     }
-  });
 
-  window.addEventListener("scroll", () => {
-    hideAllDefiContextMenus();
-    repositionDefiMenuIfOpen();
-  }, true);
+    defiButton.addEventListener("contextmenu", onDefiButtonContextMenu, true);
 
-  window.addEventListener("resize", () => {
-    hideAllDefiContextMenus();
-    repositionDefiMenuIfOpen();
-  });
+    defiMenu.addEventListener("contextmenu", (e) => {
+      const siteItem = e.target.closest("a[data-id]");
+      const folderRow = e.target.closest(".defi-folder-row");
 
-  renderDefiMenu();
-})();
+      if (!siteItem && !folderRow) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      hideAddContextMenu();
+
+      if (siteItem) {
+        const siteId = Number(siteItem.dataset.id);
+        const siteFolderId = siteItem.dataset.folderId;
+        showSiteItemContextMenu(e.clientX, e.clientY, siteId, siteFolderId);
+        return;
+      }
+
+      const raw = folderRow.dataset.folderId;
+      if (raw === "__BACK__" || raw === "" || raw == null) {
+        hideItemContextMenu();
+        return;
+      }
+
+      showFolderItemContextMenu(e.clientX, e.clientY, Number(raw));
+    }, true);
+
+    defiAddSiteBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideAddContextMenu();
+      openSiteDialog("site");
+    });
+
+    defiAddFolderBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideAddContextMenu();
+      openSiteDialog("folder");
+    });
+
+    defiRenameFolderBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (pendingRenameFolderId == null) {
+        hideItemContextMenu();
+        return;
+      }
+
+      const folder = defiFoldersCache.find((f) => String(f.id) === String(pendingRenameFolderId));
+      const currentName = folder?.name || "";
+
+      defiItemContextMenu.classList.remove("visible");
+      openSiteDialog("folder_rename", currentName);
+    });
+
+    defiDeleteFolderBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (pendingDeleteFolderId == null) {
+        hideItemContextMenu();
+        return;
+      }
+
+      try {
+        await deleteFolder(pendingDeleteFolderId);
+        hideItemContextMenu();
+        await openDefiMenu();
+      } catch (err) {
+        console.error("Failed to delete folder", err);
+        alert("Failed to delete folder: " + (err?.message || err));
+      }
+    });
+
+    defiDeleteSiteBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!pendingDeleteSiteId) {
+        hideItemContextMenu();
+        return;
+      }
+
+      try {
+        await deleteDefiLink(pendingDeleteSiteId);
+        hideItemContextMenu();
+        await openDefiMenu();
+      } catch (err) {
+        console.error("Failed to delete site", err);
+        alert("Failed to delete site: " + (err?.message || err));
+      }
+    });
+
+    siteDialogCancelBtn.addEventListener("click", () => closeSiteDialog());
+
+    siteDialogBackdrop.addEventListener("click", (e) => {
+      if (e.target === siteDialogBackdrop) closeSiteDialog();
+    });
+
+    siteDialogSaveBtn.addEventListener("click", async () => {
+      const label = siteLabelInput.value.trim();
+      const trimmedUrl = siteUrlInput.value.trim();
+
+      try {
+        siteDialogSaveBtn.disabled = true;
+        siteDialogCancelBtn.disabled = true;
+        siteDialogError.textContent = "";
+
+        if (dialogMode === "folder") {
+          if (!label) {
+            siteDialogError.textContent = "Folder name is required.";
+            siteLabelInput.focus();
+            return;
+          }
+          await insertFolder(label);
+          closeSiteDialog();
+          await openDefiMenu();
+          return;
+        }
+
+        if (dialogMode === "folder_rename") {
+          if (pendingRenameFolderId == null) {
+            siteDialogError.textContent = "Folder id is missing.";
+            return;
+          }
+          if (!label) {
+            siteDialogError.textContent = "New folder name is required.";
+            siteLabelInput.focus();
+            return;
+          }
+          await renameFolder(pendingRenameFolderId, label);
+          closeSiteDialog();
+          await openDefiMenu();
+          return;
+        }
+
+        if (!trimmedUrl) {
+          siteDialogError.textContent = "URL is required.";
+          siteUrlInput.focus();
+          return;
+        }
+
+        if (!isValidHttpUrl(trimmedUrl)) {
+          siteDialogError.textContent = "Invalid URL. Please enter a full URL starting with https://";
+          siteUrlInput.focus();
+          return;
+        }
+
+        if (!label) {
+          siteDialogError.textContent = "Label is required.";
+          siteLabelInput.focus();
+          return;
+        }
+
+        await insertDefiLink(trimmedUrl, label, null);
+        closeSiteDialog();
+        await openDefiMenu();
+      } catch (err) {
+        console.error("Failed to save item", err);
+        siteDialogError.textContent = "Failed to save: " + (err?.message || err);
+      } finally {
+        siteDialogSaveBtn.disabled = false;
+        siteDialogCancelBtn.disabled = false;
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
+        closeDefiMenu();
+      }
+      if (defiContextMenu.classList.contains("visible") && !e.target.closest("#defiContextMenu")) {
+        hideAddContextMenu();
+      }
+      if (defiItemContextMenu.classList.contains("visible") && !e.target.closest("#defiItemContextMenu")) {
+        hideItemContextMenu();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (!siteDialogBackdrop.classList.contains("hidden")) {
+        if (e.key === "Escape") {
+          closeSiteDialog();
+          return;
+        }
+        if (e.key === "Enter") {
+          if (document.activeElement === siteUrlInput || document.activeElement === siteLabelInput) {
+            e.preventDefault();
+            siteDialogSaveBtn.click();
+            return;
+          }
+        }
+      }
+
+      if (e.key === "Escape") {
+        closeDefiMenu();
+        hideAllDefiContextMenus();
+      }
+    });
+
+    window.addEventListener("scroll", () => {
+      hideAllDefiContextMenus();
+      repositionDefiMenuIfOpen();
+    }, true);
+
+    window.addEventListener("resize", () => {
+      hideAllDefiContextMenus();
+      repositionDefiMenuIfOpen();
+    });
+
+    renderDefiMenu();
+  })();
+}
 
 // ================== Strategy MENU ==================
 (function initStrategyMenu() {
@@ -2109,7 +2583,15 @@ function drawTaDataChart(rows) {
   ctx.textBaseline = "top";
 
   const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  const labelIndexes = new Set();
+
   for (let i = 0; i < points.length; i += labelStep) {
+    labelIndexes.add(i);
+  }
+
+  labelIndexes.add(points.length - 1);
+
+  for (const i of Array.from(labelIndexes).sort((a, b) => a - b)) {
     const xx = xToPx(i);
     const lbl = points[i].xLabel;
 
@@ -2194,10 +2676,26 @@ async function loadTaDataGraph() {
     }
 
     const rows = Array.isArray(json?.data) ? json.data : [];
-    const filteredRows = rows.filter((row) => Number(row?.id) >= 13);
+
+    const filteredRows = rows
+      .filter((row) => Number(row?.id) >= 13)
+      .filter((row) => row?.created_at_minsk)
+      .sort((a, b) => {
+        const aTime = new Date(a.created_at_minsk).getTime();
+        const bTime = new Date(b.created_at_minsk).getTime();
+        if (aTime !== bTime) return aTime - bTime;
+        return Number(a?.id) - Number(b?.id);
+      });
+
+    const latestRow = filteredRows.length ? filteredRows[filteredRows.length - 1] : null;
+
+    if (latestRow) {
+      setTaChartStatus(`Latest date: ${formatTaDateLabel(latestRow.created_at_minsk)}`);
+    } else {
+      setTaChartStatus("");
+    }
 
     drawTaDataChart(filteredRows);
-    setTaChartStatus("");
   } catch (e) {
     console.error("Failed to load TA chart", e);
     setTaChartStatus(`Error: ${e?.message || e}`);
