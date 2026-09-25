@@ -1792,8 +1792,79 @@ if (window.__defiMenuInitialized) {
     const type = String(mime || "").toLowerCase().trim();
 
     if (lower.endsWith(".svg") || type === "image/svg+xml") return "svg";
+    // Markdown: check extension BEFORE text/plain (Windows often reports .md as "" or text/plain)
+    if (lower.endsWith(".md") || lower.endsWith(".markdown") || type === "text/markdown" || type === "text/x-markdown") return "md";
     if (lower.endsWith(".txt") || type === "text/plain") return "txt";
     return null;
+  }
+
+  // A stored file is Markdown if kind === "md" OR its name ends with .md/.markdown
+  // (second rule covers files saved with kind "txt" by the backend fallback below)
+  function isMarkdownFile(f) {
+    const lower = String(f?.name || "").toLowerCase();
+    return f?.kind === "md" || lower.endsWith(".md") || lower.endsWith(".markdown");
+  }
+
+  // Safe JSON for embedding inside <script> in the generated page
+  function jsonForScript(value) {
+    return JSON.stringify(String(value ?? ""))
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
+  }
+
+  function buildMarkdownPage(name, content) {
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(name)}</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"><\/script>
+<style>
+  body{margin:0;background:#0b1020;color:#e9eeff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;}
+  .md{max-width:920px;margin:0 auto;padding:28px 24px 60px;}
+  .md h1,.md h2,.md h3,.md h4{color:#ffffff;line-height:1.25;margin:1.4em 0 .6em;}
+  .md h1{font-size:2em;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:.3em;}
+  .md h2{font-size:1.5em;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:.3em;}
+  .md a{color:#2ebac6;}
+  .md code{background:rgba(255,255,255,.08);padding:.15em .4em;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;}
+  .md pre{background:#11152a;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px;overflow:auto;}
+  .md pre code{background:none;padding:0;}
+  .md blockquote{margin:0;padding:.2em 1em;color:#9aa4d8;border-left:4px solid #2ebac6;background:rgba(46,186,198,.06);}
+  .md table{border-collapse:collapse;margin:1em 0;display:block;overflow:auto;}
+  .md th,.md td{border:1px solid rgba(255,255,255,.14);padding:6px 12px;}
+  .md th{background:#151a30;color:#ffffff;}
+  .md tr:nth-child(even) td{background:rgba(255,255,255,.03);}
+  .md hr{border:none;border-top:1px solid rgba(255,255,255,.12);margin:2em 0;}
+  .md img{max-width:100%;}
+  .md input[type=checkbox]{margin-right:.4em;}
+  pre.raw{margin:0;padding:20px;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+</style>
+</head>
+<body>
+<div id="md" class="md"></div>
+<script>
+  (function () {
+    var src = ${jsonForScript(content)};
+    var el = document.getElementById("md");
+    try {
+      if (!window.marked || !window.DOMPurify) throw new Error("renderer not loaded");
+      el.innerHTML = DOMPurify.sanitize(marked.parse(src, { gfm: true, breaks: false }));
+    } catch (e) {
+      // Fallback: show raw markdown text if CDN is unavailable
+      var pre = document.createElement("pre");
+      pre.className = "raw";
+      pre.textContent = src;
+      el.replaceWith(pre);
+    }
+  })();
+<\/script>
+</body>
+</html>`;
   }
 
   async function parseStrategyApiJson(res) {
@@ -1873,7 +1944,7 @@ if (window.__defiMenuInitialized) {
       empty.style.padding = "9px 10px";
       empty.style.color = "rgba(245,245,245,0.70)";
       empty.style.fontSize = "13px";
-      empty.textContent = "No SVG/TXT files yet";
+      empty.textContent = "No SVG/TXT/MD files yet";
       strategyMenu.appendChild(empty);
       return;
     }
@@ -1950,7 +2021,7 @@ if (window.__defiMenuInitialized) {
   function pickAndUploadFile() {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".svg,.txt,image/svg+xml,text/plain";
+    input.accept = ".svg,.txt,.md,.markdown,image/svg+xml,text/plain,text/markdown";
     input.style.display = "none";
 
     input.addEventListener("change", async () => {
@@ -1960,7 +2031,7 @@ if (window.__defiMenuInitialized) {
 
         const kind = fileKindFromNameAndType(file.name, file.type);
         if (!kind) {
-          alert("Please select an SVG (*.svg) or TXT (*.txt) file.");
+          alert("Please select an SVG (*.svg), TXT (*.txt) or Markdown (*.md) file.");
           return;
         }
 
@@ -1971,11 +2042,23 @@ if (window.__defiMenuInitialized) {
           return;
         }
 
-        await insertStrategyFile({
-          name: file.name,
-          kind,
-          content
-        });
+        try {
+          await insertStrategyFile({
+            name: file.name,
+            kind,
+            content
+          });
+        } catch (err) {
+          // If backend/DB only accepts "svg"/"txt", store Markdown as "txt".
+          // The .md file name is kept, so it is still rendered as Markdown on open.
+          if (kind !== "md") throw err;
+          console.warn("Backend rejected kind 'md', retrying as 'txt'", err);
+          await insertStrategyFile({
+            name: file.name,
+            kind: "txt",
+            content
+          });
+        }
 
         await openStrategyMenu();
       } catch (e) {
@@ -1996,7 +2079,9 @@ if (window.__defiMenuInitialized) {
 
     let html = "";
 
-    if (f.kind === "svg") {
+    if (isMarkdownFile(f)) {
+      html = buildMarkdownPage(f.name, f.content);
+    } else if (f.kind === "svg") {
       html = `<!doctype html>
 <html>
 <head>
