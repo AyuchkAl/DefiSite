@@ -1358,12 +1358,23 @@ if (window.__defiMenuInitialized) {
     function createSiteElement(site) {
       const a = document.createElement("a");
       a.className = "my-assets-item defi-site-item";
-      a.href = String(site.url || "#");
+      const rawUrl = String(site.url || "").trim();
+      // Ensure absolute URL (e.g. "app.aave.com" -> "https://app.aave.com")
+      const siteUrl = !rawUrl ? "#" : /^[a-z][a-z0-9+.-]*:/i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+
+      a.href = siteUrl;
+      // LMB opens the site in a NEW tab; the DeFi dashboard tab stays open
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
       a.textContent = String(site.label || makeEdgeLikeLabel(site.url));
       a.dataset.id = String(site.id);
       a.dataset.folderId = site.folder_id == null ? "" : String(site.folder_id);
 
-      a.addEventListener("click", (e) => e.stopPropagation());
+      a.addEventListener("click", (e) => {
+        e.stopPropagation();
+        // Native target="_blank" opens the new tab; only block empty links
+        if (siteUrl === "#") e.preventDefault();
+      });
       return a;
     }
 
