@@ -2404,14 +2404,33 @@ if (loadTaDataBtn) {
 
 const taChartCanvas = document.getElementById("taDataChart");
 const taChartStatus = document.getElementById("taChartStatus");
-const reloadTaChartBtn = document.getElementById("reloadTaChartBtn");
 const taChartTooltip = document.getElementById("taChartTooltip");
 
 let taChartHoverPoints = [];
+const TA_CHART_HEIGHT = 520; // increased from 420 for better Y-axis precision
 
-function setTaChartStatus(text) {
+function setTaChartStatus(text, kind = "") {
   if (!taChartStatus) return;
   taChartStatus.textContent = text;
+  taChartStatus.classList.remove("is-updated", "is-error");
+  if (kind) taChartStatus.classList.add(kind);
+}
+
+function setTaChartLastUpdated(dateText) {
+  if (!taChartStatus) return;
+  taChartStatus.classList.remove("is-error");
+  taChartStatus.classList.add("is-updated");
+  taChartStatus.innerHTML = "";
+
+  const label = document.createElement("span");
+  label.className = "ta-chart-status-label";
+  label.textContent = "Last Updated:";
+
+  const date = document.createElement("span");
+  date.className = "ta-chart-status-date";
+  date.textContent = dateText;
+
+  taChartStatus.append(label, " ", date);
 }
 
 function formatTaDateLabel(value) {
@@ -2440,21 +2459,28 @@ function niceStep(range) {
   return step * pow;
 }
 
+// Y-axis: fixed precision grid — step 5, default range -40..40.
+// If data ever exceeds ±40 the range grows symmetrically in multiples of 5.
+const TA_Y_STEP = 5;
+const TA_Y_DEFAULT_MAX = 40;
+
 function computeSymmetricBounds(values) {
-  let maxAbs = 1;
+  let maxAbs = 0;
 
   for (const v of values) {
     const av = Math.abs(v);
     if (Number.isFinite(av) && av > maxAbs) maxAbs = av;
   }
 
-  const step = niceStep(maxAbs * 2);
-  const roundedMax = Math.ceil(maxAbs / step) * step;
+  const roundedMax = Math.max(
+    TA_Y_DEFAULT_MAX,
+    Math.ceil(maxAbs / TA_Y_STEP) * TA_Y_STEP
+  );
 
   return {
     min: -roundedMax,
     max: roundedMax,
-    step
+    step: TA_Y_STEP
   };
 }
 
@@ -2484,7 +2510,7 @@ function drawTaDataChart(rows) {
 
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = taChartCanvas.clientWidth || 1200;
-  const cssHeight = 420;
+  const cssHeight = TA_CHART_HEIGHT;
 
   taChartCanvas.width = Math.floor(cssWidth * dpr);
   taChartCanvas.height = Math.floor(cssHeight * dpr);
@@ -2493,7 +2519,8 @@ function drawTaDataChart(rows) {
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
   const bg = "#0b1020";
-  const grid = "rgba(255,255,255,0.10)";
+  const grid = "rgba(255,255,255,0.14)";       // minor pointer lines (every 5)
+  const gridMajor = "rgba(255,255,255,0.26)";  // major pointer lines (every 10)
   const axis = "rgba(255,255,255,0.28)";
   const text = "#cfd5ff";
   const zeroAxis = "rgba(255,255,255,0.45)";
@@ -2503,7 +2530,7 @@ function drawTaDataChart(rows) {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-  const margin = { top: 20, right: 20, bottom: 60, left: 70 };
+  const margin = { top: 20, right: 20, bottom: 70, left: 56 };
   const plotX = margin.left;
   const plotY = margin.top;
   const plotW = cssWidth - margin.left - margin.right;
@@ -2557,19 +2584,45 @@ function drawTaDataChart(rows) {
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
 
-  for (let v = yMin; v <= yMax + yStep / 2; v += yStep) {
-    const yy = yToPx(v);
+  const yTickCount = Math.round((yMax - yMin) / yStep);
 
+  for (let k = 0; k <= yTickCount; k++) {
+    const v = yMin + k * yStep;
+    const yy = Math.round(yToPx(v)) + 0.5; // crisp 1px lines
+    const isZero = Math.abs(v) < 1e-9;
+    const isMajor = Math.abs(v % (yStep * 2)) < 1e-9;
+
+    // Horizontal pointer line from Y-axis value across the plot
+    ctx.save();
     ctx.beginPath();
     ctx.moveTo(plotX, yy);
     ctx.lineTo(plotX + plotW, yy);
-    ctx.strokeStyle = Math.abs(v) < 1e-9 ? zeroAxis : grid;
-    ctx.lineWidth = Math.abs(v) < 1e-9 ? 1.5 : 1;
+    if (isZero) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = zeroAxis;
+      ctx.lineWidth = 1.5;
+    } else {
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = isMajor ? gridMajor : grid;
+      ctx.lineWidth = 1;
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Tick mark on the Y-axis
+    ctx.beginPath();
+    ctx.moveTo(plotX - 6, yy);
+    ctx.lineTo(plotX, yy);
+    ctx.strokeStyle = axis;
+    ctx.lineWidth = 1;
     ctx.stroke();
 
     ctx.fillStyle = text;
-    ctx.fillText(v.toFixed(2), plotX - 10, yy);
+    ctx.font = isMajor || isZero ? "bold 12px system-ui, sans-serif" : "12px system-ui, sans-serif";
+    ctx.fillText(v.toFixed(0), plotX - 10, yy);
   }
+
+  ctx.font = "12px system-ui, sans-serif";
 
   ctx.beginPath();
   ctx.moveTo(plotX, plotY);
@@ -2640,7 +2693,8 @@ function drawTaDataChart(rows) {
       x: xx,
       y: yy,
       radius: 14,
-      valueText: String(p.rawValue),
+      // Tooltip format: YYYY-MM-DD / value (e.g. 2026-09-24 / 5.82)
+      valueText: `${p.xLabel} / ${p.y.toFixed(2)}`,
       isPositive: Number(p.y) >= 0
     });
 
@@ -2690,7 +2744,7 @@ async function loadTaDataGraph() {
     const latestRow = filteredRows.length ? filteredRows[filteredRows.length - 1] : null;
 
     if (latestRow) {
-      setTaChartStatus(`Latest date: ${formatTaDateLabel(latestRow.created_at_minsk)}`);
+      setTaChartLastUpdated(formatTaDateLabel(latestRow.created_at_minsk));
     } else {
       setTaChartStatus("");
     }
@@ -2698,13 +2752,9 @@ async function loadTaDataGraph() {
     drawTaDataChart(filteredRows);
   } catch (e) {
     console.error("Failed to load TA chart", e);
-    setTaChartStatus(`Error: ${e?.message || e}`);
+    setTaChartStatus(`Error: ${e?.message || e}`, "is-error");
     drawTaDataChart([]);
   }
-}
-
-if (reloadTaChartBtn) {
-  reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
 }
 
 if (taChartCanvas) {
