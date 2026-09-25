@@ -2408,7 +2408,7 @@ const reloadTaChartBtn = document.getElementById("reloadTaChartBtn");
 const taChartTooltip = document.getElementById("taChartTooltip");
 
 let taChartHoverPoints = [];
-const TA_CHART_HEIGHT = 620; // increased from 420 for better Y-axis precision
+const TA_CHART_HEIGHT = 520; // increased from 420 for better Y-axis precision
 
 function setTaChartStatus(text) {
   if (!taChartStatus) return;
