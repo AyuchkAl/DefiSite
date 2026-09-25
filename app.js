@@ -2675,7 +2675,8 @@ function drawTaDataChart(rows) {
       x: xx,
       y: yy,
       radius: 14,
-      valueText: String(p.rawValue),
+      // Tooltip format: YYYY-MM-DD / value (e.g. 2026-09-24 / 5.82)
+      valueText: `${p.xLabel} / ${p.y.toFixed(2)}`,
       isPositive: Number(p.y) >= 0
     });
 
