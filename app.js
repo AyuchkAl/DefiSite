@@ -2404,15 +2404,33 @@ if (loadTaDataBtn) {
 
 const taChartCanvas = document.getElementById("taDataChart");
 const taChartStatus = document.getElementById("taChartStatus");
-const reloadTaChartBtn = document.getElementById("reloadTaChartBtn");
 const taChartTooltip = document.getElementById("taChartTooltip");
 
 let taChartHoverPoints = [];
 const TA_CHART_HEIGHT = 520; // increased from 420 for better Y-axis precision
 
-function setTaChartStatus(text) {
+function setTaChartStatus(text, kind = "") {
   if (!taChartStatus) return;
   taChartStatus.textContent = text;
+  taChartStatus.classList.remove("is-updated", "is-error");
+  if (kind) taChartStatus.classList.add(kind);
+}
+
+function setTaChartLastUpdated(dateText) {
+  if (!taChartStatus) return;
+  taChartStatus.classList.remove("is-error");
+  taChartStatus.classList.add("is-updated");
+  taChartStatus.innerHTML = "";
+
+  const label = document.createElement("span");
+  label.className = "ta-chart-status-label";
+  label.textContent = "Last Updated:";
+
+  const date = document.createElement("span");
+  date.className = "ta-chart-status-date";
+  date.textContent = dateText;
+
+  taChartStatus.append(label, " ", date);
 }
 
 function formatTaDateLabel(value) {
@@ -2726,7 +2744,7 @@ async function loadTaDataGraph() {
     const latestRow = filteredRows.length ? filteredRows[filteredRows.length - 1] : null;
 
     if (latestRow) {
-      setTaChartStatus(`Latest date: ${formatTaDateLabel(latestRow.created_at_minsk)}`);
+      setTaChartLastUpdated(formatTaDateLabel(latestRow.created_at_minsk));
     } else {
       setTaChartStatus("");
     }
@@ -2734,13 +2752,9 @@ async function loadTaDataGraph() {
     drawTaDataChart(filteredRows);
   } catch (e) {
     console.error("Failed to load TA chart", e);
-    setTaChartStatus(`Error: ${e?.message || e}`);
+    setTaChartStatus(`Error: ${e?.message || e}`, "is-error");
     drawTaDataChart([]);
   }
-}
-
-if (reloadTaChartBtn) {
-  reloadTaChartBtn.addEventListener("click", loadTaDataGraph);
 }
 
 if (taChartCanvas) {
