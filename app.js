@@ -351,6 +351,7 @@ async function loadCryptoPrices() {
 
     updateMorphoLiqDisplay();
     updateHoldSellPanel();
+    if (typeof renderAllocation === "function") renderAllocation();
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
     latestBtc24h = null;
@@ -477,6 +478,7 @@ async function connectAndLoad() {
     await loadAaveDataForUser(userAddress, provider);
     await loadMorphoHealthFactor(userAddress);
     setConnectedUI(userAddress);
+    loadAllocation(userAddress);
     statusDiv.textContent = "Done.";
   } catch (err) {
     console.error(err);
@@ -488,6 +490,7 @@ connectButton.addEventListener("click", connectAndLoad);
 
 disconnectBtn.addEventListener("click", () => {
   setDisconnectedUI();
+  loadAllocation(null);
 });
 
 document.addEventListener("click", (e) => {
@@ -752,6 +755,293 @@ async function loadPercentageAssets() {
 }
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
+
+// ================== ALLOCATION (donut) ==================
+// BTC%  = (BTC supplied on Aave [Arbitrum] + BTC collateral on Morpho [Base]) * BTC price
+// ETH%  = (ETH supplied on Aave [Arbitrum]) * ETH price
+// USD%  = USDC + USDT supplied (deposits only, borrowed ignored) on Aave + Morpho
+// 100%  = BTC + ETH + USD
+
+const ALLOC_ARBITRUM_RPC_URL = "https://arb1.arbitrum.io/rpc";
+const ALLOC_MORPHO_API_URL = "https://api.morpho.org/graphql";
+const ALLOC_MORPHO_CHAIN_ID = 8453; // Base
+
+// Aave V3 Arbitrum reserves counted in allocation (supplied aToken balance)
+const ALLOC_AAVE_ASSETS = [
+  { group: "BTC", symbol: "WBTC",   address: WBTC_ADDRESS,                                   decimals: 8  },
+  { group: "BTC", symbol: "tBTC",   address: "0x6c84a8f1c29108F47a79964b5Fe888D4f4D0dE40", decimals: 18 },
+  { group: "ETH", symbol: "WETH",   address: WETH_ADDRESS,                                   decimals: 18 },
+  { group: "USD", symbol: "USDC",   address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", decimals: 6  },
+  { group: "USD", symbol: "USDC.e", address: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", decimals: 6  },
+  { group: "USD", symbol: "USDT",   address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6  }
+];
+
+const ALLOC_COLORS = { BTC: "#f5d547", ETH: "#2ebac6", USD: "#16c784" };
+
+const allocationChartEl = document.getElementById("allocationChart");
+
+// Last loaded quantities (re-rendered when prices refresh)
+let allocationQty = null; // { btc, eth, usd }
+
+function allocGroupFromSymbol(symbol) {
+  const s = String(symbol || "").toUpperCase();
+  if (s.includes("BTC")) return "BTC";                       // WBTC, cbBTC, tBTC, LBTC...
+  if (s === "USDC" || s === "USDT" || s === "USDC.E" || s === "USDT0" || s === "USD₮0") return "USD";
+  return null;
+}
+
+function allocUnits(raw, decimals) {
+  if (raw == null) return 0;
+  try {
+    return Number(ethers.formatUnits(BigInt(String(raw).split(".")[0]), Number(decimals) || 0));
+  } catch {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n / Math.pow(10, Number(decimals) || 0) : 0;
+  }
+}
+
+function setAllocationMessage(text) {
+  if (!allocationChartEl) return;
+  allocationChartEl.innerHTML = "";
+  const div = document.createElement("div");
+  div.className = "allocation-msg";
+  div.textContent = text;
+  allocationChartEl.appendChild(div);
+}
+
+// ---- Aave (Arbitrum) supplied balances ----
+async function loadAaveAllocationQty(userAddress) {
+  const provider = new ethers.JsonRpcProvider(ALLOC_ARBITRUM_RPC_URL, 42161, { staticNetwork: true });
+  const dp = new ethers.Contract(DATA_PROVIDER_ADDRESS, DATA_PROVIDER_ABI, provider);
+
+  const results = await Promise.allSettled(
+    ALLOC_AAVE_ASSETS.map((a) => dp.getUserReserveData(a.address, userAddress))
+  );
+
+  const out = { btc: 0, eth: 0, usd: 0 };
+  results.forEach((r, i) => {
+    const a = ALLOC_AAVE_ASSETS[i];
+    if (r.status !== "fulfilled") {
+      console.warn(`Allocation: Aave ${a.symbol} not read`, r.reason?.shortMessage || r.reason);
+      return;
+    }
+    const qty = Number(ethers.formatUnits(r.value.currentATokenBalance, a.decimals));
+    if (!Number.isFinite(qty)) return;
+    if (a.group === "BTC") out.btc += qty;
+    else if (a.group === "ETH") out.eth += qty;
+    else out.usd += qty;
+  });
+  return out;
+}
+
+// ---- Morpho (Base): BTC collateral + USDC/USDT supplied (markets + vaults) ----
+async function morphoGql(query, variables) {
+  const res = await fetch(ALLOC_MORPHO_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables }),
+    cache: "no-store"
+  });
+  const json = await res.json();
+  if (!res.ok || json?.errors?.length) {
+    throw new Error(json?.errors?.[0]?.message || `HTTP ${res.status}`);
+  }
+  return json.data;
+}
+
+async function loadMorphoAllocationQty(userAddress) {
+  const out = { btc: 0, usd: 0 };
+  const vars = { address: userAddress, chainId: ALLOC_MORPHO_CHAIN_ID };
+
+  // Markets: collateral (BTC) and supplied loan asset (USDC/USDT)
+  try {
+    const data = await morphoGql(`
+      query ($address: String!, $chainId: Int!) {
+        userByAddress(address: $address, chainId: $chainId) {
+          marketPositions {
+            market {
+              loanAsset { symbol decimals }
+              collateralAsset { symbol decimals }
+            }
+            state { collateral supplyAssets }
+          }
+        }
+      }`, vars);
+
+    for (const p of data?.userByAddress?.marketPositions || []) {
+      const col = p?.market?.collateralAsset;
+      const loan = p?.market?.loanAsset;
+      if (col && allocGroupFromSymbol(col.symbol) === "BTC") {
+        out.btc += allocUnits(p?.state?.collateral, col.decimals);
+      }
+      if (loan && allocGroupFromSymbol(loan.symbol) === "USD") {
+        out.usd += allocUnits(p?.state?.supplyAssets, loan.decimals);
+      }
+    }
+  } catch (e) {
+    // "No results matching given parameters" = user has no Morpho positions on this chain
+    if (!/no results/i.test(String(e?.message))) throw e;
+  }
+
+  // Vaults (V1): USDC/USDT deposits (optional — ignored if schema/API rejects)
+  try {
+    const data = await morphoGql(`
+      query ($address: String!, $chainId: Int!) {
+        userByAddress(address: $address, chainId: $chainId) {
+          vaultPositions {
+            vault { asset { symbol decimals } }
+            state { assets }
+          }
+        }
+      }`, vars);
+
+    for (const p of data?.userByAddress?.vaultPositions || []) {
+      const asset = p?.vault?.asset;
+      const group = asset && allocGroupFromSymbol(asset.symbol);
+      if (group === "USD") out.usd += allocUnits(p?.state?.assets, asset.decimals);
+      if (group === "BTC") out.btc += allocUnits(p?.state?.assets, asset.decimals);
+    }
+  } catch (e) {
+    if (!/no results/i.test(String(e?.message))) console.warn("Allocation: Morpho vaults not read", e);
+  }
+
+  return out;
+}
+
+async function getAllocationPrices() {
+  let btc = Number.isFinite(currentBtcPrice) ? currentBtcPrice : null;
+  let eth = Number.isFinite(currentEthPrice) ? currentEthPrice : null;
+
+  // Fallback: Aave oracle prices if CoinGecko has not loaded yet
+  if (btc == null || eth == null) {
+    try {
+      const provider = new ethers.JsonRpcProvider(ALLOC_ARBITRUM_RPC_URL, 42161, { staticNetwork: true });
+      const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, provider);
+      const [e, b] = await Promise.all([oracle.getAssetPrice(WETH_ADDRESS), oracle.getAssetPrice(WBTC_ADDRESS)]);
+      if (eth == null) eth = Number(ethers.formatUnits(e, 8));
+      if (btc == null) btc = Number(ethers.formatUnits(b, 8));
+    } catch (err) {
+      console.warn("Allocation: oracle price fallback failed", err);
+    }
+  }
+  return { btc, eth };
+}
+
+async function loadAllocation(userAddress) {
+  if (!allocationChartEl) return;
+
+  if (!userAddress) {
+    allocationQty = null;
+    setAllocationMessage("Connect wallet to see allocation");
+    return;
+  }
+
+  if (!allocationQty) setAllocationMessage("Loading…");
+
+  try {
+    const [aave, morpho] = await Promise.all([
+      loadAaveAllocationQty(userAddress),
+      loadMorphoAllocationQty(userAddress).catch((e) => {
+        console.warn("Allocation: Morpho data not loaded", e);
+        return { btc: 0, usd: 0, failed: true };
+      })
+    ]);
+
+    allocationQty = {
+      btc: aave.btc + morpho.btc,
+      eth: aave.eth,
+      usd: aave.usd + morpho.usd,
+      morphoFailed: !!morpho.failed
+    };
+
+    await renderAllocation();
+  } catch (e) {
+    console.error("Failed to load allocation", e);
+    setAllocationMessage("Unavailable");
+  }
+}
+
+function fmtUsd(n) {
+  return "$" + Math.round(n).toLocaleString("de-DE");
+}
+
+async function renderAllocation() {
+  if (!allocationChartEl || !allocationQty) return;
+
+  const prices = await getAllocationPrices();
+  if (!Number.isFinite(prices.btc) || !Number.isFinite(prices.eth)) {
+    setAllocationMessage("Waiting for prices…");
+    return;
+  }
+
+  const items = [
+    { key: "BTC", label: "BTC", usd: allocationQty.btc * prices.btc, qty: allocationQty.btc },
+    { key: "ETH", label: "ETH", usd: allocationQty.eth * prices.eth, qty: allocationQty.eth },
+    { key: "USD", label: "USD", usd: allocationQty.usd,               qty: allocationQty.usd }
+  ];
+  const total = items.reduce((s, it) => s + (Number.isFinite(it.usd) ? it.usd : 0), 0);
+
+  if (!(total > 0)) {
+    setAllocationMessage("No BTC / ETH / USD positions");
+    return;
+  }
+
+  items.forEach((it) => { it.pct = (it.usd / total) * 100; });
+
+  // --- Donut geometry (based on allocation-donut_Version4.svg) ---
+  const cx = 68, cy = 70, r = 50, sw = 15;
+  const C = 2 * Math.PI * r;
+  const visible = items.filter((it) => it.pct > 0.05);
+  const gap = visible.length > 1 ? sw + 4 : 0; // space between rounded segments
+
+  let offset = 0;
+  let segments = "";
+  for (const it of items) {
+    const len = (it.pct / 100) * C;
+    if (it.pct > 0.05) {
+      const dash = visible.length > 1 ? Math.max(len - gap, 0.01) : C;
+      segments += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${ALLOC_COLORS[it.key]}" stroke-width="${sw}"
+        stroke-linecap="${visible.length > 1 ? "round" : "butt"}" transform="rotate(-90 ${cx} ${cy})"
+        stroke-dasharray="${dash.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-(offset + gap / 2)).toFixed(2)}"
+        filter="url(#allocGlow)"><title>${it.label}: ${it.pct.toFixed(1)}% (${fmtUsd(it.usd)})</title></circle>`;
+    }
+    offset += len;
+  }
+
+  let legend = "";
+  items.forEach((it, i) => {
+    const y = 34 + i * 38;
+    legend += `<g><title>${it.label}: ${fmtUsd(it.usd)}</title>
+      <circle cx="152" cy="${y - 4}" r="6" fill="${ALLOC_COLORS[it.key]}"/>
+      <text x="166" y="${y}" class="alloc-lbl">${it.label}</text>
+      <text x="292" y="${y}" class="alloc-pct" text-anchor="end">${it.pct.toFixed(1)}%</text>
+      <text x="166" y="${y + 15}" class="alloc-usd">${fmtUsd(it.usd)}</text></g>`;
+  });
+
+  allocationChartEl.innerHTML = `
+    <svg class="allocation-svg" viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Assets allocation donut">
+      <defs>
+        <filter id="allocGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="4" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="${sw}"/>
+      ${segments}
+      <text x="${cx}" y="${cy + 2}" text-anchor="middle" class="alloc-val">100%</text>
+      <text x="${cx}" y="${cy + 18}" text-anchor="middle" class="alloc-sub">${fmtUsd(total)}</text>
+      ${legend}
+    </svg>`;
+
+  allocationChartEl.title = allocationQty.morphoFailed
+    ? "Morpho (Base) data could not be loaded — showing Aave only"
+    : "Aave (Arbitrum) + Morpho (Base)";
+}
+
+setInterval(() => {
+  if (currentAddress) loadAllocation(currentAddress);
+}, 10 * 60 * 1000);
+
 
 // ================== MY ASSETS MENU ==================
 
@@ -2899,6 +3189,7 @@ window.addEventListener("load", () => {
   loadAvgEth();
   loadPnlAssets();
   loadPercentageAssets();
+  loadAllocation(null);
   loadTaDataGraph();
 
   if (!window.ethereum) return;
@@ -2918,6 +3209,7 @@ window.addEventListener("load", () => {
       await loadAaveDataForUser(saved, provider);
       await loadMorphoHealthFactor(saved);
       setConnectedUI(saved);
+      loadAllocation(saved);
       statusDiv.textContent = "Loaded from previous connection.";
     } catch (err) {
       console.error(err);
