@@ -29,6 +29,7 @@ const WBTC_ADDRESS = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
 const MORPHO_HF_PROXY_URL = "https://spring-moon-4095.alexknikola.workers.dev/morpho-hf";
 const PUELL_PROXY_URL = "https://falling-night-97fc.alexknikola.workers.dev/puell";
 const CMC_FNG_PROXY_URL = "https://cmc-fng-proxy.alexknikola.workers.dev/fng";
+// quick-processor is now triggered only by the Supabase daily scheduler (Load button removed from UI)
 const QUICK_PROCESSOR_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/quick-processor";
 const TA_DATA_READONLY_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta-data-readonly";
 const WEB_SITES_API_URL = "https://vphdvuvofpkogemvejff.supabase.co/functions/v1/ta_web_site_function";
@@ -2727,63 +2728,6 @@ async function loadPuell() {
 
     updateHoldSellPanel();
   }
-}
-
-// ================== LOAD TA DATA ==================
-
-const loadTaDataBtn = document.getElementById("loadTaDataBtn");
-const loadTaDataStatus = document.getElementById("loadTaDataStatus");
-
-let loadStatusTimer = null;
-
-function setLoadStatus(text, mode = "") {
-  if (!loadTaDataStatus) return;
-  loadTaDataStatus.textContent = text;
-  loadTaDataStatus.classList.remove("ok", "err");
-  if (mode) loadTaDataStatus.classList.add(mode);
-}
-
-function clearLoadStatusTimer() {
-  if (loadStatusTimer) {
-    clearTimeout(loadStatusTimer);
-    loadStatusTimer = null;
-  }
-}
-
-async function triggerQuickProcessor() {
-  if (!loadTaDataBtn) return;
-
-  try {
-    clearLoadStatusTimer();
-    loadTaDataBtn.disabled = true;
-    setLoadStatus("Loading");
-
-    const res = await fetch(QUICK_PROCESSOR_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({})
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    setLoadStatus("Saved ✔", "ok");
-
-    loadStatusTimer = setTimeout(() => {
-      setLoadStatus("");
-    }, 5000);
-
-    await loadTaDataGraph();
-  } catch (e) {
-    setLoadStatus(`Error: ${e?.message || e}`, "err");
-  } finally {
-    loadTaDataBtn.disabled = false;
-  }
-}
-
-if (loadTaDataBtn) {
-  loadTaDataBtn.onclick = triggerQuickProcessor;
 }
 
 // ================== TA DATA GRAPH ==================
