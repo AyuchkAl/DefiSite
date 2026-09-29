@@ -300,37 +300,111 @@ async function loadFearGreed() {
 }
 
 // ================== MARKET PRICES ======================
+// Price sources are tried in order; the first one that answers wins.
+// (CoinGecko free API often returns 429 / CORS errors — then Binance / Coinbase are used.)
+
+const PRICE_FETCH_TIMEOUT_MS = 8000;
+let priceRetryTimer = null;
+
+async function fetchJsonWithTimeout(url, timeoutMs = PRICE_FETCH_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function validPriceQuote(q) {
+  return q && Number.isFinite(q.price) && q.price > 0 && Number.isFinite(q.pct);
+}
+
+// Each provider returns { btc: {price, pct}, eth: {price, pct} }
+const PRICE_PROVIDERS = [
+  {
+    name: "CoinGecko",
+    async load() {
+      const data = await fetchJsonWithTimeout(
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&order=market_cap_desc&per_page=2&page=1&sparkline=false&price_change_percentage=24h"
+      );
+      if (!Array.isArray(data)) throw new Error("Unexpected CoinGecko response");
+      const pick = (id) => {
+        const c = data.find((x) => x.id === id);
+        return c ? { price: Number(c.current_price), pct: Number(c.price_change_percentage_24h) } : null;
+      };
+      return { btc: pick("bitcoin"), eth: pick("ethereum") };
+    }
+  },
+  {
+    name: "Binance",
+    async load() {
+      const symbols = encodeURIComponent(JSON.stringify(["BTCUSDT", "ETHUSDT"]));
+      const data = await fetchJsonWithTimeout(`https://data-api.binance.vision/api/v3/ticker/24hr?symbols=${symbols}`);
+      if (!Array.isArray(data)) throw new Error("Unexpected Binance response");
+      const pick = (sym) => {
+        const c = data.find((x) => x.symbol === sym);
+        return c ? { price: Number(c.lastPrice), pct: Number(c.priceChangePercent) } : null;
+      };
+      return { btc: pick("BTCUSDT"), eth: pick("ETHUSDT") };
+    }
+  },
+  {
+    name: "Coinbase",
+    async load() {
+      const pick = async (product) => {
+        const s = await fetchJsonWithTimeout(`https://api.exchange.coinbase.com/products/${product}/stats`);
+        const last = Number(s.last);
+        const open = Number(s.open);
+        return { price: last, pct: open > 0 ? ((last - open) / open) * 100 : NaN };
+      };
+      const [btc, eth] = await Promise.all([pick("BTC-USD"), pick("ETH-USD")]);
+      return { btc, eth };
+    }
+  }
+];
+
+async function fetchBtcEthQuotes() {
+  const errors = [];
+  for (const p of PRICE_PROVIDERS) {
+    try {
+      const q = await p.load();
+      if (validPriceQuote(q?.btc) && validPriceQuote(q?.eth)) {
+        return { ...q, source: p.name };
+      }
+      throw new Error("incomplete data");
+    } catch (e) {
+      errors.push(`${p.name}: ${e?.message || e}`);
+      console.warn(`Prices: ${p.name} failed`, e);
+    }
+  }
+  throw new Error("All price sources failed — " + errors.join("; "));
+}
 
 async function loadCryptoPrices() {
   try {
-    const res = await fetch(
-      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&order=market_cap_desc&per_page=2&page=1&sparkline=false&price_change_percentage=24h"
-    );
-    const data = await res.json();
-    const btc = data.find((c) => c.id === "bitcoin");
-    const eth = data.find((c) => c.id === "ethereum");
+    const { btc, eth, source } = await fetchBtcEthQuotes();
 
-    latestBtc24h = Number.isFinite(btc?.price_change_percentage_24h)
-      ? btc.price_change_percentage_24h
-      : null;
+    if (priceRetryTimer) { clearTimeout(priceRetryTimer); priceRetryTimer = null; }
 
-    latestEth24h = Number.isFinite(eth?.price_change_percentage_24h)
-      ? eth.price_change_percentage_24h
-      : null;
-
-    currentBtcPrice = Number.isFinite(btc?.current_price) ? btc.current_price : null;
-    currentEthPrice = Number.isFinite(eth?.current_price) ? eth.current_price : null;
+    latestBtc24h = btc.pct;
+    latestEth24h = eth.pct;
+    currentBtcPrice = btc.price;
+    currentEthPrice = eth.price;
 
     function setCoin(elPrice, elChange, coin) {
       if (!coin) return;
 
       if (elPrice) {
         elPrice.textContent =
-          "$" + coin.current_price.toLocaleString(undefined, { maximumFractionDigits: 0 });
+          "$" + coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        elPrice.title = `Source: ${source}`;
       }
 
       if (elChange) {
-        const pct = coin.price_change_percentage_24h;
+        const pct = coin.pct;
         const formatted = (pct > 0 ? "+" : "") + pct.toFixed(2) + "%";
         elChange.textContent = formatted;
 
@@ -355,12 +429,18 @@ async function loadCryptoPrices() {
     if (typeof renderAllocation === "function") renderAllocation();
   } catch (e) {
     console.error("Failed to load BTC/ETH prices", e);
-    latestBtc24h = null;
-    latestEth24h = null;
-    currentBtcPrice = null;
-    currentEthPrice = null;
+    // Keep last known prices on screen if we had them; otherwise leave "–"
+    if (currentBtcPrice == null) {
+      latestBtc24h = null;
+      latestEth24h = null;
+    }
     updateMorphoLiqDisplay();
     updateHoldSellPanel();
+
+    // Retry sooner than the normal 5-min interval
+    if (!priceRetryTimer) {
+      priceRetryTimer = setTimeout(() => { priceRetryTimer = null; loadCryptoPrices(); }, 60 * 1000);
+    }
   }
 }
 
