@@ -837,6 +837,86 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
+// ================== ASSETS ROW: LAST UPDATED (Google Sheet S2) ==================
+// "Last Updated: YYYY-MM-DD" above Total Assets / DeFi / PnL / Percentage / Allocation cards.
+// Source: Google Sheet DEFI_and_Earns, tab gid=573713211, cell S2.
+// (Assets Performance graph keeps its own "Last Updated" from the latest ta_data row.)
+const ASSETS_LAST_UPDATED_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
+  "?gid=573713211" +
+  "&range=S2" +
+  "&headers=0" +
+  "&tqx=out:json";
+
+const assetsLastUpdatedEl = document.getElementById("assetsLastUpdated");
+const assetsLastUpdatedDateEl = document.getElementById("assetsLastUpdatedDate");
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+// Converts Google Sheet date value/text to YYYY-MM-DD (or "" if not a date)
+function sheetValueToIsoDate(v, f) {
+  // GVIZ date cell: "Date(2026,8,29)" or "Date(2026,8,29,15,0,0)" (month is 0-based)
+  const m0 = /^Date\((\d{4}),(\d{1,2}),(\d{1,2})/.exec(String(v ?? ""));
+  if (m0) return `${m0[1]}-${pad2(Number(m0[2]) + 1)}-${pad2(m0[3])}`;
+
+  // Serial number (days since 1899-12-30)
+  if (typeof v === "number" && Number.isFinite(v) && v > 20000 && v < 80000) {
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000);
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+  }
+
+  for (const raw of [v, f]) {
+    const s = String(raw ?? "").trim();
+    if (!s) continue;
+
+    let m = /^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/.exec(s);          // 2026-09-29
+    if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+
+    m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(s);                     // 29.09.2026
+    if (m) return `${m[3]}-${pad2(m[2])}-${pad2(m[1])}`;
+
+    m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);                     // 9/29/2026 or 29/9/2026
+    if (m) {
+      let a = Number(m[1]), b = Number(m[2]);
+      const [mon, day] = a > 12 ? [b, a] : [a, b];
+      return `${m[3]}-${pad2(mon)}-${pad2(day)}`;
+    }
+  }
+  return "";
+}
+
+async function loadAssetsLastUpdated() {
+  if (!assetsLastUpdatedEl || !assetsLastUpdatedDateEl) return;
+
+  try {
+    const res = await fetch(ASSETS_LAST_UPDATED_GVIZ_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const raw = await res.text();
+    const data = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+
+    const cell = data?.table?.rows?.[0]?.c?.[0];
+    // If GVIZ treated the single cell as a header row, the value is in the column label
+    const iso = sheetValueToIsoDate(cell?.v, cell?.f) ||
+                sheetValueToIsoDate(data?.table?.cols?.[0]?.label, null);
+
+    if (!iso) throw new Error("S2 is not a date: " + JSON.stringify(cell ?? data?.table?.cols?.[0]));
+
+    assetsLastUpdatedDateEl.textContent = iso;
+    assetsLastUpdatedEl.classList.remove("is-error");
+    assetsLastUpdatedEl.title = "Source: Google Sheet DEFI_and_Earns, cell S2";
+  } catch (e) {
+    console.warn("Assets Last Updated: Google Sheet S2 not read", e);
+    assetsLastUpdatedDateEl.textContent = "–";
+    assetsLastUpdatedEl.classList.add("is-error");
+    assetsLastUpdatedEl.title = "Could not read Google Sheet cell S2";
+  }
+}
+
+setInterval(loadAssetsLastUpdated, 10 * 60 * 1000);
+
 // ================== ALLOCATION (donut) ==================
 // BTC%  = (BTC supplied on Aave [Arbitrum] + BTC collateral on Morpho [Base]) * BTC price
 // ETH%  = (ETH supplied on Aave [Arbitrum]) * ETH price
@@ -3112,90 +3192,8 @@ function drawTaDataChart(rows) {
   }
 }
 
-// "Last Updated" date for Assets Performance = Google Sheet DEFI_and_Earns, tab gid=573713211, cell S2
-// Fallback: date of the latest ta_data row (previous behaviour) if the sheet cell can't be read.
-const TA_LAST_UPDATED_GVIZ_URL =
-  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
-  "?gid=573713211" +
-  "&range=S2" +
-  "&headers=0" +
-  "&tqx=out:json";
-
-let taLatestRowDate = ""; // YYYY-MM-DD from ta_data (fallback)
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-// Converts Google Sheet date value/text to YYYY-MM-DD (or "" if not a date)
-function sheetValueToIsoDate(v, f) {
-  // GVIZ date cell: "Date(2026,8,29)" or "Date(2026,8,29,15,0,0)" (month is 0-based)
-  const m0 = /^Date\((\d{4}),(\d{1,2}),(\d{1,2})/.exec(String(v ?? ""));
-  if (m0) return `${m0[1]}-${pad2(Number(m0[2]) + 1)}-${pad2(m0[3])}`;
-
-  // Serial number (days since 1899-12-30)
-  if (typeof v === "number" && Number.isFinite(v) && v > 20000 && v < 80000) {
-    const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000);
-    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
-  }
-
-  for (const raw of [v, f]) {
-    const s = String(raw ?? "").trim();
-    if (!s) continue;
-
-    let m = /^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/.exec(s);          // 2026-09-29
-    if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
-
-    m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(s);                     // 29.09.2026
-    if (m) return `${m[3]}-${pad2(m[2])}-${pad2(m[1])}`;
-
-    m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);                     // 9/29/2026 or 29/9/2026
-    if (m) {
-      let a = Number(m[1]), b = Number(m[2]);
-      const [mon, day] = a > 12 ? [b, a] : [a, b];
-      return `${m[3]}-${pad2(mon)}-${pad2(day)}`;
-    }
-  }
-  return "";
-}
-
-async function loadTaLastUpdatedFromSheet() {
-  try {
-    const res = await fetch(TA_LAST_UPDATED_GVIZ_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const raw = await res.text();
-    const data = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-
-    const cell = data?.table?.rows?.[0]?.c?.[0];
-    // If GVIZ treated the single cell as a header row, the value is in the column label
-    const iso = sheetValueToIsoDate(cell?.v, cell?.f) ||
-                sheetValueToIsoDate(data?.table?.cols?.[0]?.label, null);
-
-    if (!iso) throw new Error("S2 is not a date: " + JSON.stringify(cell ?? data?.table?.cols?.[0]));
-    return iso;
-  } catch (e) {
-    console.warn("Last Updated: Google Sheet S2 not read, using ta_data date", e);
-    return "";
-  }
-}
-
-async function refreshTaLastUpdated() {
-  const iso = await loadTaLastUpdatedFromSheet();
-  const date = iso || taLatestRowDate;
-  if (date) setTaChartLastUpdated(date);
-  if (taChartStatus) {
-    taChartStatus.title = iso ? "Source: Google Sheet DEFI_and_Earns, cell S2" : "Source: latest ta_data row (Supabase)";
-  }
-}
-
-setInterval(refreshTaLastUpdated, 10 * 60 * 1000);
-
 async function loadTaDataGraph() {
   if (!taChartCanvas) return;
-
-  // Start reading Sheet S2 in parallel with ta_data
-  const sheetDatePromise = loadTaLastUpdatedFromSheet();
 
   try {
     setTaChartStatus("Loading…");
@@ -3235,26 +3233,17 @@ async function loadTaDataGraph() {
 
     const latestRow = filteredRows.length ? filteredRows[filteredRows.length - 1] : null;
 
-    taLatestRowDate = latestRow ? formatTaDateLabel(latestRow.created_at_minsk) : "";
-
-    drawTaDataChart(filteredRows);
-
-    // Last Updated = Google Sheet S2 (fallback: latest ta_data row date)
-    const sheetDate = await sheetDatePromise;
-    const lastUpdated = sheetDate || taLatestRowDate;
-    if (lastUpdated) {
-      setTaChartLastUpdated(lastUpdated);
-      taChartStatus.title = sheetDate ? "Source: Google Sheet DEFI_and_Earns, cell S2" : "Source: latest ta_data row (Supabase)";
+    if (latestRow) {
+      setTaChartLastUpdated(formatTaDateLabel(latestRow.created_at_minsk));
     } else {
       setTaChartStatus("");
     }
+
+    drawTaDataChart(filteredRows);
   } catch (e) {
     console.error("Failed to load TA chart", e);
     setTaChartStatus(`Error: ${e?.message || e}`, "is-error");
     drawTaDataChart([]);
-    // Graph failed, but still try to show the Sheet date
-    const sheetDate = await sheetDatePromise;
-    if (sheetDate) setTaChartLastUpdated(sheetDate);
   }
 }
 
@@ -3304,6 +3293,7 @@ window.addEventListener("load", () => {
   loadAvgEth();
   loadPnlAssets();
   loadPercentageAssets();
+  loadAssetsLastUpdated();
   loadAllocation(null);
   loadTaDataGraph();
 

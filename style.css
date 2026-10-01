@@ -1469,3 +1469,35 @@ body {
 @media (max-width: 760px){
   .main-left{ grid-template-columns: repeat(1, minmax(0, 1fr)); }
 }
+
+/* ================== ASSETS ROW: LAST UPDATED (Sheet S2) ================== */
+/* Same look as the Assets Performance "Last Updated" pill; spans the whole cards row */
+.assets-last-updated{
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-bottom: -6px;
+  font-size: 13px;
+  border-radius: 999px;
+  background: rgba(46,186,198,0.14);
+  border: 1px solid rgba(46,186,198,0.45);
+  box-shadow: 0 0 14px rgba(46,186,198,0.18);
+}
+
+.assets-last-updated-label{
+  color: #2ebac6;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.assets-last-updated-date{
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.assets-last-updated.is-error .assets-last-updated-date{
+  color: #ff5c5c;
+}
