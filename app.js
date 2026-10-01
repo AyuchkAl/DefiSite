@@ -837,14 +837,14 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== ASSETS ROW: LAST UPDATED (Google Sheet S2) ==================
+// ================== ASSETS ROW: LAST UPDATED (Google Sheet S3) ==================
 // "Last Updated: YYYY-MM-DD" above Total Assets / DeFi / PnL / Percentage / Allocation cards.
-// Source: Google Sheet DEFI_and_Earns, tab gid=573713211, cell S2.
+// Source: Google Sheet DEFI_and_Earns, tab gid=0 (Sheet1), cell S3.
 // (Assets Performance graph keeps its own "Last Updated" from the latest ta_data row.)
 const ASSETS_LAST_UPDATED_GVIZ_URL =
   "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
-  "?gid=573713211" +
-  "&range=S2" +
+  "?gid=0" +
+  "&range=S3" +
   "&headers=0" +
   "&tqx=out:json";
 
@@ -902,16 +902,16 @@ async function loadAssetsLastUpdated() {
     const iso = sheetValueToIsoDate(cell?.v, cell?.f) ||
                 sheetValueToIsoDate(data?.table?.cols?.[0]?.label, null);
 
-    if (!iso) throw new Error("S2 is not a date: " + JSON.stringify(cell ?? data?.table?.cols?.[0]));
+    if (!iso) throw new Error("S3 is not a date: " + JSON.stringify(cell ?? data?.table?.cols?.[0]));
 
     assetsLastUpdatedDateEl.textContent = iso;
     assetsLastUpdatedEl.classList.remove("is-error");
-    assetsLastUpdatedEl.title = "Source: Google Sheet DEFI_and_Earns, cell S2";
+    assetsLastUpdatedEl.title = "Source: Google Sheet DEFI_and_Earns (Sheet1), cell S3";
   } catch (e) {
-    console.warn("Assets Last Updated: Google Sheet S2 not read", e);
+    console.warn("Assets Last Updated: Google Sheet S3 not read", e);
     assetsLastUpdatedDateEl.textContent = "–";
     assetsLastUpdatedEl.classList.add("is-error");
-    assetsLastUpdatedEl.title = "Could not read Google Sheet cell S2";
+    assetsLastUpdatedEl.title = "Could not read Google Sheet cell S3";
   }
 }
 
