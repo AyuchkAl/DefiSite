@@ -841,18 +841,34 @@ setInterval(loadPercentageAssets, 10 * 60 * 1000);
 // "Last Updated: YYYY-MM-DD" above Total Assets / DeFi / PnL / Percentage / Allocation cards.
 // Source: Google Sheet DEFI_and_Earns, tab gid=0 (Sheet1), cell S3.
 // (Assets Performance graph keeps its own "Last Updated" from the latest ta_data row.)
+//
+// Read order:
+//   1) CSV export  — returns the cell text exactly as displayed (same method as Total Assets T2).
+//      GVIZ drops values whose type differs from the rest of the column (column S holds numbers),
+//      so a date/text in S3 can come back as null via GVIZ.
+//   2) GVIZ JSON   — fallback.
+const ASSETS_LAST_UPDATED_SHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
+const ASSETS_LAST_UPDATED_GID = "0";
+const ASSETS_LAST_UPDATED_CELL = "S3";
+
+const ASSETS_LAST_UPDATED_CSV_URL =
+  `https://docs.google.com/spreadsheets/d/${ASSETS_LAST_UPDATED_SHEET_ID}/export?format=csv` +
+  `&gid=${ASSETS_LAST_UPDATED_GID}&range=${ASSETS_LAST_UPDATED_CELL}`;
+
 const ASSETS_LAST_UPDATED_GVIZ_URL =
-  "https://docs.google.com/spreadsheets/d/1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM/gviz/tq" +
-  "?gid=0" +
-  "&range=S3" +
-  "&headers=0" +
-  "&tqx=out:json";
+  `https://docs.google.com/spreadsheets/d/${ASSETS_LAST_UPDATED_SHEET_ID}/gviz/tq` +
+  `?gid=${ASSETS_LAST_UPDATED_GID}&range=${ASSETS_LAST_UPDATED_CELL}&headers=0&tqx=out:json`;
 
 const assetsLastUpdatedEl = document.getElementById("assetsLastUpdated");
 const assetsLastUpdatedDateEl = document.getElementById("assetsLastUpdatedDate");
 
 function pad2(n) {
   return String(n).padStart(2, "0");
+}
+
+function fullYear(y) {
+  const n = Number(y);
+  return n < 100 ? 2000 + n : n; // "25" -> 2025
 }
 
 // Converts Google Sheet date value/text to YYYY-MM-DD (or "" if not a date)
@@ -867,52 +883,82 @@ function sheetValueToIsoDate(v, f) {
     return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
   }
 
-  for (const raw of [v, f]) {
+  for (const raw of [f, v]) {
     const s = String(raw ?? "").trim();
     if (!s) continue;
 
-    let m = /^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/.exec(s);          // 2026-09-29
+    let m = /(\d{4})[-./](\d{1,2})[-./](\d{1,2})/.exec(s);                  // 2026-09-29
     if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
 
-    m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(s);                     // 29.09.2026
-    if (m) return `${m[3]}-${pad2(m[2])}-${pad2(m[1])}`;
+    m = /(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})(?!\d)/.exec(s);                // 29.09.2026 / 29.09.26
+    if (m) return `${fullYear(m[3])}-${pad2(m[2])}-${pad2(m[1])}`;
 
-    m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);                     // 9/29/2026 or 29/9/2026
+    m = /(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})(?!\d)/.exec(s);                // 9/29/2026 or 29/9/2026
     if (m) {
-      let a = Number(m[1]), b = Number(m[2]);
+      const a = Number(m[1]), b = Number(m[2]);
       const [mon, day] = a > 12 ? [b, a] : [a, b];
-      return `${m[3]}-${pad2(mon)}-${pad2(day)}`;
+      return `${fullYear(m[3])}-${pad2(mon)}-${pad2(day)}`;
     }
+
+    // Numeric text that is a serial date, e.g. "46294" or "46294,5"
+    const num = Number(s.replace(",", "."));
+    if (Number.isFinite(num) && num > 20000 && num < 80000) return sheetValueToIsoDate(num, null);
   }
   return "";
+}
+
+// 1) CSV export -> { text }
+async function readLastUpdatedCsv() {
+  const res = await fetch(ASSETS_LAST_UPDATED_CSV_URL, { cache: "no-store" });
+  if (!res.ok) throw new Error(`CSV HTTP ${res.status}`);
+  let text = (await res.text()).trim();
+  text = text.replace(/^"+|"+$/g, "").trim();
+  return { v: text, f: text };
+}
+
+// 2) GVIZ JSON -> { v, f }
+async function readLastUpdatedGviz() {
+  const res = await fetch(ASSETS_LAST_UPDATED_GVIZ_URL, { cache: "no-store" });
+  if (!res.ok) throw new Error(`GVIZ HTTP ${res.status}`);
+  const raw = await res.text();
+  const data = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+  const cell = data?.table?.rows?.[0]?.c?.[0];
+  if (cell) return { v: cell.v, f: cell.f };
+  // If GVIZ treated the single cell as a header row, the value is in the column label
+  const label = data?.table?.cols?.[0]?.label;
+  return { v: label ?? "", f: label ?? "" };
 }
 
 async function loadAssetsLastUpdated() {
   if (!assetsLastUpdatedEl || !assetsLastUpdatedDateEl) return;
 
-  try {
-    const res = await fetch(ASSETS_LAST_UPDATED_GVIZ_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  let lastRawText = "";
+  const errors = [];
 
-    const raw = await res.text();
-    const data = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-
-    const cell = data?.table?.rows?.[0]?.c?.[0];
-    // If GVIZ treated the single cell as a header row, the value is in the column label
-    const iso = sheetValueToIsoDate(cell?.v, cell?.f) ||
-                sheetValueToIsoDate(data?.table?.cols?.[0]?.label, null);
-
-    if (!iso) throw new Error("S3 is not a date: " + JSON.stringify(cell ?? data?.table?.cols?.[0]));
-
-    assetsLastUpdatedDateEl.textContent = iso;
-    assetsLastUpdatedEl.classList.remove("is-error");
-    assetsLastUpdatedEl.title = "Source: Google Sheet DEFI_and_Earns (Sheet1), cell S3";
-  } catch (e) {
-    console.warn("Assets Last Updated: Google Sheet S3 not read", e);
-    assetsLastUpdatedDateEl.textContent = "–";
-    assetsLastUpdatedEl.classList.add("is-error");
-    assetsLastUpdatedEl.title = "Could not read Google Sheet cell S3";
+  for (const [name, reader] of [["CSV", readLastUpdatedCsv], ["GVIZ", readLastUpdatedGviz]]) {
+    try {
+      const cell = await reader();
+      const iso = sheetValueToIsoDate(cell.v, cell.f);
+      if (iso) {
+        assetsLastUpdatedDateEl.textContent = iso;
+        assetsLastUpdatedEl.classList.remove("is-error");
+        assetsLastUpdatedEl.title = `Source: Google Sheet DEFI_and_Earns (Sheet1), cell ${ASSETS_LAST_UPDATED_CELL} (${name})`;
+        return;
+      }
+      const txt = String(cell.f ?? cell.v ?? "").trim();
+      if (txt && !lastRawText) lastRawText = txt;
+      errors.push(`${name}: ${txt ? `not a date ("${txt}")` : "cell is empty"}`);
+    } catch (e) {
+      errors.push(`${name}: ${e?.message || e}`);
+    }
   }
+
+  console.warn(`Assets Last Updated: cell ${ASSETS_LAST_UPDATED_CELL} not read as date —`, errors.join("; "));
+
+  // Show the raw text if there is any (so it is visible what the cell contains), otherwise "–"
+  assetsLastUpdatedDateEl.textContent = lastRawText ? lastRawText.slice(0, 24) : "–";
+  assetsLastUpdatedEl.classList.add("is-error");
+  assetsLastUpdatedEl.title = `Google Sheet cell ${ASSETS_LAST_UPDATED_CELL}: ` + errors.join("; ");
 }
 
 setInterval(loadAssetsLastUpdated, 10 * 60 * 1000);
