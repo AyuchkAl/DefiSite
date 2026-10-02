@@ -837,19 +837,19 @@ async function loadPercentageAssets() {
 
 setInterval(loadPercentageAssets, 10 * 60 * 1000);
 
-// ================== ASSETS ROW: LAST UPDATED (Google Sheet S3) ==================
+// ================== ASSETS ROW: LAST UPDATED (Google Sheet "Date of check") ==================
 // "Last Updated: YYYY-MM-DD" above Total Assets / DeFi / PnL / Percentage / Allocation cards.
-// Source: Google Sheet DEFI_and_Earns, tab gid=0 (Sheet1), cell S3.
+// Source: Google Sheet DEFI_and_Earns, tab gid=573713211, cell S2 (header S1 = "Date of check").
+// (Sheet1 S3 was tried 2026-10-02 but that cell is empty.)
 // (Assets Performance graph keeps its own "Last Updated" from the latest ta_data row.)
 //
 // Read order:
 //   1) CSV export  — returns the cell text exactly as displayed (same method as Total Assets T2).
-//      GVIZ drops values whose type differs from the rest of the column (column S holds numbers),
-//      so a date/text in S3 can come back as null via GVIZ.
+//      GVIZ can drop values whose type differs from the rest of the column.
 //   2) GVIZ JSON   — fallback.
 const ASSETS_LAST_UPDATED_SHEET_ID = "1P5nCTz5MDnY2_A_Bq_ESRsPr-7IlWbNexEcZ7t-ySYM";
-const ASSETS_LAST_UPDATED_GID = "0";
-const ASSETS_LAST_UPDATED_CELL = "S3";
+const ASSETS_LAST_UPDATED_GID = "573713211";
+const ASSETS_LAST_UPDATED_CELL = "S2";
 
 const ASSETS_LAST_UPDATED_CSV_URL =
   `https://docs.google.com/spreadsheets/d/${ASSETS_LAST_UPDATED_SHEET_ID}/export?format=csv` +
@@ -942,7 +942,7 @@ async function loadAssetsLastUpdated() {
       if (iso) {
         assetsLastUpdatedDateEl.textContent = iso;
         assetsLastUpdatedEl.classList.remove("is-error");
-        assetsLastUpdatedEl.title = `Source: Google Sheet DEFI_and_Earns (Sheet1), cell ${ASSETS_LAST_UPDATED_CELL} (${name})`;
+        assetsLastUpdatedEl.title = `Source: Google Sheet DEFI_and_Earns, "Date of check" (gid ${ASSETS_LAST_UPDATED_GID}, cell ${ASSETS_LAST_UPDATED_CELL}, ${name})`;
         return;
       }
       const txt = String(cell.f ?? cell.v ?? "").trim();
