@@ -299,6 +299,128 @@ async function loadFearGreed() {
   }
 }
 
+// ================== GAS TRACKER (Ethereum mainnet) ==================
+// Low / Avg / High gas price in Gwei, shown next to the wallet button.
+// Calculated like Etherscan's gas oracle, straight from Ethereum mainnet (no API key):
+//   eth_feeHistory(last 20 blocks, percentiles 25/50/75)
+//   next base fee + median priority tip at 25% / 50% / 75%  → Low / Avg / High
+// Public RPC endpoints are tried in order; refresh every 30 s. Click → etherscan.io/gastracker.
+
+const GAS_RPC_URLS = [
+  "https://ethereum-rpc.publicnode.com",
+  "https://eth.drpc.org",
+  "https://1rpc.io/eth"
+];
+const GAS_REFRESH_MS = 30 * 1000;
+const GAS_BLOCKS = 20;
+
+const gasTrackerEl = document.getElementById("gasTracker");
+const gasLowEl  = document.getElementById("gasLow");
+const gasAvgEl  = document.getElementById("gasAvg");
+const gasHighEl = document.getElementById("gasHigh");
+
+async function gasRpc(url, method, params) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      signal: ctrl.signal,
+      cache: "no-store"
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message || "RPC error");
+    return json.result;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+const weiHexToGwei = (hex) => Number(BigInt(hex)) / 1e9;
+
+function medianOf(arr) {
+  const a = arr.filter(Number.isFinite).sort((x, y) => x - y);
+  if (!a.length) return 0;
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+async function fetchGasOracle() {
+  const errors = [];
+  for (const url of GAS_RPC_URLS) {
+    try {
+      const fh = await gasRpc(url, "eth_feeHistory", ["0x" + GAS_BLOCKS.toString(16), "latest", [25, 50, 75]]);
+      const baseFees = fh?.baseFeePerGas || [];
+      const rewards = fh?.reward || [];
+      if (!baseFees.length) throw new Error("no baseFeePerGas");
+
+      const nextBase = weiHexToGwei(baseFees[baseFees.length - 1]); // base fee of the next block
+      const tip = (i) => medianOf(rewards.map((r) => (r && r[i] ? weiHexToGwei(r[i]) : NaN)));
+
+      const low = nextBase + tip(0);
+      const avg = nextBase + tip(1);
+      const high = nextBase + tip(2);
+      const block = Number(BigInt(fh.oldestBlock)) + baseFees.length - 2;
+
+      return { low, avg, high: Math.max(high, avg), base: nextBase, block, source: new URL(url).host };
+    } catch (e) {
+      errors.push(`${url}: ${e?.message || e}`);
+    }
+  }
+  throw new Error("All gas RPC endpoints failed — " + errors.join("; "));
+}
+
+function formatGwei(v) {
+  if (!Number.isFinite(v)) return "–";
+  if (v < 1) return v.toFixed(3);
+  if (v < 10) return v.toFixed(2);
+  if (v < 100) return v.toFixed(1);
+  return Math.round(v).toString();
+}
+
+function gasLevelClass(v) {
+  if (!Number.isFinite(v)) return "";
+  if (v < 2) return "gas-low";
+  if (v < 10) return "gas-mid";
+  return "gas-high";
+}
+
+async function loadGasTracker() {
+  if (!gasTrackerEl) return;
+  try {
+    const g = await fetchGasOracle();
+
+    gasLowEl.textContent = formatGwei(g.low);
+    gasAvgEl.textContent = formatGwei(g.avg);
+    gasHighEl.textContent = formatGwei(g.high);
+
+    for (const [el, v] of [[gasLowEl, g.low], [gasAvgEl, g.avg], [gasHighEl, g.high]]) {
+      el.classList.remove("gas-low", "gas-mid", "gas-high");
+      const cls = gasLevelClass(v);
+      if (cls) el.classList.add(cls);
+    }
+
+    gasTrackerEl.classList.remove("is-error");
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    gasTrackerEl.title =
+      `Ethereum gas (Gwei)\n` +
+      `Low ${formatGwei(g.low)} · Avg ${formatGwei(g.avg)} · High ${formatGwei(g.high)}\n` +
+      `Base fee ${formatGwei(g.base)} · block ${g.block}\n` +
+      `Source: ${g.source} · updated ${time}\n` +
+      `Click to open Etherscan Gas Tracker`;
+  } catch (e) {
+    console.warn("Gas tracker:", e);
+    gasTrackerEl.classList.add("is-error");
+    gasTrackerEl.title = "Gas data unavailable — click to open Etherscan Gas Tracker";
+    // keep last known values on screen
+  }
+}
+
+setInterval(loadGasTracker, GAS_REFRESH_MS);
+
 // ================== MARKET PRICES ======================
 // Price sources are tried in order; the first one that answers wins.
 // (CoinGecko free API often returns 429 / CORS errors — then Binance / Coinbase are used.)
@@ -3330,6 +3452,7 @@ if (taChartCanvas) {
 
 window.addEventListener("load", () => {
   loadCryptoPrices();
+  loadGasTracker();
   loadFearGreed();
   loadPuell();
 

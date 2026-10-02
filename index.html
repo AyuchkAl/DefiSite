@@ -5,7 +5,7 @@
   <title>DeFi Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/png" href="DeFi.png" />
-  <link rel="stylesheet" href="style.css?v=2026-10-02b" />
+  <link rel="stylesheet" href="style.css?v=2026-10-02c" />
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -192,6 +192,8 @@
         </div>
       </div>
 
+      <div class="wallet-area">
+
       <div class="wallet-container">
         <button id="connectButton">
           <span class="wallet-dot"></span>
@@ -200,6 +202,16 @@
         <div id="walletMenu" class="wallet-menu">
           <button id="disconnectButton">Disconnect</button>
         </div>
+      </div>
+
+        <a id="gasTracker" class="gas-tracker" href="https://etherscan.io/gastracker" target="_blank" rel="noopener noreferrer" aria-label="Ethereum gas tracker" title="Ethereum gas (Gwei)">
+          <span class="gas-icon" aria-hidden="true">⛽</span>
+          <span class="gas-title">Gas</span>
+          <span class="gas-item"><span class="gas-label">Low</span><span id="gasLow" class="gas-val">–</span></span>
+          <span class="gas-item"><span class="gas-label">Avg</span><span id="gasAvg" class="gas-val">–</span></span>
+          <span class="gas-item"><span class="gas-label">High</span><span id="gasHigh" class="gas-val">–</span></span>
+          <span class="gas-unit">Gwei</span>
+        </a>
       </div>
     </div>
   </header>
@@ -277,6 +289,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2026-10-02b"></script>
+  <script src="app.js?v=2026-10-02c"></script>
 </body>
 </html>
