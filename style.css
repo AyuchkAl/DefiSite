@@ -1517,18 +1517,20 @@ body {
   margin-left: 0;
 }
 
+/* Compact block: never wider than the wallet button area (~150px) */
 .gas-tracker{
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto repeat(3, auto);
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 999px;
+  column-gap: 6px;
+  padding: 4px 9px;
+  border-radius: 12px;
   background: #11152a;
   border: 1px solid rgba(255,255,255,0.08);
   color: #cfd5ff;
-  font-size: 12px;
   text-decoration: none;
   white-space: nowrap;
+  line-height: 1.15;
   transition: border-color .12s ease, background .12s ease;
 }
 
@@ -1537,15 +1539,34 @@ body {
   background: #151a30;
 }
 
+.gas-head{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 9px;
+  color: #9aa4d8;
+}
 .gas-icon{ font-size: 13px; line-height: 1; }
-.gas-title{ display: none; } /* icon is enough; keeps the pill compact */
-.gas-item{ display: inline-flex; align-items: baseline; gap: 3px; margin-left: 3px; }
-.gas-label{ font-size: 10px; color: #9aa4d8; text-transform: uppercase; letter-spacing: .04em; }
-.gas-val{ font-weight: 800; color: #ffffff; }
-.gas-unit{ font-size: 10px; color: #9aa4d8; margin-left: 2px; }
+.gas-item{ display: flex; flex-direction: column; align-items: center; }
+.gas-label{ font-size: 9px; color: #9aa4d8; text-transform: uppercase; letter-spacing: .04em; }
+.gas-val{ font-size: 12px; font-weight: 800; color: #ffffff; }
 
 .gas-val.gas-low { color: #16c784; }
 .gas-val.gas-mid { color: #ffb347; }
 .gas-val.gas-high{ color: #ea3943; }
 
 .gas-tracker.is-error{ opacity: .6; }
+
+/* Narrow screens: the top bar needs ~1810px with the gas block; below that let the wallet + gas block
+   wrap to its own row (right side) instead of being pushed off-screen. */
+@media (max-width: 1830px){
+  .topbar-inner{
+    flex-wrap: wrap !important;
+    row-gap: 10px;
+  }
+  .wallet-area{
+    flex-direction: row;
+    align-items: center;
+    margin-left: auto;
+  }
+}
