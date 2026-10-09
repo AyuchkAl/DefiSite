@@ -1256,6 +1256,196 @@ async function getAllocationPrices() {
   return { btc, eth };
 }
 
+// ---- Aave V4 (Ethereum mainnet): supplied assets in Spokes + Tokenization Spoke vaults ----
+// Aave V4 (live on Ethereum since 30-Mar-2026) uses Hub & Spoke contracts — different from V3.
+// Addresses: https://aave.com/docs/resources/addresses (V4 tab). Read via Multicall3 on public RPC.
+const ALLOC_ETH_RPC_URLS = [
+  "https://ethereum-rpc.publicnode.com",
+  "https://eth.drpc.org",
+  "https://1rpc.io/eth"
+];
+const MULTICALL3_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
+// Position Spokes (users supply/borrow here). Treasury Spoke excluded.
+const AAVE_V4_SPOKES = {
+  "Main":              "0x94e7A5dCbE816e498b89aB752661904E2F56c485",
+  "Bluechip":          "0x973a023A77420ba610f06b3858aD991Df6d85A08",
+  "Lombard BTC":       "0x7EC68b5695e803e98a21a9A05d744F28b0a7753D",
+  "Ethena Correlated": "0x58131E79531caB1d52301228d1f7b842F26B9649",
+  "Ethena Ecosystem":  "0xba1B3D55D249692b669A164024A838309B7508AF",
+  "Forex":             "0xD8B93635b8C6d0fF98CbE90b5988E3F2d1Cd9da1",
+  "Gold":              "0x65407b940966954b23dfA3caA5C0702bB42984DC",
+  "PAXG Gold":         "0xAD75cE6354f87F3135cE10621d385d8D1e2562C2",
+  "USDG Pendle":       "0x956d8e0A89cfa3744428C4641b5a53B56167a7f9",
+  "EtherFi eSpoke":    "0xbF10BDfE177dE0336aFD7fcCF80A904E15386219",
+  "Kelp eSpoke":       "0x3131FE68C4722e726fe6B2819ED68e514395B9a4",
+  "Lido eSpoke":       "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd",
+  "USDG Maple eSpoke": "0x774b9655413c34809c1f1b16b654465A89EBE989"
+};
+
+// Tokenization Spokes = ERC-4626 vaults (user holds shares, e.g. "waCoreUSDC")
+const AAVE_V4_VAULTS = [
+  { name: "Core WETH",           group: "ETH", decimals: 18, address: "0x7320CF22Ac095bA2a2e0a652F77efB836c2E751b" },
+  { name: "Prime WETH",          group: "ETH", decimals: 18, address: "0x2087513383330B961A3753B47627Bbf149F31c70" },
+  { name: "Core WBTC",           group: "BTC", decimals: 8,  address: "0x82A9CC4656784E55Ef2E78F704028B5E1Bfc1732" },
+  { name: "Core cbBTC",          group: "BTC", decimals: 8,  address: "0x33B41B74366F55327d959FfF6D6b6fBc2853dbB1" },
+  { name: "Core LBTC",           group: "BTC", decimals: 8,  address: "0x7961F140B570490849DB878AE222570ea838799d" },
+  { name: "Prime WBTC",          group: "BTC", decimals: 8,  address: "0x5AE3d87De89CA6Ce501e8317887F71EABED69E18" },
+  { name: "Prime cbBTC",         group: "BTC", decimals: 8,  address: "0xD38098faf52D8E915EdED84fBF30F81C17906938" },
+  { name: "Core USDC",           group: "USD", decimals: 6,  address: "0x531E90a2376902DE8915789Fcc1075e3B0c153E7" },
+  { name: "Core USDT",           group: "USD", decimals: 6,  address: "0x5eC44a70F309854fe04d495cFE1B5dA63DD1cc73" },
+  { name: "Plus USDC",           group: "USD", decimals: 6,  address: "0xc94bdd83D2c7655C280655D60954e79E88D4F949" },
+  { name: "Plus USDT",           group: "USD", decimals: 6,  address: "0x80835EB50694EE0e519743f67e5401e6FD300006" },
+  { name: "Prime USDC",          group: "USD", decimals: 6,  address: "0x486415fb1F8b062c89ED548f871cf64304AACb31" },
+  { name: "Prime USDT",          group: "USD", decimals: 6,  address: "0x46c588DD8453aC259c1f6a54b4C9A93C2aC3762D" },
+  { name: "Global Dollar USDC",  group: "USD", decimals: 6,  address: "0xaed7c529bD2878170B61C758DfAa215AC7a4FD07" },
+  { name: "Global Dollar USDT",  group: "USD", decimals: 6,  address: "0xa0e97e45C2f89003730E467Bd484fA3eEcE5B4Cf" }
+];
+
+const V4_SPOKE_IFACE = new ethers.Interface([
+  "function getReserveCount() view returns (uint256)",
+  "function getReserve(uint256 reserveId)",
+  "function getUserSuppliedAssets(uint256 reserveId, address user) view returns (uint256)"
+]);
+const V4_ERC20_IFACE = new ethers.Interface([
+  "function symbol() view returns (string)",
+  "function balanceOf(address) view returns (uint256)",
+  "function convertToAssets(uint256 shares) view returns (uint256)"
+]);
+const MULTICALL3_IFACE = new ethers.Interface([
+  "function aggregate3((address target, bool allowFailure, bytes callData)[] calls) payable returns ((bool success, bytes returnData)[] returnData)"
+]);
+
+// V4 group by token symbol: only WETH counts as ETH; BTC wrappers as BTC; USDC/USDT as USD
+function v4GroupFromSymbol(symbol) {
+  const s = String(symbol || "").toUpperCase();
+  if (s === "WETH") return "ETH";
+  if (s.includes("BTC")) return "BTC";
+  if (s === "USDC" || s === "USDT" || s === "USDT0") return "USD";
+  return null;
+}
+
+let ethMainnetProvider = null;
+async function getEthMainnetProvider() {
+  if (ethMainnetProvider) return ethMainnetProvider;
+  for (const url of ALLOC_ETH_RPC_URLS) {
+    try {
+      const p = new ethers.JsonRpcProvider(url, 1, { staticNetwork: true });
+      await p.getBlockNumber();
+      ethMainnetProvider = p;
+      return p;
+    } catch (e) {
+      console.warn(`Allocation: Ethereum RPC ${url} not available`, e?.shortMessage || e);
+    }
+  }
+  throw new Error("No Ethereum RPC available");
+}
+
+// calls: [{ target, data }] → [{ ok, data }] (chunks of 150)
+async function multicall3(provider, calls) {
+  const out = [];
+  for (let i = 0; i < calls.length; i += 150) {
+    const chunk = calls.slice(i, i + 150);
+    const data = MULTICALL3_IFACE.encodeFunctionData("aggregate3", [
+      chunk.map((c) => ({ target: c.target, allowFailure: true, callData: c.data }))
+    ]);
+    const raw = await provider.call({ to: MULTICALL3_ADDRESS, data });
+    const [results] = MULTICALL3_IFACE.decodeFunctionResult("aggregate3", raw);
+    for (const r of results) out.push({ ok: r.success && r.returnData !== "0x", data: r.returnData });
+  }
+  return out;
+}
+
+// Reserve list of all Spokes (static) — built once per page load
+let aaveV4ReservesCache = null;
+async function getAaveV4Reserves(provider) {
+  if (aaveV4ReservesCache) return aaveV4ReservesCache;
+
+  const spokes = Object.entries(AAVE_V4_SPOKES);
+  const counts = await multicall3(provider, spokes.map(([, a]) => ({
+    target: a, data: V4_SPOKE_IFACE.encodeFunctionData("getReserveCount", [])
+  })));
+
+  const reserveCalls = [];
+  spokes.forEach(([name, address], i) => {
+    const n = counts[i].ok ? Number(BigInt(counts[i].data)) : 0;
+    for (let id = 0; id < n; id++) {
+      reserveCalls.push({ spoke: name, spokeAddress: address, id,
+        target: address, data: V4_SPOKE_IFACE.encodeFunctionData("getReserve", [id]) });
+    }
+  });
+  const reserveRes = await multicall3(provider, reserveCalls);
+
+  // Reserve struct: word0 = underlying, word1 = hub, word2 = assetId, word3 = decimals
+  const reserves = [];
+  reserveRes.forEach((r, i) => {
+    if (!r.ok || r.data.length < 2 + 64 * 4) return;
+    const word = (k) => "0x" + r.data.slice(2 + 64 * k, 2 + 64 * (k + 1));
+    reserves.push({
+      ...reserveCalls[i],
+      underlying: ethers.getAddress("0x" + word(0).slice(-40)),
+      decimals: Number(BigInt(word(3)))
+    });
+  });
+
+  const tokens = [...new Set(reserves.map((r) => r.underlying))];
+  const symRes = await multicall3(provider, tokens.map((t) => ({
+    target: t, data: V4_ERC20_IFACE.encodeFunctionData("symbol", [])
+  })));
+  const symbols = {};
+  tokens.forEach((t, i) => {
+    try { symbols[t] = symRes[i].ok ? V4_ERC20_IFACE.decodeFunctionResult("symbol", symRes[i].data)[0] : "?"; }
+    catch { symbols[t] = "?"; }
+  });
+
+  aaveV4ReservesCache = reserves
+    .map((r) => ({ ...r, symbol: symbols[r.underlying], group: v4GroupFromSymbol(symbols[r.underlying]) }))
+    .filter((r) => r.group);
+  return aaveV4ReservesCache;
+}
+
+async function loadAaveV4AllocationQty(userAddress) {
+  const provider = await getEthMainnetProvider();
+  const out = { btc: 0, eth: 0, usd: 0, details: [] };
+  const add = (group, qty, label) => {
+    if (!(qty > 0)) return;
+    if (group === "BTC") out.btc += qty;
+    else if (group === "ETH") out.eth += qty;
+    else out.usd += qty;
+    out.details.push(`${label}: ${qty < 1 ? qty.toFixed(6) : qty.toFixed(2)}`);
+  };
+
+  // 1) Spoke positions
+  const reserves = await getAaveV4Reserves(provider);
+  const supplied = await multicall3(provider, reserves.map((r) => ({
+    target: r.spokeAddress,
+    data: V4_SPOKE_IFACE.encodeFunctionData("getUserSuppliedAssets", [r.id, userAddress])
+  })));
+  reserves.forEach((r, i) => {
+    if (!supplied[i].ok) return;
+    add(r.group, Number(ethers.formatUnits(BigInt(supplied[i].data), r.decimals)), `V4 ${r.spoke} ${r.symbol}`);
+  });
+
+  // 2) Tokenization vaults (ERC-4626 shares → assets)
+  const bal = await multicall3(provider, AAVE_V4_VAULTS.map((v) => ({
+    target: v.address, data: V4_ERC20_IFACE.encodeFunctionData("balanceOf", [userAddress])
+  })));
+  const held = AAVE_V4_VAULTS
+    .map((v, i) => ({ ...v, shares: bal[i].ok ? BigInt(bal[i].data) : 0n }))
+    .filter((v) => v.shares > 0n);
+  if (held.length) {
+    const conv = await multicall3(provider, held.map((v) => ({
+      target: v.address, data: V4_ERC20_IFACE.encodeFunctionData("convertToAssets", [v.shares])
+    })));
+    held.forEach((v, i) => {
+      if (!conv[i].ok) return;
+      add(v.group, Number(ethers.formatUnits(BigInt(conv[i].data), v.decimals)), `V4 ${v.name} vault`);
+    });
+  }
+
+  return out;
+}
+
 async function loadAllocation(userAddress) {
   if (!allocationChartEl) return;
 
@@ -1268,8 +1458,12 @@ async function loadAllocation(userAddress) {
   if (!allocationQty) setAllocationMessage("Loading…");
 
   try {
-    const [aave, morpho] = await Promise.all([
+    const [aave, aaveV4, morpho] = await Promise.all([
       loadAaveAllocationQty(userAddress),
+      loadAaveV4AllocationQty(userAddress).catch((e) => {
+        console.warn("Allocation: Aave V4 (Ethereum) data not loaded", e);
+        return { btc: 0, eth: 0, usd: 0, details: [], failed: true };
+      }),
       loadMorphoAllocationQty(userAddress).catch((e) => {
         console.warn("Allocation: Morpho data not loaded", e);
         return { btc: 0, usd: 0, failed: true };
@@ -1277,11 +1471,18 @@ async function loadAllocation(userAddress) {
     ]);
 
     allocationQty = {
-      btc: aave.btc + morpho.btc,
-      eth: aave.eth,
-      usd: aave.usd + morpho.usd,
-      morphoFailed: !!morpho.failed
+      btc: aave.btc + aaveV4.btc + morpho.btc,
+      eth: aave.eth + aaveV4.eth,
+      usd: aave.usd + aaveV4.usd + morpho.usd,
+      morphoFailed: !!morpho.failed,
+      v4Failed: !!aaveV4.failed,
+      sources: {
+        "Aave V3 (Arbitrum)": aave,
+        "Aave V4 (Ethereum)": aaveV4,
+        "Morpho (Base)": morpho
+      }
     };
+    console.info("Allocation sources:", allocationQty.sources, aaveV4.details);
 
     await renderAllocation();
   } catch (e) {
@@ -1362,9 +1563,11 @@ async function renderAllocation() {
       ${legend}
     </svg>`;
 
-  allocationChartEl.title = allocationQty.morphoFailed
-    ? "Morpho (Base) data could not be loaded — showing Aave only"
-    : "Aave (Arbitrum) + Morpho (Base)";
+  // Hover: per-source breakdown (quantities) + any source that failed
+  const fmtQ = (q) => (q > 0 ? (q < 1 ? q.toFixed(6) : q.toFixed(2)) : "0");
+  const lines = Object.entries(allocationQty.sources || {}).map(([name, s]) =>
+    `${name}: BTC ${fmtQ(s.btc)} · ETH ${fmtQ(s.eth || 0)} · USD ${fmtQ(s.usd)}${s.failed ? " (not loaded)" : ""}`);
+  allocationChartEl.title = lines.join("\n");
 }
 
 setInterval(() => {
