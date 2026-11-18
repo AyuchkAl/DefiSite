@@ -1163,7 +1163,16 @@ async function loadAaveAllocationQty(userAddress) {
   return out;
 }
 
-// ---- Morpho (Base): BTC collateral + USDC/USDT supplied (markets + vaults) ----
+// ---- Morpho: BTC collateral + USDC/USDT supplied — ALL chains ----
+// 1) REST API (new, all chains):  GET /v0/blue/users/{addr}/positions  → chain_id, market_id, supply_shares, collateral_assets
+//    market tokens: /v0/blue/markets/{chain}:{market}   token info: /v0/tokens/{chain}:{token}
+//    supply assets = supply_shares × total_supply_assets / total_supply_shares  (/state)
+// 2) Fallback: GraphQL (being retired 29-Jan-2027) per chain.
+// Vault deposits (USDC/USDT) via GraphQL vaultPositions (optional).
+const MORPHO_REST_BASE = "https://api.morpho.org/v0";
+const MORPHO_GQL_CHAINS = [8453, 1, 42161]; // Base, Ethereum, Arbitrum
+const MORPHO_CHAIN_NAMES = { 1: "Ethereum", 8453: "Base", 42161: "Arbitrum", 130: "Unichain", 137: "Polygon", 10: "Optimism", 747474: "Katana", 999: "HyperEVM" };
+
 async function morphoGql(query, variables) {
   const res = await fetch(ALLOC_MORPHO_API_URL, {
     method: "POST",
@@ -1178,11 +1187,72 @@ async function morphoGql(query, variables) {
   return json.data;
 }
 
-async function loadMorphoAllocationQty(userAddress) {
-  const out = { btc: 0, usd: 0 };
-  const vars = { address: userAddress, chainId: ALLOC_MORPHO_CHAIN_ID };
+async function morphoRest(path) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch(MORPHO_REST_BASE + path, { headers: { accept: "application/json" }, cache: "no-store", signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+    return (await res.json())?.data;
+  } finally {
+    clearTimeout(t);
+  }
+}
 
-  // Markets: collateral (BTC) and supplied loan asset (USDC/USDT)
+const morphoMarketCache = {};
+const morphoTokenCache = {};
+async function morphoMarket(chainId, marketId) {
+  const k = `${chainId}:${marketId}`;
+  if (!morphoMarketCache[k]) morphoMarketCache[k] = morphoRest(`/blue/markets/${k}`);
+  return morphoMarketCache[k];
+}
+async function morphoToken(chainId, address) {
+  const k = `${chainId}:${address}`;
+  if (!morphoTokenCache[k]) morphoTokenCache[k] = morphoRest(`/tokens/${k}`);
+  return morphoTokenCache[k];
+}
+
+// REST: market positions on all chains
+async function loadMorphoMarketsRest(userAddress, out) {
+  const rows = await morphoRest(`/blue/users/${userAddress}/positions?active_only=true&limit=100`);
+  if (!Array.isArray(rows)) throw new Error("Unexpected Morpho REST response");
+
+  for (const r of rows) {
+    const chain = Number(r.chain_id);
+    const chainName = MORPHO_CHAIN_NAMES[chain] || `chain ${chain}`;
+    const collateralRaw = BigInt(r.collateral_assets || "0");
+    const supplyShares = BigInt(r.supply_shares || "0");
+    if (collateralRaw === 0n && supplyShares === 0n) continue;
+
+    const m = await morphoMarket(chain, r.market_id);
+
+    if (collateralRaw > 0n && m?.collateral_token) {
+      const tok = await morphoToken(chain, m.collateral_token);
+      const isBtc = allocGroupFromSymbol(tok?.symbol) === "BTC" || (tok?.tags || []).includes("btc");
+      if (isBtc) {
+        const qty = Number(ethers.formatUnits(collateralRaw, Number(tok.decimals)));
+        out.btc += qty;
+        out.details.push(`Morpho ${chainName} ${tok.symbol} collateral: ${qty.toFixed(6)}`);
+      }
+    }
+
+    if (supplyShares > 0n && m?.loan_token) {
+      const tok = await morphoToken(chain, m.loan_token);
+      if (allocGroupFromSymbol(tok?.symbol) === "USD") {
+        const st = await morphoRest(`/blue/markets/${chain}:${r.market_id}/state`);
+        const tsa = BigInt(st?.total_supply_assets || "0");
+        const tss = BigInt(st?.total_supply_shares || "0");
+        const assets = tss > 0n ? (supplyShares * tsa) / tss : 0n;
+        const qty = Number(ethers.formatUnits(assets, Number(tok.decimals)));
+        out.usd += qty;
+        out.details.push(`Morpho ${chainName} ${tok.symbol} supplied: ${qty.toFixed(2)}`);
+      }
+    }
+  }
+}
+
+// GraphQL fallback: market positions on one chain
+async function loadMorphoMarketsGql(userAddress, chainId, out) {
   try {
     const data = await morphoGql(`
       query ($address: String!, $chainId: Int!) {
@@ -1195,24 +1265,29 @@ async function loadMorphoAllocationQty(userAddress) {
             state { collateral supplyAssets }
           }
         }
-      }`, vars);
+      }`, { address: userAddress, chainId });
 
+    const chainName = MORPHO_CHAIN_NAMES[chainId] || `chain ${chainId}`;
     for (const p of data?.userByAddress?.marketPositions || []) {
       const col = p?.market?.collateralAsset;
       const loan = p?.market?.loanAsset;
       if (col && allocGroupFromSymbol(col.symbol) === "BTC") {
-        out.btc += allocUnits(p?.state?.collateral, col.decimals);
+        const qty = allocUnits(p?.state?.collateral, col.decimals);
+        if (qty > 0) { out.btc += qty; out.details.push(`Morpho ${chainName} ${col.symbol} collateral: ${qty.toFixed(6)}`); }
       }
       if (loan && allocGroupFromSymbol(loan.symbol) === "USD") {
-        out.usd += allocUnits(p?.state?.supplyAssets, loan.decimals);
+        const qty = allocUnits(p?.state?.supplyAssets, loan.decimals);
+        if (qty > 0) { out.usd += qty; out.details.push(`Morpho ${chainName} ${loan.symbol} supplied: ${qty.toFixed(2)}`); }
       }
     }
   } catch (e) {
-    // "No results matching given parameters" = user has no Morpho positions on this chain
+    // "No results matching given parameters" = no Morpho positions on this chain
     if (!/no results/i.test(String(e?.message))) throw e;
   }
+}
 
-  // Vaults (V1): USDC/USDT deposits (optional — ignored if schema/API rejects)
+// GraphQL: vault (V1) USDC/USDT/BTC deposits on one chain (optional)
+async function loadMorphoVaultsGql(userAddress, chainId, out) {
   try {
     const data = await morphoGql(`
       query ($address: String!, $chainId: Int!) {
@@ -1222,17 +1297,43 @@ async function loadMorphoAllocationQty(userAddress) {
             state { assets }
           }
         }
-      }`, vars);
+      }`, { address: userAddress, chainId });
 
+    const chainName = MORPHO_CHAIN_NAMES[chainId] || `chain ${chainId}`;
     for (const p of data?.userByAddress?.vaultPositions || []) {
       const asset = p?.vault?.asset;
       const group = asset && allocGroupFromSymbol(asset.symbol);
-      if (group === "USD") out.usd += allocUnits(p?.state?.assets, asset.decimals);
-      if (group === "BTC") out.btc += allocUnits(p?.state?.assets, asset.decimals);
+      const qty = asset ? allocUnits(p?.state?.assets, asset.decimals) : 0;
+      if (!(qty > 0)) continue;
+      if (group === "USD") { out.usd += qty; out.details.push(`Morpho ${chainName} vault ${asset.symbol}: ${qty.toFixed(2)}`); }
+      if (group === "BTC") { out.btc += qty; out.details.push(`Morpho ${chainName} vault ${asset.symbol}: ${qty.toFixed(6)}`); }
     }
   } catch (e) {
-    if (!/no results/i.test(String(e?.message))) console.warn("Allocation: Morpho vaults not read", e);
+    if (!/no results/i.test(String(e?.message))) console.warn(`Allocation: Morpho vaults (chain ${chainId}) not read`, e);
   }
+}
+
+async function loadMorphoAllocationQty(userAddress) {
+  const out = { btc: 0, usd: 0, details: [], method: "" };
+
+  // Markets: REST (all chains) → fallback GraphQL (Base, Ethereum, Arbitrum)
+  try {
+    await loadMorphoMarketsRest(userAddress, out);
+    out.method = "REST";
+  } catch (e) {
+    console.warn("Allocation: Morpho REST failed, using GraphQL", e);
+    out.btc = 0; out.usd = 0; out.details = [];
+    const errors = [];
+    for (const chainId of MORPHO_GQL_CHAINS) {
+      try { await loadMorphoMarketsGql(userAddress, chainId, out); }
+      catch (err) { errors.push(`${chainId}: ${err?.message || err}`); }
+    }
+    if (errors.length === MORPHO_GQL_CHAINS.length) throw new Error("Morpho REST and GraphQL failed — " + errors.join("; "));
+    out.method = "GraphQL";
+  }
+
+  // Vault deposits (optional)
+  for (const chainId of MORPHO_GQL_CHAINS) await loadMorphoVaultsGql(userAddress, chainId, out);
 
   return out;
 }
@@ -1466,7 +1567,7 @@ async function loadAllocation(userAddress) {
       }),
       loadMorphoAllocationQty(userAddress).catch((e) => {
         console.warn("Allocation: Morpho data not loaded", e);
-        return { btc: 0, usd: 0, failed: true };
+        return { btc: 0, usd: 0, details: [], failed: true };
       })
     ]);
 
@@ -1479,10 +1580,10 @@ async function loadAllocation(userAddress) {
       sources: {
         "Aave V3 (Arbitrum)": aave,
         "Aave V4 (Ethereum)": aaveV4,
-        "Morpho (Base)": morpho
+        "Morpho (all chains)": morpho
       }
     };
-    console.info("Allocation sources:", allocationQty.sources, aaveV4.details);
+    console.info("Allocation sources:", allocationQty.sources, "V4:", aaveV4.details, `Morpho (${morpho.method || "failed"}):`, morpho.details);
 
     await renderAllocation();
   } catch (e) {
