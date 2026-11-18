@@ -1313,11 +1313,137 @@ async function loadMorphoVaultsGql(userAddress, chainId, out) {
   }
 }
 
+// ---- Morpho Blue ON-CHAIN reader (no Morpho API needed in the browser) ----
+// The Morpho API may be blocked by the browser (CORS) on defi.yuchkal.org, so balances are read directly
+// from the Morpho Blue contract via public RPC. The API is only used to DISCOVER which markets the wallet uses;
+// MORPHO_TRACKED_MARKETS is a built-in fallback list (user's known markets).
+const MORPHO_CHAINS = {
+  8453:  { name: "Base",     morpho: "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+           rpcs: ["https://base-rpc.publicnode.com", "https://base.drpc.org", "https://mainnet.base.org", "https://1rpc.io/base"] },
+  1:     { name: "Ethereum", morpho: "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+           rpcs: ["https://ethereum-rpc.publicnode.com", "https://eth.drpc.org", "https://1rpc.io/eth"] },
+  42161: { name: "Arbitrum", morpho: "0x6c247b1F6182318877311737BaC0844bAa518F5e",
+           rpcs: ["https://arbitrum-one-rpc.publicnode.com", "https://arb1.arbitrum.io/rpc"] }
+};
+
+// Known markets of this wallet (fallback when market discovery via API is blocked)
+const MORPHO_TRACKED_MARKETS = [
+  { chainId: 8453, id: "0x9103c3b4e834476c9a62ea009ba2c884ee42e94e6e314a26f04d312434191836" } // cbBTC / USDC (Base)
+];
+
+const MORPHO_BLUE_ABI = [
+  "function position(bytes32 id, address user) view returns (uint256 supplyShares, uint128 borrowShares, uint128 collateral)",
+  "function market(bytes32 id) view returns (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee)",
+  "function idToMarketParams(bytes32 id) view returns (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv)"
+];
+const MORPHO_ERC20_ABI = ["function symbol() view returns (string)", "function decimals() view returns (uint8)"];
+
+const morphoProviders = {};
+async function morphoChainProvider(chainId) {
+  if (morphoProviders[chainId]) return morphoProviders[chainId];
+  const cfg = MORPHO_CHAINS[chainId];
+  if (!cfg) throw new Error(`Morpho chain ${chainId} not configured`);
+  for (const url of cfg.rpcs) {
+    try {
+      const p = new ethers.JsonRpcProvider(url, Number(chainId), { staticNetwork: true });
+      await p.getBlockNumber();
+      morphoProviders[chainId] = p;
+      return p;
+    } catch (e) {
+      console.warn(`Allocation: ${cfg.name} RPC ${url} not available`, e?.shortMessage || e);
+    }
+  }
+  throw new Error(`No RPC available for ${cfg.name}`);
+}
+
+const morphoTokenInfoCache = {};
+async function morphoTokenInfo(provider, chainId, address) {
+  const k = `${chainId}:${address.toLowerCase()}`;
+  if (!morphoTokenInfoCache[k]) {
+    const c = new ethers.Contract(address, MORPHO_ERC20_ABI, provider);
+    morphoTokenInfoCache[k] = Promise.all([c.symbol(), c.decimals()]).then(([symbol, decimals]) => ({ symbol, decimals: Number(decimals) }));
+  }
+  return morphoTokenInfoCache[k];
+}
+
+// Market discovery: Morpho REST (all chains) + tracked list. Returns unique [{chainId, id}]
+async function discoverMorphoMarkets(userAddress) {
+  const list = [...MORPHO_TRACKED_MARKETS];
+  try {
+    const rows = await morphoRest(`/blue/users/${userAddress}/positions?active_only=true&limit=100`);
+    for (const r of rows || []) list.push({ chainId: Number(r.chain_id), id: r.market_id });
+  } catch (e) {
+    console.warn("Allocation: Morpho market discovery via API failed — using tracked markets only", e?.message || e);
+  }
+  const seen = new Set();
+  return list.filter((m) => {
+    const k = `${m.chainId}:${String(m.id).toLowerCase()}`;
+    if (seen.has(k) || !MORPHO_CHAINS[m.chainId]) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+async function loadMorphoMarketsOnchain(userAddress, out) {
+  const markets = await discoverMorphoMarkets(userAddress);
+  let readOk = 0;
+  const errors = [];
+
+  for (const m of markets) {
+    const cfg = MORPHO_CHAINS[m.chainId];
+    try {
+      const provider = await morphoChainProvider(m.chainId);
+      const blue = new ethers.Contract(cfg.morpho, MORPHO_BLUE_ABI, provider);
+      const pos = await blue.position(m.id, userAddress);
+      readOk++;
+      const collateral = BigInt(pos.collateral);
+      const supplyShares = BigInt(pos.supplyShares);
+      if (collateral === 0n && supplyShares === 0n) continue;
+
+      const params = await blue.idToMarketParams(m.id);
+
+      if (collateral > 0n) {
+        const tok = await morphoTokenInfo(provider, m.chainId, params.collateralToken);
+        if (allocGroupFromSymbol(tok.symbol) === "BTC") {
+          const qty = Number(ethers.formatUnits(collateral, tok.decimals));
+          out.btc += qty;
+          out.details.push(`Morpho ${cfg.name} ${tok.symbol} collateral: ${qty.toFixed(6)}`);
+        }
+      }
+
+      if (supplyShares > 0n) {
+        const tok = await morphoTokenInfo(provider, m.chainId, params.loanToken);
+        if (allocGroupFromSymbol(tok.symbol) === "USD") {
+          const mk = await blue.market(m.id);
+          const tsa = BigInt(mk.totalSupplyAssets), tss = BigInt(mk.totalSupplyShares);
+          const assets = tss > 0n ? (supplyShares * tsa) / tss : 0n;
+          const qty = Number(ethers.formatUnits(assets, tok.decimals));
+          out.usd += qty;
+          out.details.push(`Morpho ${cfg.name} ${tok.symbol} supplied: ${qty.toFixed(2)}`);
+        }
+      }
+    } catch (e) {
+      errors.push(`${cfg.name} ${String(m.id).slice(0, 10)}…: ${e?.shortMessage || e?.message || e}`);
+    }
+  }
+
+  if (markets.length && readOk === 0) throw new Error("Morpho on-chain read failed — " + errors.join("; "));
+  if (errors.length) console.warn("Allocation: some Morpho markets not read", errors);
+}
+
 async function loadMorphoAllocationQty(userAddress) {
   const out = { btc: 0, usd: 0, details: [], method: "" };
 
-  // Markets: REST (all chains) → fallback GraphQL (Base, Ethereum, Arbitrum)
+  // Markets: 1) ON-CHAIN (Morpho Blue contract, markets discovered via API + tracked list)
+  //          2) REST API amounts  3) GraphQL (Base, Ethereum, Arbitrum)
   try {
+    await loadMorphoMarketsOnchain(userAddress, out);
+    out.method = "on-chain";
+  } catch (e0) {
+    console.warn("Allocation: Morpho on-chain read failed, trying REST", e0);
+    out.btc = 0; out.usd = 0; out.details = [];
+  }
+  if (!out.method) try {
     await loadMorphoMarketsRest(userAddress, out);
     out.method = "REST";
   } catch (e) {
