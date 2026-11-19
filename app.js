@@ -1850,7 +1850,7 @@ if (myAssetsButton && myAssetsMenu) {
   document.addEventListener("click", (e) => {
     if (!myAssetsMenu.classList.contains("visible")) return;
     if (!e.target.closest(".my-assets-container")) closeMyAssetsMenu();
-  });
+  }, true); // capture phase: closes even when another button stops propagation
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMyAssetsMenu();
@@ -2422,7 +2422,12 @@ if (window.__defiMenuInitialized) {
       a.addEventListener("click", (e) => {
         e.stopPropagation();
         // Native target="_blank" opens the new tab; only block empty links
-        if (siteUrl === "#") e.preventDefault();
+        if (siteUrl === "#") { e.preventDefault(); return; }
+        // Site opened → close the DeFi drop-down (after the browser has started opening the tab)
+        setTimeout(() => {
+          closeDefiMenu();
+          hideAllDefiContextMenus();
+        }, 0);
       });
       return a;
     }
@@ -2766,6 +2771,15 @@ if (window.__defiMenuInitialized) {
         siteDialogCancelBtn.disabled = false;
       }
     });
+
+    // Capture phase: runs BEFORE other buttons' handlers (My Assets, Strategy, wallet call stopPropagation),
+    // so the DeFi drop-down always closes when clicking anywhere outside it.
+    document.addEventListener("click", (e) => {
+      if (!defiMenu.classList.contains("visible")) return;
+      if (e.target.closest("#defiContainer") || e.target.closest("#siteDialogBackdrop")) return;
+      closeDefiMenu();
+      hideAllDefiContextMenus();
+    }, true);
 
     document.addEventListener("click", (e) => {
       if (defiMenu.classList.contains("visible") && !e.target.closest("#defiContainer")) {
@@ -3240,6 +3254,13 @@ ${f.content}
       alert("Failed to delete file: " + (e2?.message || e2));
     }
   });
+
+  // Capture phase: close Strategy drop-down on any click outside it (even if another button stops propagation)
+  document.addEventListener("click", (e) => {
+    if (strategyMenu.classList.contains("visible") && !e.target.closest("#strategyContainer")) {
+      closeStrategyMenu();
+    }
+  }, true);
 
   document.addEventListener("click", (e) => {
     if (strategyMenu.classList.contains("visible") && !e.target.closest("#strategyContainer")) {
