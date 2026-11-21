@@ -3410,8 +3410,72 @@ function normalizePuellPayload(json) {
   };
 }
 
-async function fetchJsonStrict(url) {
-  const res = await fetch(url, { cache: "no-store" });
+// ---- Puell Multiple: local calculation (fallback when the Cloudflare Worker proxy fails) ----
+// Puell = daily BTC issuance in USD / 365-day average of daily issuance in USD.
+// Daily issuance = 144 blocks × block subsidy (halving-aware, from estimated block height) × daily close price.
+// Prices: Binance public data API (366 daily candles) → fallback CoinGecko market_chart (365 days).
+const PUELL_ANCHOR_HEIGHT = 840000;                       // 4th halving block
+const PUELL_ANCHOR_TIME = Date.UTC(2024, 3, 20, 0, 9);    // 2024-04-20 00:09 UTC
+const PUELL_BLOCKS_PER_DAY = 144;
+
+function puellSubsidyAt(timeMs) {
+  const height = PUELL_ANCHOR_HEIGHT + ((timeMs - PUELL_ANCHOR_TIME) / 86400000) * PUELL_BLOCKS_PER_DAY;
+  return 50 / Math.pow(2, Math.floor(height / 210000));
+}
+
+async function fetchBtcDailyCloses() {
+  // 1) Binance: [openTime, open, high, low, close, ...]
+  try {
+    const rows = await fetchJsonWithTimeout("https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=366");
+    if (Array.isArray(rows) && rows.length >= 300) {
+      return { source: "Binance", points: rows.map((r) => ({ t: Number(r[0]), price: Number(r[4]) })) };
+    }
+    throw new Error("too few candles");
+  } catch (e) {
+    console.warn("Puell: Binance candles failed", e);
+  }
+  // 2) CoinGecko: { prices: [[ms, price], ...] }
+  const cg = await fetchJsonWithTimeout("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily");
+  const pts = (cg?.prices || []).map(([t, price]) => ({ t: Number(t), price: Number(price) }));
+  if (pts.length < 300) throw new Error("CoinGecko: too few prices");
+  return { source: "CoinGecko", points: pts };
+}
+
+function puellStatusFor(v) {
+  if (v < 0.5) return { status: "Buy zone",    color: "green"  };
+  if (v < 1.0) return { status: "Undervalued", color: "green"  };
+  if (v < 2.0) return { status: "Neutral",     color: "yellow" };
+  if (v < 4.0) return { status: "Overheated",  color: "orange" };
+  return            { status: "Sell zone",   color: "red"    };
+}
+
+async function computePuellLocally() {
+  const { source, points } = await fetchBtcDailyCloses();
+  const valid = points.filter((p) => Number.isFinite(p.price) && p.price > 0);
+  const win = valid.slice(-365);
+  const issuance = win.map((p) => PUELL_BLOCKS_PER_DAY * puellSubsidyAt(p.t) * p.price);
+  const avg = issuance.reduce((s, x) => s + x, 0) / issuance.length;
+  const puell = issuance[issuance.length - 1] / avg;
+  if (!Number.isFinite(puell)) throw new Error("Puell calculation failed");
+  const st = puellStatusFor(puell);
+  return {
+    puell: Number(puell.toFixed(3)),
+    status: st.status,
+    statusColor: st.color,
+    markerPct: Math.max(0, Math.min(100, (puell / 4) * 100)),
+    source: `calculated (${source} prices, ${win.length} days)`
+  };
+}
+
+async function fetchJsonStrict(url, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
   const text = await res.text();
 
   let json;
@@ -3428,13 +3492,19 @@ async function fetchJsonStrict(url) {
   return json;
 }
 
+// Order: 1) Worker proxy (cached)  2) Worker ?refresh=1  3) local calculation from BTC daily prices
 async function fetchPuellWithFallback() {
   try {
     return await fetchJsonStrict(PUELL_PROXY_URL);
   } catch (cachedErr) {
     console.warn("Cached Puell fetch failed, trying refresh=1", cachedErr);
-    return await fetchJsonStrict(`${PUELL_PROXY_URL}?refresh=1`);
   }
+  try {
+    return await fetchJsonStrict(`${PUELL_PROXY_URL}?refresh=1`);
+  } catch (refreshErr) {
+    console.warn("Puell proxy failed, calculating locally", refreshErr);
+  }
+  return await computePuellLocally();
 }
 
 async function loadPuell() {
@@ -3462,6 +3532,9 @@ async function loadPuell() {
     latestPuell = puell;
 
     if (valueEl) valueEl.textContent = puell.toFixed(2);
+
+    const puellPanel = document.getElementById("puellPanel");
+    if (puellPanel) puellPanel.title = `Puell Multiple ${puell.toFixed(3)} — source: ${result.source || "Worker proxy"}`;
 
     if (statusEl) {
       statusEl.textContent = result.status || "Available";
